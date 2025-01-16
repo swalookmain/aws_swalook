@@ -1,0 +1,10 @@
+boto3
+awscli
+requests
+django
+djangorestframework
+django-cors-headers
+django-silk
+pillow
+mysqlclient
+pymysql
