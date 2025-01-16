@@ -20,10 +20,9 @@ from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework_simplejwt.views import TokenObtainPairView,TokenRefreshView
 from _api_.views import *
-from django.contrib.staticfiles.urls import staticfiles_urlpatterns # new
+from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 
 v = Vendor_loyality_customer_profile()
-#/api/items/?id=id&branch_name=branch_name
 urlpatterns = [
     path('silk/', include('silk.urls', namespace='silk')),
     path('swalook_admin_sql/', admin.site.urls),
@@ -31,14 +30,12 @@ urlpatterns = [
     path("restart_server/", restart_server.as_view()),
     # path('swalook_token_ii091/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     # path('swalook_token_ii091/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-
     path('api/swalook/endpoints/',showendpoint.as_view()),
     path('api/swalook/create_account/',VendorSignin.as_view()),
     path('api/swalook/centralized/login/',Centralized_login.as_view()),
     path('api/swalook/login/',vendor_login.as_view()),
     path('api/swalook/staff/login/',staff_login.as_view()),
     path('api/swalook/admin/login/',admin_login.as_view()),
-
     path('api/swalook/billing/',vendor_billing.as_view()),
     path('api/swalook/save-pdf/',vendor_billing_pdf.as_view()),
     path('api/swalook/appointment/',VendorAppointments.as_view()),
@@ -56,13 +53,10 @@ urlpatterns = [
     path('api/swalook/get_specific/appointment/',get_specific_appointment.as_view()), #
     path('api/swalook/get_specific_slno/',get_slno.as_view()),
     path('api/swalook/get_current_user/',get_current_user_profile.as_view()), #
-
     path('api/swalook/get_present_day_bill/',get_present_day_bill.as_view()),
     path('api/swalook/get_bill_data/',get__bill.as_view()), #
     path('api/swalook/get_branch_data/',render_branch_data.as_view()), #
-
     path('api/swalook/help_desk/',help_desk.as_view()),
-
     path('api/swalook/salonbranch/',VendorBranch.as_view()),
     path('api/swalook/edit/salonbranch/',edit_branch.as_view()), #
     path('api/swalook/delete/salonbranch/',delete_branch.as_view()),#
@@ -79,7 +73,6 @@ urlpatterns = [
     path('api/swalook/loyality_program/view/',Vendor_loyality_type_add_get.as_view()), #
     path('api/swalook/loyality_program/verify/',Check_Loyality_Customer_exists.as_view()), #
     path('api/swalook/loyality_program/types/',MembershipTypesLoyality_get.as_view()), #
-
     path('api/swalook/loyality_program/get_minimum_value/',update_minimum_amount.as_view()), #
     path('api/swalook/staff/',vendor_staff.as_view()), #
     path('api/swalook/staff/setting/',vendor_staff_setting_slabs.as_view()), #
@@ -96,14 +89,11 @@ urlpatterns = [
     path('api/swalook/business-analysis/service/',service_analysis.as_view()), #
     path('api/swalook/business-analysis/headers/',busniess_headers.as_view()), #
     path('api/swalook/get-customer-bill-app-data/',GetCustomerBillAppDetails.as_view()), #
- 
     path('api/swalook/expense_management/',expense_management.as_view()), #
     path('api/swalook/expense_category/',expense_category.as_view()), #
     path('api/swalook/service_category/',service_category.as_view()), #
     path('api/swalook/staff-header-mode-of-payment/',top5_header_staff_revenue.as_view()), #
     path('api/swalook/test-error/',Table_servicess.as_view()), #
-
-
     re_path(r'^media/{}/(?P<path>.*)$'.format(settings.MEDIA_URL_PREFIX), serve, {'document_root': settings.MEDIA_ROOT}),
     re_path(r'^static/{}/(?P<path>.*)$'.format(settings.STATIC_URL_PREFIX), serve, {'document_root': settings.STATIC_URL}),
 
