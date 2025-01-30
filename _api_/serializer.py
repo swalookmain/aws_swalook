@@ -17,7 +17,7 @@ from dateutil.relativedelta import relativedelta
 from django.utils.translation import gettext_lazy as _
 import re
 from django.contrib.auth import authenticate
-
+import uuid
 
 class signup_serializer(serializers.ModelSerializer):
     class Meta:
@@ -187,10 +187,10 @@ class UpdateProfileSerializer(serializers.Serializer):
 
 class billing_serializer(serializers.ModelSerializer):
     json_data = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
-
+    new_mode = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
     class Meta:
         model = VendorInvoice
-        fields = ["customer_name", "mobile_no", "email", "address", "services", "mode_of_payment", "service_by", "json_data", "loyalty_points_deducted", "total_prise", "total_quantity", "total_tax", "total_discount", "grand_total", "total_cgst", "total_sgst", "gst_number", "comment", "slno"]
+        fields = ["customer_name", "mobile_no", "email", "address", "services", "mode_of_payment", "service_by", "new_mode", "json_data", "loyalty_points_deducted", "total_prise", "total_quantity", "total_tax", "total_discount", "grand_total", "total_cgst", "total_sgst", "gst_number", "comment", "slno","coupon_points_used"]
         extra_kwargs = {'id': {'read_only': True}}
 
     def create(self, validated_data):
@@ -199,18 +199,10 @@ class billing_serializer(serializers.ModelSerializer):
         validated_data['date'] = date
         validated_data['vendor_branch_id'] = self.context.get('branch_id')
         self.update_inventory(validated_data['json_data'])
+        # self.handle_loyalty_points(validated_data)
+        # self.update_staff_business_to_month(validated_data['service_by'],validated_data['grand_total'],validated_data['total_tax'])
         super().create(validated_data)
         return validated_data['slno']
-
-    def get_week_number(self, day):
-        if 1 <= day <= 7:
-            return "1"
-        elif 8 <= day <= 15:
-            return "2"
-        elif 16 <= day <= 23:
-            return "3"
-        else:
-            return "4"
 
     def handle_loyalty_points(self, validated_data):
         if int(validated_data['grand_total']) > 100:
@@ -235,8 +227,16 @@ class billing_serializer(serializers.ModelSerializer):
                     clp_object.save()
                     clp_object.refresh_from_db()
                     self.create_ledger_entry(validated_data, clp_object)
+
                 else:
                     validated_data['loyalty_points'] = 0
+                if int(customer.coupon.coupon_points_hold) != 0:
+                    if float(validated_data['coupon_points_used']) > float(customer.coupon.coupon_points_hold):
+                        raise serializers.ValidationError("Coupon points deducted cannot exceed current customer points.")
+                    customer.coupon.coupon_points_hold = float(customer.coupon.coupon_points_hold) - float(validated_data['coupon_points_used'])
+                    customer.save()
+                    customer.refresh_from_db()
+
             except VendorCustomers.DoesNotExist:
                 pass
 
@@ -251,9 +251,7 @@ class billing_serializer(serializers.ModelSerializer):
             point_available=clp_object.current_customer_points,
             inventory_invoice_obj=validated_data['slno'],
             date=dt.date.today(),
-            month=date.month,
-            week=self.get_week_number(date.day),
-            year=date.year,
+
         )
         ledger_object.save()
 
@@ -290,7 +288,7 @@ class appointment_serializer(serializers.ModelSerializer):
     def create(self, validated_data):
         def send_appointment_email(subject, body, recipient_email):
             send_mail(subject, body, 'info@swalook.in', [recipient_email])
-        
+
         with transaction.atomic():
             validated_data['vendor_name'] = self.context.get('request').user
             validated_data['vendor_branch_id'] = self.context.get('branch_id')
@@ -298,12 +296,12 @@ class appointment_serializer(serializers.ModelSerializer):
 
             appointment = super().create(validated_data)
 
-            if validated_data['email'] and validated_data['email'].strip():
-                name = f"{str(self.context.get('request').user)}branch_name_14"
-                subject = f"{self.context.get('request').session.get('name')}" + " - Appointment"
-                body = f"Hi {validated_data['customer_name']}!\nYour appointment is booked and finalized for: {validated_data['booking_time']} | {validated_data['booking_date']}\nFor the following services: {validated_data['services']}\nSee you soon!\nThanks and Regards\nTeam {self.context.get('request').session.get(f'{name}')}"
+            # if validated_data['email'] and validated_data['email'].strip():
+            #     name = f"{str(self.context.get('request').user)}branch_name_14"
+            #     subject = f"{self.context.get('request').session.get('name')}" + " - Appointment"
+            #     body = f"Hi {validated_data['customer_name']}!\nYour appointment is booked and finalized for: {validated_data['booking_time']} | {validated_data['booking_date']}\nFor the following services: {validated_data['services']}\nSee you soon!\nThanks and Regards\nTeam {self.context.get('request').session.get(f'{name}')}"
 
-                send_appointment_email(subject, body, validated_data['email'])
+            #     send_appointment_email(subject, body, validated_data['email'])
 
             return appointment
 
@@ -351,7 +349,7 @@ class UpdateAppointmentSerializer(serializers.ModelSerializer):
 
 
 class Vendor_Pdf_Serializer(serializers.ModelSerializer):
-    file = serializers.FileField(required=True)  # Ensure that file is a required field
+    file = serializers.FileField(required=True)
 
     class Meta:
         model = VendorPdf
@@ -407,17 +405,30 @@ class VendorServiceCategorySerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
+    def update(self, instance, validated_data):
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+
+        instance.save()
+        return instance
+
+
 class service_serializer(serializers.ModelSerializer):
-    category = VendorServiceCategorySerializer(read_only=True)
-    
+    category = serializers.UUIDField(write_only=True, format='hex_verbose')
+    category_details = VendorServiceCategorySerializer(read_only=True, source='category')
+
+
     class Meta:
         model = VendorService
-        fields = ["id", "service", "service_price", "service_duration", "category", "for_men", "for_women"]
+        fields = ["id", "service", "service_price", "service_duration", "category","category_details", "for_men", "for_women"]
         extra_kwargs = {'id': {'read_only': True}}
 
     def create(self, validated_data):
         validated_data['user'] = self.context.get('request').user
         validated_data['vendor_branch_id'] = self.context.get('branch_id')
+        category_uuid = validated_data.pop('category')
+        validated_data['category'] = VendorServiceCategory.objects.get(id=category_uuid)
         return super().create(validated_data)
 
 
@@ -427,6 +438,9 @@ class service_update_serializer(serializers.ModelSerializer):
         fields = ["service", "service_price", "service_duration", "category"]
 
     def update(self, instance, validated_data):
+        if 'category' in validated_data:
+            category_uuid = validated_data.pop('category')
+            instance.category = VendorServiceCategory.objects.get(id=category_uuid)
         instance.service = validated_data.get("service", instance.service)
         instance.service_duration = validated_data.get("service_duration", instance.service_duration)
         instance.service_price = validated_data.get("service_price", instance.service_price)
@@ -435,6 +449,7 @@ class service_update_serializer(serializers.ModelSerializer):
 
 
 class service_name_serializer(serializers.ModelSerializer):
+    category = VendorServiceCategorySerializer(read_only=True)
     class Meta:
         model = VendorService
         fields = ["id", "service", "category", "for_men", "for_women"]
@@ -492,16 +507,29 @@ class staff_setting_serializer(serializers.ModelSerializer):
 
 class staff_salary_serializer(ModelSerializer):
     staff = staff_serializer()
-    
+
     class Meta:
         model = StaffSalary
         fields = "__all__"
+
+class TemplateSerializer(ModelSerializer):
+
+
+    class Meta:
+        model = VendorLoyalityTemplates
+        fields = "__all__"
+
+
+    def create(self,validated_data):
+        validated_data['user'] = self.context.get('request').user
+        validated_data['vendor_branch_id'] = self.context.get('branch_id')
+        return super().create(validated_data)
 
 
 class staff_update_earning_deduction_serializer(ModelSerializer):
     json_data = serializers.DictField(child=serializers.CharField())
     slab_data = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
-    
+
     class Meta:
         model = StaffSetting
         fields = ["slab_data", "json_data"]
@@ -691,8 +719,30 @@ class LoyalityPointsSerializer(serializers.ModelSerializer):
         extra_kwargs = {'id': {'read_only': True}}
 
 
+class CouponSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VendorCoupon
+        fields = "__all__"
+        extra_kwargs = {'id': {'read_only': True}}
+
+
+    def create(self,arg):
+        arg['user'] = self.context.get('request').user
+        arg['vendor_branch_id'] = self.context.get('branch_id')
+
+        return super().create(arg)
+
+
+    def update(self, instance, validated_data):
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save()
+        return instance
+
 class VendorCustomerLoyalityProfileSerializer_get(serializers.ModelSerializer):
     loyality_profile = LoyalityPointsSerializer(read_only=True)
+    coupon = CouponSerializer(read_only=True)
 
     class Meta:
         model = VendorCustomers
@@ -711,7 +761,7 @@ class billing_serializer_get(serializers.ModelSerializer):
 class VendorCustomerLoyalityProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = VendorCustomers
-        fields = ["id", "name", "mobile_no", "email", "membership", "d_o_a", "d_o_b"]
+        fields = ["id", "name", "mobile_no", "email", "membership", "d_o_a", "d_o_b","coupon"]
         extra_kwargs = {'id': {'read_only': True}}
 
     def create(self, validated_data):
@@ -756,15 +806,35 @@ class VendorLoyalityTypeSerializer(serializers.Serializer):
         points = validated_data['json_data'][0].get('points')
         expiry = validated_data['json_data'][0].get('expiry')
         charge = validated_data['json_data'][0].get('charges')
-        clp = VendorLoyalityProgramTypes(
+        discount = validated_data['json_data'][0].get('discount')
+        limit = validated_data['json_data'][0].get('limit')
+        active = validated_data['json_data'][0].get('active')
+        if discount:
+            clp = VendorLoyalityProgramTypes(
+                program_type=types,
+                expiry_duration=expiry,
+                points_hold = 0,
+                discount = discount,
+                limit = limit,
+                price=charge,
+                active=active,
+                user=self.context.get('request').user,
+                vendor_branch_id=self.context.get('branch_id')
+            )
+            clp.save()
+        else:
+            clp = VendorLoyalityProgramTypes(
             program_type=types,
             expiry_duration=expiry,
             points_hold=points,
+            discount = 0,
+            limit = 0,
             price=charge,
+            active=active,
             user=self.context.get('request').user,
             vendor_branch_id=self.context.get('branch_id')
-        )
-        clp.save()
+            )
+            clp.save()
         return "ok"
 
 
@@ -776,15 +846,33 @@ class Vendor_Type_Loyality_Update_Serializer(serializers.Serializer):
         points = validated_data['json_data'][0].get('points')
         expiry = validated_data['json_data'][0].get('expiry')
         charge = validated_data['json_data'][0].get('charges')
+        discount = validated_data['json_data'][0].get('discount')
+        limit = validated_data['json_data'][0].get('limit')
+        active = validated_data['json_data'][0].get('active')
         clp = VendorLoyalityProgramTypes.objects.get(id=self.context.get('id'))
-        clp.program_type = types
-        clp.expiry_duration = expiry
-        clp.points_hold = points
-        clp.price = charge
-        clp.user = self.context.get('request').user
-        clp.vendor_branch_id = self.context.get('branch_id')
-        clp.save()
-        return "ok"
+        if discount:
+            clp.program_type = types
+            clp.expiry_duration = expiry
+            clp.discount = discount
+            clp.limit = limit
+            clp.points_hold = 0
+            clp.price = charge
+            clp.user = self.context.get('request').user
+            clp.vendor_branch_id = self.context.get('branch_id')
+            clp.save()
+            return "ok"
+        else:
+
+            clp.program_type = types
+            clp.expiry_duration = expiry
+            clp.points_hold = points
+            clp.discount = 0
+            clp.limit = 0
+            clp.price = charge
+            clp.user = self.context.get('request').user
+            clp.vendor_branch_id = self.context.get('branch_id')
+            clp.save()
+            return "ok"
 
 
 class loyality_customer_update_serializer(serializers.Serializer):
@@ -870,3 +958,5 @@ class VendorExpenseSerializer_get(serializers.ModelSerializer):
     class Meta:
         model = VendorExpense
         fields = "__all__"
+
+

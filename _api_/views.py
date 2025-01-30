@@ -327,11 +327,12 @@ class Add_vendor_service(CreateAPIView):
                 },
                 'data': None
             }, status=status.HTTP_400_BAD_REQUEST)
-
+        v = VendorServiceCategory.objects.get(id=request.data.get('category'))
         service_obj = VendorService.objects.filter(
             user=request.user,
             vendor_branch_id=branch_name,
-            service=request.data.get('service')
+            service=request.data.get('service'),
+            category= v
         )
         if service_obj.exists():
             return Response({
@@ -984,7 +985,7 @@ class present_day_appointment(APIView):
 
     def get(self, request):
         branch_name = request.query_params.get('branch_name')
-        date = dt.date.today()
+        date = request.query_params.get('date')
         query_set = VendorAppointment.objects.filter(vendor_name=request.user, date=date, vendor_branch_id=branch_name).order_by("booking_time")
         serializer_obj = appointment_serializer(query_set, many=True)
         return Response({
@@ -1304,7 +1305,7 @@ class Bill_Inventory(CreateAPIView,UpdateAPIView,RetrieveAPIView,DestroyAPIView)
         pass
     def delete(self,request,id):
         pass
-    
+
 class Vendor_loyality_customer_profile(CreateAPIView, ListAPIView, UpdateAPIView, DestroyAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = VendorCustomerLoyalityProfileSerializer
@@ -2547,6 +2548,98 @@ class service_category(APIView):
             "data": serializer.data
         }, status=status.HTTP_200_OK)
 
+    def put(self, request):
+        id = request.query_params.get('id')
+        branch_name = request.query_params.get('branch_name')
+
+        service_obj = VendorServiceCategory.objects.filter(user=request.user, vendor_branch_id=branch_name, service_category=request.data.get('category')).exclude(id=id)
+        if service_obj.exists():
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_200_OK,
+                'error': {
+                    'code': 'The request was successful',
+                    'message': 'Service with the same name already exists on this branch!'
+                },
+                'data': None
+            }, status=status.HTTP_200_OK)
+
+        try:
+            service_instance = VendorServiceCategory.objects.get(id=id, user=request.user, vendor_branch_id=branch_name)
+        except VendorService.DoesNotExist:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_404_NOT_FOUND,
+                'error': {
+                    'code': 'Not Found',
+                    'message': 'Service not found!'
+                },
+                'data': None
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = self.serializer_class(instance=service_instance, data=request.data, context={'request': request, 'branch_id': branch_name})
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'success': True,
+                'status_code': status.HTTP_200_OK,
+                'error': {
+                    'code': 'The request was successful',
+                    'message': 'Service updated on this branch!'
+                },
+                'data': None
+            }, status=status.HTTP_200_OK)
+
+        return Response({
+            'success': False,
+            'status_code': status.HTTP_400_BAD_REQUEST,
+            'error': {
+                'code': 'Validation Error',
+                'message': 'Serializer data is invalid!'
+            },
+            'data': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request):
+        id = request.query_params.get('id')
+
+        if not id:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'error': {
+                    'code': 'Bad Request',
+                    'message': 'ID parameter is missing!'
+                },
+                'data': None
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            queryset = VendorServiceCategory.objects.get(id=id, user=request.user)
+            queryset.delete()
+
+            return Response({
+                'success': True,
+                'status_code': status.HTTP_200_OK,
+                'error': {
+                    'code': 'The request was successful',
+                    'message': 'Service deleted successfully!'
+                },
+                'data': None
+            }, status=status.HTTP_200_OK)
+
+        except VendorService.DoesNotExist:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_404_NOT_FOUND,
+                'error': {
+                    'code': 'Not Found',
+                    'message': 'Service not found!'
+                },
+                'data': None
+            }, status=status.HTTP_404_NOT_FOUND)
+
 
 class Table_servicess(APIView):
     permission_classes = [IsAuthenticated]
@@ -2584,3 +2677,215 @@ class Table_servicess(APIView):
         return Response({
             "data": response_data
         })
+
+
+class CouponView(APIView):
+
+    serializer_class = CouponSerializer
+
+    def __init__(self, **kwargs):
+        self.cache_key = None
+        super().__init__(**kwargs)
+
+    @transaction.atomic
+    def post(self, request):
+        branch_name = request.query_params.get('branch_name')
+
+        if not branch_name:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'error': {
+                    'code': 'Bad Request',
+                    'message': 'branch_name parameter is missing!'
+                },
+                'data': None
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = self.serializer_class(data=request.data, context={'request': request, 'branch_id': branch_name})
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "status": True,
+                "message": "Coupon added successfully."
+            }, status=status.HTTP_201_CREATED)
+
+        return Response({
+            "status": False,
+            "errors": serializer.errors,
+            "message": "Failed to add coupon."
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    def get(self, request):
+        branch_name = request.query_params.get('branch_name')
+        if not branch_name:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'error': {
+                    'code': 'Bad Request',
+                    'message': 'branch_name parameter is missing!'
+                },
+                'data': None
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        data = VendorCoupon.objects.filter(user=request.user, vendor_branch_id=branch_name)
+        serializer = self.serializer_class(data, many=True)
+
+        return Response({
+            "status": True,
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)
+
+
+
+    def put(self, request):
+        id = request.query_params.get('id')
+        branch_name = request.query_params.get('branch_name')
+
+        service_obj = VendorCoupon.filter(user=request.user, vendor_branch_id=branch_name, coupon_name=request.data.get('coupon_name')).exclude(id=id)
+        if service_obj.exists():
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_200_OK,
+                'error': {
+                    'code': 'The request was successful',
+                    'message': 'Service with the same name already exists on this branch!'
+                },
+                'data': None
+            }, status=status.HTTP_200_OK)
+
+        try:
+            service_instance = VendorCoupon.objects.get(id=id, user=request.user, vendor_branch_id=branch_name)
+        except VendorService.DoesNotExist:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_404_NOT_FOUND,
+                'error': {
+                    'code': 'Not Found',
+                    'message': 'Couopon not found!'
+                },
+                'data': None
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = self.serializer_class(instance=service_instance, data=request.data, context={'request': request, 'branch_id': branch_name})
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'success': True,
+                'status_code': status.HTTP_200_OK,
+                'error': {
+                    'code': 'The request was successful',
+                    'message': 'Coupon updated on this branch!'
+                },
+                'data': None
+            }, status=status.HTTP_200_OK)
+
+        return Response({
+            'success': False,
+            'status_code': status.HTTP_400_BAD_REQUEST,
+            'error': {
+                'code': 'Validation Error',
+                'message': 'Serializer data is invalid!'
+            },
+            'data': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request):
+        id = request.query_params.get('id')
+
+        if not id:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'error': {
+                    'code': 'Bad Request',
+                    'message': 'ID parameter is missing!'
+                },
+                'data': None
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            queryset = VendorCoupon.objects.get(id=id, user=request.user)
+            queryset.delete()
+
+            return Response({
+                'success': True,
+                'status_code': status.HTTP_200_OK,
+                'error': {
+                    'code': 'The request was successful',
+                    'message': 'Coupon deleted successfully!'
+                },
+                'data': None
+            }, status=status.HTTP_200_OK)
+
+        except VendorCoupon.DoesNotExist:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_404_NOT_FOUND,
+                'error': {
+                    'code': 'Not Found',
+                    'message': 'Coupon not found!'
+                },
+                'data': None
+            }, status=status.HTTP_404_NOT_FOUND)
+
+
+
+
+class LoyalityTemplate(APIView):
+
+    serializer_class = TemplateSerializer
+    def get(self, request):
+        branch_name = request.query_params.get('branch_name')
+        if not branch_name:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'error': {
+                    'code': 'Bad Request',
+                    'message': 'branch_name parameter is missing!'
+                },
+                'data': None
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        data = VendorLoyalityTemplates.objects.filter(user=request.user, vendor_branch_id=branch_name)
+        serializer = self.serializer_class(data, many=True)
+
+        return Response({
+            "status": True,
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)
+
+
+    @transaction.atomic
+    def post(self, request):
+        branch_name = request.query_params.get('branch_name')
+
+        if not branch_name:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'error': {
+                    'code': 'Bad Request',
+                    'message': 'branch_name parameter is missing!'
+                },
+                'data': None
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = self.serializer_class(data=request.data, context={'request': request, 'branch_id': branch_name})
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "status": True,
+                "message": "Message Recieved successfully."
+            }, status=status.HTTP_201_CREATED)
+
+        return Response({
+            "status": False,
+            "errors": serializer.errors,
+            "message": "Failed to send messages."
+        }, status=status.HTTP_400_BAD_REQUEST)
