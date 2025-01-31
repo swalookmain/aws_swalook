@@ -232,7 +232,7 @@ class VendorInvoice(models.Model):
     vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
     vendor_customers_profile = models.ForeignKey(VendorCustomers, on_delete=models.SET_NULL, null=True)
     json_data = models.JSONField(default=list, blank=True)
-    # new_mode= models.JSONField(default=list, blank=True)
+    new_mode= models.JSONField(default=list, blank=True)
     comment = models.CharField(max_length=255, blank=True)
     mode_of_payment = models.CharField(max_length=200, blank=True)
     loyalty_points = models.DecimalField(blank=True, null=True, max_digits=6, decimal_places=2)
