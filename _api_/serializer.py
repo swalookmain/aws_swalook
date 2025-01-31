@@ -187,10 +187,10 @@ class UpdateProfileSerializer(serializers.Serializer):
 
 class billing_serializer(serializers.ModelSerializer):
     json_data = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
-    new_mode = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
+    # new_mode = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
     class Meta:
         model = VendorInvoice
-        fields = ["customer_name", "mobile_no", "email", "address", "services", "mode_of_payment", "service_by", "new_mode", "json_data", "loyalty_points_deducted", "total_prise", "total_quantity", "total_tax", "total_discount", "grand_total", "total_cgst", "total_sgst", "gst_number", "comment", "slno","coupon_points_used"]
+        fields = ["customer_name", "mobile_no", "email", "address", "services", "mode_of_payment", "service_by", "json_data", "loyalty_points_deducted", "total_prise", "total_quantity", "total_tax", "total_discount", "grand_total", "total_cgst", "total_sgst", "gst_number", "comment", "slno","coupon_points_used"]
         extra_kwargs = {'id': {'read_only': True}}
 
     def create(self, validated_data):
@@ -230,12 +230,12 @@ class billing_serializer(serializers.ModelSerializer):
 
                 else:
                     validated_data['loyalty_points'] = 0
-                if int(customer.coupon.coupon_points_hold) != 0:
-                    if float(validated_data['coupon_points_used']) > float(customer.coupon.coupon_points_hold):
-                        raise serializers.ValidationError("Coupon points deducted cannot exceed current customer points.")
-                    customer.coupon.coupon_points_hold = float(customer.coupon.coupon_points_hold) - float(validated_data['coupon_points_used'])
-                    customer.save()
-                    customer.refresh_from_db()
+                # if int(customer.coupon.coupon_points_hold) != 0:
+                #     if float(validated_data['coupon_points_used']) > float(customer.coupon.coupon_points_hold):
+                #         raise serializers.ValidationError("Coupon points deducted cannot exceed current customer points.")
+                #     customer.coupon.coupon_points_hold = float(customer.coupon.coupon_points_hold) - float(validated_data['coupon_points_used'])
+                #     customer.save()
+                #     customer.refresh_from_db()
 
             except VendorCustomers.DoesNotExist:
                 pass
@@ -719,26 +719,26 @@ class LoyalityPointsSerializer(serializers.ModelSerializer):
         extra_kwargs = {'id': {'read_only': True}}
 
 
-class CouponSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = VendorCoupon
-        fields = "__all__"
-        extra_kwargs = {'id': {'read_only': True}}
+# class CouponSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = VendorCoupon
+#         fields = "__all__"
+#         extra_kwargs = {'id': {'read_only': True}}
 
 
-    def create(self,arg):
-        arg['user'] = self.context.get('request').user
-        arg['vendor_branch_id'] = self.context.get('branch_id')
+#     def create(self,arg):
+#         arg['user'] = self.context.get('request').user
+#         arg['vendor_branch_id'] = self.context.get('branch_id')
 
-        return super().create(arg)
+#         return super().create(arg)
 
 
-    def update(self, instance, validated_data):
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
+#     def update(self, instance, validated_data):
+#         for attr, value in validated_data.items():
+#             setattr(instance, attr, value)
 
-        instance.save()
-        return instance
+#         instance.save()
+#         return instance
 
 class VendorCustomerLoyalityProfileSerializer_get(serializers.ModelSerializer):
     loyality_profile = LoyalityPointsSerializer(read_only=True)
@@ -761,7 +761,7 @@ class billing_serializer_get(serializers.ModelSerializer):
 class VendorCustomerLoyalityProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = VendorCustomers
-        fields = ["id", "name", "mobile_no", "email", "membership", "d_o_a", "d_o_b","coupon"]
+        fields = ["id", "name", "mobile_no", "email", "membership", "d_o_a", "d_o_b",]
         extra_kwargs = {'id': {'read_only': True}}
 
     def create(self, validated_data):
