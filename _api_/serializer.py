@@ -512,18 +512,18 @@ class staff_salary_serializer(ModelSerializer):
         model = StaffSalary
         fields = "__all__"
 
-class TemplateSerializer(ModelSerializer):
+# class TemplateSerializer(ModelSerializer):
 
 
-    class Meta:
-        model = VendorLoyalityTemplates
-        fields = "__all__"
+#     class Meta:
+#         model = VendorLoyalityTemplates
+#         fields = "__all__"
 
 
-    def create(self,validated_data):
-        validated_data['user'] = self.context.get('request').user
-        validated_data['vendor_branch_id'] = self.context.get('branch_id')
-        return super().create(validated_data)
+#     def create(self,validated_data):
+#         validated_data['user'] = self.context.get('request').user
+#         validated_data['vendor_branch_id'] = self.context.get('branch_id')
+#         return super().create(validated_data)
 
 
 class staff_update_earning_deduction_serializer(ModelSerializer):
