@@ -64,26 +64,26 @@ class SwalookUserProfile(models.Model):
         return str(self.salon_name)
 
 
-# class VendorLoyalityProgramTypes(models.Model):
-#     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
-#     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, db_index=True)
-#     vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
-#     program_type = models.CharField(max_length=255)
-#     price = models.IntegerField()
-#     expiry_duration = models.IntegerField()
-#     points_hold = models.IntegerField(blank=True)
-#     discount = models.IntegerField(blank=True)
-#     limit = models.IntegerField(blank=True)
-#     active = models.BooleanField(default=True,blank=True)
+class VendorLoyalityProgramTypes(models.Model):
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, db_index=True)
+    vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
+    program_type = models.CharField(max_length=255)
+    price = models.IntegerField()
+    expiry_duration = models.IntegerField()
+    points_hold = models.IntegerField(blank=True)
+    discount = models.IntegerField(blank=True)
+    limit = models.IntegerField(blank=True)
+    active = models.BooleanField(default=True,blank=True)
 
 
-#     class Meta:
-#         indexes = [
-#             models.Index(fields=['user', 'vendor_branch', 'program_type']),
-#         ]
+    class Meta:
+        indexes = [
+            models.Index(fields=['user', 'vendor_branch', 'program_type']),
+        ]
 
-#     def __str__(self) -> str:
-#         return str(self.user)
+    def __str__(self) -> str:
+        return str(self.user)
 
 
 class VendorCustomerLoyalityPoints(models.Model):
