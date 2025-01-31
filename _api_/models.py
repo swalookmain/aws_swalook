@@ -163,7 +163,7 @@ class VendorCustomers(models.Model):
         ordering = ['name']
         verbose_name = "Vendor Customers"
         indexes = [
-            models.Index(fields=['user', 'vendor_branch', 'mobile_no', 'coupon']),
+            models.Index(fields=['user', 'vendor_branch', 'mobile_no',]),
         ]
 
     def __str__(self):
