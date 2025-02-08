@@ -103,44 +103,44 @@ class VendorCustomerLoyalityPoints(models.Model):
             models.Index(fields=['user', 'vendor_branch', 'customer_id']),
 
         ]
-# class VendorCoupon(models.Model):
-#     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
-#     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, db_index=True)
-#     vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
-#     coupon_name = models.CharField(max_length=10000)
-#     coupon_price = models.IntegerField()
-#     coupon_points_hold = models.IntegerField()
-#     active = models.BooleanField(default=True,blank=True)
-#     class Meta:
-#         ordering = ['coupon_name']
-#         verbose_name = "Vendor Coupons"
-#         indexes = [
-#             models.Index(fields=['user', 'vendor_branch', 'coupon_name']),
-#         ]
+class VendorCoupon(models.Model):
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, db_index=True)
+    vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
+    coupon_name = models.CharField(max_length=160)
+    coupon_price = models.IntegerField()
+    coupon_points_hold = models.IntegerField()
+    active = models.BooleanField(default=True,blank=True)
+    class Meta:
+        ordering = ['coupon_name']
+        verbose_name = "Vendor Coupons"
+        indexes = [
+            models.Index(fields=['user', 'vendor_branch', 'coupon_name']),
+        ]
 
-#     def __str__(self):
-#         return f"coupon {self.coupon_name} from branch {self.vendor_branch}"
+    def __str__(self):
+        return f"coupon {self.coupon_name} from branch {self.vendor_branch}"
 
-# class CustomerCoupon(models.Model):
-#     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
-#     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, db_index=True)
-#     vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
-#     customer_id = models.CharField(max_length=10000)
-#     coupon_name = models.ForeignKey(VendorCoupon, on_delete=models.SET_NULL, null=True, db_index=True)
-#     issue_date = models.DateField(null=True, blank=True)
-#     is_active = models.BooleanField(default=True,blank=True)
-#     coupon_points_hold = models.IntegerField()
-#     expiry_date = models.DateField()
+class CustomerCoupon(models.Model):
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, db_index=True)
+    vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
+    customer_id = models.CharField(max_length=10000)
+    coupon_name = models.ForeignKey(VendorCoupon, on_delete=models.SET_NULL, null=True, db_index=True)
+    issue_date = models.DateField(null=True, blank=True)
+    is_active = models.BooleanField(default=True,blank=True)
+    coupon_points_hold = models.IntegerField()
+    expiry_date = models.DateField()
 
-#     class Meta:
-#         ordering = ['coupon_name']
-#         verbose_name = "Vendor Coupons"
-#         indexes = [
-#             models.Index(fields=['user', 'vendor_branch', 'coupon_name']),
-#         ]
+    class Meta:
+        ordering = ['coupon_name']
+        verbose_name = "Vendor Coupons"
+        indexes = [
+            models.Index(fields=['user', 'vendor_branch', 'coupon_name']),
+        ]
 
-#     def __str__(self):
-#         return f"coupon {self.coupon_name} from customer {self.vendor_branch}"
+    def __str__(self):
+        return f"coupon {self.coupon_name} from customer {self.vendor_branch}"
 
 
 
@@ -157,7 +157,7 @@ class VendorCustomers(models.Model):
     membership = models.CharField(max_length=30, blank=True, null=True)
     membership_type = models.ForeignKey(VendorLoyalityProgramTypes, on_delete=models.SET_NULL, null=True)
     vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
-    # coupon = models.ForeignKey(CustomerCoupon,on_delete=models.SET_NULL, blank=True, null=True,db_index=True)
+    coupon = models.ForeignKey(CustomerCoupon,on_delete=models.SET_NULL, blank=True, null=True,db_index=True)
 
     class Meta:
         ordering = ['name']
@@ -237,7 +237,7 @@ class VendorInvoice(models.Model):
     mode_of_payment = models.CharField(max_length=200, blank=True)
     loyalty_points = models.DecimalField(blank=True, null=True, max_digits=6, decimal_places=2)
     loyalty_points_deducted = models.DecimalField(blank=True, null=True, max_digits=6, decimal_places=2)
-    # coupon_points_used = models.DecimalField(blank=True, null=True, max_digits=6, decimal_places=2)
+    coupon_points_used = models.DecimalField(blank=True, null=True, max_digits=6, decimal_places=2)
 
 
     class Meta:

@@ -29,7 +29,7 @@ SECRET_KEY = "django-insecure-b4+v(klybt0y9aghbnn=4qc+qr!#&)w3j)z_%7xbu)$mgx*z&3
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["44.201.100.13","www.api.swalookcrm.in","api.swalookcrm.in","127.0.0.1","localhost"]
+ALLOWED_HOSTS = ["44.201.100.13","www.api.swalookcrm.in","api.swalookcrm.in","127.0.0.1","localhost","app.swalookcrm.in","www.app.swalookcrm.in"]
 
 # Application definition
 

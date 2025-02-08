@@ -199,8 +199,8 @@ class billing_serializer(serializers.ModelSerializer):
         validated_data['date'] = date
         validated_data['vendor_branch_id'] = self.context.get('branch_id')
         self.update_inventory(validated_data['json_data'])
-        # self.handle_loyalty_points(validated_data)
-        # self.update_staff_business_to_month(validated_data['service_by'],validated_data['grand_total'],validated_data['total_tax'])
+        self.handle_loyalty_points(validated_data)
+        self.update_staff_business_to_month(validated_data['service_by'],validated_data['grand_total'],validated_data['total_tax'])
         super().create(validated_data)
         return validated_data['slno']
 
@@ -230,12 +230,12 @@ class billing_serializer(serializers.ModelSerializer):
 
                 else:
                     validated_data['loyalty_points'] = 0
-                # if int(customer.coupon.coupon_points_hold) != 0:
-                #     if float(validated_data['coupon_points_used']) > float(customer.coupon.coupon_points_hold):
-                #         raise serializers.ValidationError("Coupon points deducted cannot exceed current customer points.")
-                #     customer.coupon.coupon_points_hold = float(customer.coupon.coupon_points_hold) - float(validated_data['coupon_points_used'])
-                #     customer.save()
-                #     customer.refresh_from_db()
+                if int(customer.coupon.coupon_points_hold) != 0:
+                    if float(validated_data['coupon_points_used']) > float(customer.coupon.coupon_points_hold):
+                        raise serializers.ValidationError("Coupon points deducted cannot exceed current customer points.")
+                    customer.coupon.coupon_points_hold = float(customer.coupon.coupon_points_hold) - float(validated_data['coupon_points_used'])
+                    customer.save()
+                    customer.refresh_from_db()
 
             except VendorCustomers.DoesNotExist:
                 pass
@@ -719,30 +719,30 @@ class LoyalityPointsSerializer(serializers.ModelSerializer):
         extra_kwargs = {'id': {'read_only': True}}
 
 
-# class CouponSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = VendorCoupon
-#         fields = "__all__"
-#         extra_kwargs = {'id': {'read_only': True}}
+class CouponSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VendorCoupon
+        fields = "__all__"
+        extra_kwargs = {'id': {'read_only': True}}
 
 
-#     def create(self,arg):
-#         arg['user'] = self.context.get('request').user
-#         arg['vendor_branch_id'] = self.context.get('branch_id')
+    def create(self,arg):
+        arg['user'] = self.context.get('request').user
+        arg['vendor_branch_id'] = self.context.get('branch_id')
 
-#         return super().create(arg)
+        return super().create(arg)
 
 
-#     def update(self, instance, validated_data):
-#         for attr, value in validated_data.items():
-#             setattr(instance, attr, value)
+    def update(self, instance, validated_data):
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
 
-#         instance.save()
-#         return instance
+        instance.save()
+        return instance
 
 class VendorCustomerLoyalityProfileSerializer_get(serializers.ModelSerializer):
     loyality_profile = LoyalityPointsSerializer(read_only=True)
-    # coupon = CouponSerializer(read_only=True)
+    coupon = CouponSerializer(read_only=True)
 
     class Meta:
         model = VendorCustomers
@@ -879,12 +879,20 @@ class loyality_customer_update_serializer(serializers.Serializer):
     name = serializers.CharField()
     mobile_no = serializers.CharField()
     email = serializers.CharField()
+    d_o_a = serializers.CharField()
+    d_o_b = serializers.CharField()
+    membership = serializers.UUIDField()
+    coupon = serializers.UUIDField()
 
     def create(self, validated_data):
         clp_obj = VendorCustomers.objects.get(id=self.context.get('id'))
         clp_obj.name = validated_data['name']
         clp_obj.mobile_no = validated_data['mobile_no']
         clp_obj.email = validated_data['email']
+        clp_obj.d_o_a = validated_data['d_o_a']
+        clp_obj.d_o_b = validated_data['d_o_b']
+        clp_obj.membership_id = validated_data['membership']
+        clp_obj.coupon = validated_data['coupon']
         clp_obj.save()
         return "ok"
 
