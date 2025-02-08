@@ -190,7 +190,7 @@ class billing_serializer(serializers.ModelSerializer):
     new_mode = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
     class Meta:
         model = VendorInvoice
-        fields = ["customer_name", "mobile_no", "email", "address", "services", "mode_of_payment", "new_mode","service_by", "json_data", "loyalty_points_deducted", "total_prise", "total_quantity", "total_tax", "total_discount", "grand_total", "total_cgst", "total_sgst", "gst_number", "comment", "slno",]
+        fields = ["customer_name", "mobile_no", "email", "address", "services", "mode_of_payment", "new_mode","service_by", "json_data", "loyalty_points_deducted", "total_prise", "total_quantity", "total_tax", "total_discount", "grand_total", "total_cgst", "total_sgst", "gst_number", "comment", "slno","coupon_points_used"]
         extra_kwargs = {'id': {'read_only': True}}
 
     def create(self, validated_data):
@@ -199,8 +199,8 @@ class billing_serializer(serializers.ModelSerializer):
         validated_data['date'] = date
         validated_data['vendor_branch_id'] = self.context.get('branch_id')
         self.update_inventory(validated_data['json_data'])
-        self.handle_loyalty_points(validated_data)
-        self.update_staff_business_to_month(validated_data['service_by'],validated_data['grand_total'],validated_data['total_tax'])
+        # self.handle_loyalty_points(validated_data)
+        # self.update_staff_business_to_month(validated_data['service_by'],validated_data['grand_total'],validated_data['total_tax'])
         super().create(validated_data)
         return validated_data['slno']
 
