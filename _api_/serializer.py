@@ -892,7 +892,7 @@ class loyality_customer_update_serializer(serializers.Serializer):
         clp_obj.d_o_a = validated_data['d_o_a']
         clp_obj.d_o_b = validated_data['d_o_b']
         clp_obj.membership_id = validated_data['membership']
-        clp_obj.coupon = validated_data['coupon']
+        clp_obj.coupon_id = validated_data['coupon']
         clp_obj.save()
         return "ok"
 

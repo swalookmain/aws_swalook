@@ -1345,22 +1345,21 @@ class Vendor_loyality_customer_profile(CreateAPIView, ListAPIView, UpdateAPIView
         })
 
     def put(self, request):
-        id = request.query_params.get('id')
+        ids = request.query_params.get('id')
         branch_name = request.query_params.get('branch_name')
         serializer_objects = loyality_customer_update_serializer(request.data)
         json_data = JSONRenderer().render(serializer_objects.data)
         stream_data_over_network = io.BytesIO(json_data)
         accept_json_stream = JSONParser().parse(stream_data_over_network)
-        serializer = loyality_customer_update_serializer(data=accept_json_stream, context={'request': request, 'id': id, 'branch_id': branch_name})
-        if serializer.is_valid():
-            serializer.save()
-            return Response({
+        serializer = loyality_customer_update_serializer(data=accept_json_stream, context={'request': request, 'id': ids, 'branch_id': branch_name})
+        serializer.create(validated_data=request.data)
+        return Response({
                 "status": True,
             })
 
     def delete(self, request):
-        id = request.query_params.get('id')
-        obj = VendorCustomers.objects.get(id=id)
+        ids = request.query_params.get('id')
+        obj = VendorCustomers.objects.get(id=ids)
         clp = VendorCustomerLoyalityPoints.objects.get(id=obj.loyality_profile.id)
         obj.delete()
         clp.delete()
