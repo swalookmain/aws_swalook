@@ -797,7 +797,7 @@ class VendorCustomerLoyalityProfileSerializer(serializers.ModelSerializer):
             user=user
         )
 
-        obj_loyality.current_customer_points = int(clp_bbject.points_hold)
+        obj_loyality.current_customer_points = int(clp_object.points_hold)
 
         def get_date_after_months(input_date_str, months):
             input_date = datetime.strptime(input_date_str, '%Y-%m-%d')
