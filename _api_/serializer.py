@@ -748,7 +748,7 @@ class VendorCustomerLoyalityProfileSerializer_get(serializers.ModelSerializer):
         model = VendorCustomers
         fields = "__all__"
         extra_kwargs = {'id': {'read_only': True}}
-        depth = 1 
+        depth = 2
 
 
 class billing_serializer_get(serializers.ModelSerializer):
