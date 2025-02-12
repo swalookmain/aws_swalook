@@ -717,7 +717,7 @@ class LoyalityPointsSerializer(serializers.ModelSerializer):
         model = VendorCustomerLoyalityPoints
         fields = "__all__"
         extra_kwargs = {'id': {'read_only': True}}
-        depth = 1 
+        
 
 
 class CouponSerializer(serializers.ModelSerializer):
@@ -742,13 +742,13 @@ class CouponSerializer(serializers.ModelSerializer):
         return instance
 
 class VendorCustomerLoyalityProfileSerializer_get(serializers.ModelSerializer):
-    loyality_profile = LoyalityPointsSerializer(read_only=True)
-    coupon_name = CouponSerializer(read_only=True)
+    
 
     class Meta:
         model = VendorCustomers
         fields = "__all__"
         extra_kwargs = {'id': {'read_only': True}}
+        depth = 1 
 
 
 class billing_serializer_get(serializers.ModelSerializer):
