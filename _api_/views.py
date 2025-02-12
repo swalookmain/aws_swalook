@@ -1347,15 +1347,23 @@ class Vendor_loyality_customer_profile(CreateAPIView, ListAPIView, UpdateAPIView
     def put(self, request):
         ids = request.query_params.get('id')
         branch_name = request.query_params.get('branch_name')
-        serializer_objects = loyality_customer_update_serializer(request.data)
-        json_data = JSONRenderer().render(serializer_objects.data)
-        stream_data_over_network = io.BytesIO(json_data)
-        accept_json_stream = JSONParser().parse(stream_data_over_network)
-        serializer = loyality_customer_update_serializer(data=accept_json_stream, context={'request': request, 'id': ids, 'branch_id': branch_name})
-        serializer.create(validated_data=request.data)
-        return Response({
-                "status": True,
-            })
+    
+        try:
+            instance = VendorCustomers.objects.get(id=ids)
+        except VendorCustomers.DoesNotExist:
+            return Response({"status": False, "message": "Customer not found"}, status=404)
+    
+        serializer = loyality_customer_update_serializer(
+            instance, data=request.data, partial=True, 
+            context={'request': request, 'id': ids, 'branch_id': branch_name}
+        )
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"status": True})
+        else:
+            return Response({"status": False, "errors": serializer.errors}, status=400)
+
 
     def delete(self, request):
         ids = request.query_params.get('id')
