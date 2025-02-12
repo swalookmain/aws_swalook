@@ -230,10 +230,10 @@ class billing_serializer(serializers.ModelSerializer):
 
                 else:
                     validated_data['loyalty_points'] = 0
-                if int(customer.coupon.coupon_points_hold) != 0:
-                    if float(validated_data['coupon_points_used']) > float(customer.coupon.coupon_points_hold):
+                if int(customer.coupon.coupon_name.coupon_points_hold) != 0:
+                    if float(validated_data['coupon_points_used']) > float(customer.coupon.coupon_name.coupon_points_hold):
                         raise serializers.ValidationError("Coupon points deducted cannot exceed current customer points.")
-                    customer.coupon.coupon_points_hold = float(customer.coupon.coupon_points_hold) - float(validated_data['coupon_points_used'])
+                    customer.coupon.coupon_name.coupon_points_hold = float(customer.coupon.coupon_name.coupon_points_hold) - float(validated_data['coupon_points_used'])
                     customer.save()
                     customer.refresh_from_db()
 
