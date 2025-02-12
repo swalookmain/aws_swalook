@@ -742,7 +742,7 @@ class CouponSerializer(serializers.ModelSerializer):
 
 class VendorCustomerLoyalityProfileSerializer_get(serializers.ModelSerializer):
     loyality_profile = LoyalityPointsSerializer(read_only=True)
-    coupon = CouponSerializer(read_only=True)
+    # coupon = CouponSerializer(read_only=True)
 
     class Meta:
         model = VendorCustomers
