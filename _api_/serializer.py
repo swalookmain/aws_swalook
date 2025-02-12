@@ -882,19 +882,28 @@ class loyality_customer_update_serializer(serializers.Serializer):
     d_o_a = serializers.CharField()
     d_o_b = serializers.CharField()
     membership = serializers.UUIDField()
-    coupon = serializers.UUIDField()
+    
+    coupon = serializers.ListField(child=serializers.DictField(child=serializers.UUIDField()))
 
     def create(self, validated_data):
         clp_obj = VendorCustomers.objects.get(id=self.context.get('id'))
+        
+
         clp_obj.name = validated_data['name']
         clp_obj.mobile_no = validated_data['mobile_no']
         clp_obj.email = validated_data['email']
         clp_obj.d_o_a = validated_data['d_o_a']
         clp_obj.d_o_b = validated_data['d_o_b']
         clp_obj.membership_id = validated_data['membership']
-        clp_obj.coupon_id = validated_data['coupon']
+        
+     
+        coupon_ids = [coupon_data['id'] for coupon_data in validated_data['coupon']]
+        
+      
+        clp_obj.coupon.set(coupon_ids)  
+        
         clp_obj.save()
-        return "ok"
+        return clp_obj  
 
 
 class update_minuimum_amount_serializer(serializers.Serializer):
