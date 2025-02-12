@@ -129,7 +129,7 @@ class CustomerCoupon(models.Model):
     coupon_name = models.ForeignKey(VendorCoupon, on_delete=models.SET_NULL, null=True, db_index=True)
     issue_date = models.DateField(null=True, blank=True)
     is_active = models.BooleanField(default=True,blank=True)
-    coupon_points_hold = models.IntegerField()
+    
     expiry_date = models.DateField()
 
     class Meta:
@@ -157,7 +157,7 @@ class VendorCustomers(models.Model):
     membership = models.CharField(max_length=30, blank=True, null=True)
     membership_type = models.ForeignKey(VendorLoyalityProgramTypes, on_delete=models.SET_NULL, null=True)
     vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
-    coupon = models.ForeignKey(CustomerCoupon,on_delete=models.SET_NULL, blank=True, null=True,db_index=True)
+    coupon = models.ManyToManyField(CustomerCoupon,blank=True)
 
     class Meta:
         ordering = ['name']
