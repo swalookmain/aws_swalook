@@ -758,38 +758,85 @@ class billing_serializer_get(serializers.ModelSerializer):
         fields = "__all__"
 
 
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
+import datetime as dt
+
 class VendorCustomerLoyalityProfileSerializer(serializers.ModelSerializer):
+    coupon = serializers.ListField(
+        child=serializers.DictField(child=serializers.UUIDField()),
+        required=False  
+    )
+
     class Meta:
         model = VendorCustomers
-        fields = ["id", "name", "mobile_no", "email", "membership", "d_o_a", "d_o_b",]
+        fields = ["id", "name", "mobile_no", "email", "membership", "d_o_a", "d_o_b", "coupon"]
         extra_kwargs = {'id': {'read_only': True}}
 
     def create(self, validated_data):
-        validated_data['user'] = self.context.get('request').user
-        validated_data['vendor_branch_id'] = self.context.get('branch_id')
-        validated_data['membership_type'] = VendorLoyalityProgramTypes.objects.get(program_type=validated_data['membership'], vendor_branch_id=self.context.get('branch_id'), user=self.context.get('request').user)
+        request = self.context.get('request')
+        branch_id = self.context.get('branch_id')
+        user = request.user
 
+        validated_data['user'] = user
+        validated_data['vendor_branch_id'] = branch_id
+
+
+        validated_data['membership_type'] = VendorLoyalityProgramTypes.objects.get(
+            program_type=validated_data['membership'],
+            vendor_branch_id=branch_id,
+            user=user
+        )
+
+ 
         obj_loyality = VendorCustomerLoyalityPoints()
-        clp_object = VendorLoyalityProgramTypes.objects.get(program_type=validated_data['membership'], vendor_branch_id=self.context.get('branch_id'), user=self.context.get('request').user)
+        clp_object = VendorLoyalityProgramTypes.objects.get(
+            program_type=validated_data['membership'],
+            vendor_branch_id=branch_id,
+            user=user
+        )
+
         obj_loyality.current_customer_points = 0
 
-        def get_date_after_six_months(input_date_str, month):
+        def get_date_after_months(input_date_str, months):
             input_date = datetime.strptime(input_date_str, '%Y-%m-%d')
-            date_after_six_months = input_date + relativedelta(months=month)
-            return date_after_six_months.strftime('%Y-%m-%d')
+            return (input_date + relativedelta(months=months)).strftime('%Y-%m-%d')
 
-        date = dt.date.today()
-        result = get_date_after_six_months(str(date), int(clp_object.expiry_duration) + 1)
-        obj_loyality.issue_date = dt.date.today()
-        obj_loyality.expire_date = result
-        obj_loyality.user = self.context.get('request').user
-        obj_loyality.vendor_branch_id = self.context.get('branch_id')
+        today = dt.date.today()
+        expiry_date = get_date_after_months(str(today), int(clp_object.expiry_duration) + 1)
+
+        obj_loyality.issue_date = today
+        obj_loyality.expire_date = expiry_date
+        obj_loyality.user = user
+        obj_loyality.vendor_branch_id = branch_id
         obj_loyality.customer_id = validated_data['mobile_no']
         obj_loyality.save()
         validated_data['loyality_profile'] = obj_loyality
 
-        return super().create(validated_data)
+      
+        customer_coupon_ids = []
+        coupon_data_list = validated_data.pop('coupon', None)  
+        if coupon_data_list: 
+            for coupon_data in coupon_data_list:
+                coupon_name_id = coupon_data.get('coupon_name')  
 
+                customer_coupon = CustomerCoupon.objects.create(
+                    user=user,
+                    vendor_branch_id=branch_id,
+                    customer_id=str(validated_data['mobile_no']),
+                    coupon_name_id=coupon_name_id,
+                    issue_date=today,
+                    expiry_date=expiry_date
+                )
+                customer_coupon_ids.append(customer_coupon.id)
+
+        vendor_customer = super().create(validated_data)
+
+    
+        if customer_coupon_ids:
+            vendor_customer.coupon.set(customer_coupon_ids)
+
+        return vendor_customer
 
 class VendorLoyalityTypeSerializer_get(serializers.ModelSerializer):
     class Meta:
@@ -875,35 +922,54 @@ class Vendor_Type_Loyality_Update_Serializer(serializers.Serializer):
             return "ok"
 
 
-class loyality_customer_update_serializer(serializers.Serializer):
-    name = serializers.CharField()
-    mobile_no = serializers.CharField()
-    email = serializers.CharField()
-    d_o_a = serializers.CharField()
-    d_o_b = serializers.CharField()
-    membership = serializers.UUIDField()
-    
-    coupon = serializers.ListField(child=serializers.DictField(child=serializers.UUIDField()))
+class LoyalityCustomerUpdateSerializer(serializers.Serializer):
+    name = serializers.CharField(required=False)
+    mobile_no = serializers.CharField(required=False)
+    email = serializers.CharField(required=False)
+    d_o_a = serializers.CharField(required=False)
+    d_o_b = serializers.CharField(required=False)
+    membership = serializers.UUIDField(required=False)
+    coupon = serializers.ListField(
+        child=serializers.DictField(child=serializers.UUIDField()), 
+        required=False
+    )
+    expiry_date = serializers.DateField(required=False)
 
-    def create(self, validated_data):
-        clp_obj = VendorCustomers.objects.get(id=self.context.get('id'))
-        
-
-        clp_obj.name = validated_data['name']
-        clp_obj.mobile_no = validated_data['mobile_no']
-        clp_obj.email = validated_data['email']
-        clp_obj.d_o_a = validated_data['d_o_a']
-        clp_obj.d_o_b = validated_data['d_o_b']
-        clp_obj.membership_id = validated_data['membership']
-        
+    def update(self, instance, validated_data):
+   
      
-        coupon_ids = [coupon_data['id'] for coupon_data in validated_data['coupon']]
-        
-      
-        clp_obj.coupon.set(coupon_ids)  
-        
-        clp_obj.save()
-        return clp_obj  
+        instance.name = validated_data.get('name', instance.name)
+        instance.mobile_no = validated_data.get('mobile_no', instance.mobile_no)
+        instance.email = validated_data.get('email', instance.email)
+        instance.d_o_a = validated_data.get('d_o_a', instance.d_o_a)
+        instance.d_o_b = validated_data.get('d_o_b', instance.d_o_b)
+        instance.membership_id = validated_data.get('membership', instance.membership_id)
+
+        coupon_data_list = validated_data.get('coupon', None)
+        expiry_date = validated_data.get('expiry_date', None)
+
+        if coupon_data_list:  
+            customer_coupon_ids = []
+            user_id = self.context.get('user_id')  
+            vendor_branch_id = self.context.get('vendor_branch_id')
+
+            for coupon_data in coupon_data_list:
+                coupon_name_id = coupon_data.get('coupon_name')
+
+                customer_coupon = CustomerCoupon.objects.create(
+                    user_id=user_id,
+                    vendor_branch_id=vendor_branch_id,
+                    customer_id=str(instance.id),
+                    coupon_name_id=coupon_name_id,
+                    expiry_date=expiry_date or instance.d_o_b  
+                )
+                customer_coupon_ids.append(customer_coupon.id)
+
+            instance.coupon.set(customer_coupon_ids)
+
+        instance.save()
+        return instance
+
 
 
 class update_minuimum_amount_serializer(serializers.Serializer):
