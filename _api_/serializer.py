@@ -717,6 +717,7 @@ class LoyalityPointsSerializer(serializers.ModelSerializer):
         model = VendorCustomerLoyalityPoints
         fields = "__all__"
         extra_kwargs = {'id': {'read_only': True}}
+        depth = 1 
 
 
 class CouponSerializer(serializers.ModelSerializer):
