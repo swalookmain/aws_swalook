@@ -2902,8 +2902,8 @@ class DailyAppointmentsView(APIView):
    
     def get(self, request):
         today = now().date()
-        appointments = VendorAppointment.objects.filter(date=today).order_by('booking_time')
-        serializer = VendorAppointmentSerializer(appointments, many=True)
+        appointments = VendorAppointment.objects.filter(vendor_name=request.user,date=today).order_by('booking_time')
+        serializer = app_serializer_get(appointments, many=True)
         return Response(serializer.data)
 
 class WeeklyAppointmentsView(APIView):
@@ -2913,11 +2913,11 @@ class WeeklyAppointmentsView(APIView):
         start_of_week = today - timedelta(days=today.weekday())
         end_of_week = start_of_week + timedelta(days=6)
 
-        appointments = VendorAppointment.objects.filter(
+        appointments = VendorAppointment.objects.filter(vendor_name=request.user,
             date__range=[start_of_week, end_of_week]
         ).order_by('date', 'booking_time')
 
-        serializer = VendorAppointmentSerializer(appointments, many=True)
+        serializer = app_serializer_get(appointments, many=True)
         return Response(serializer.data)
 
 class PreviousWeekAppointmentsView(APIView):
@@ -2927,9 +2927,9 @@ class PreviousWeekAppointmentsView(APIView):
         start_of_previous_week = today - timedelta(days=today.weekday() + 7)
         end_of_previous_week = start_of_previous_week + timedelta(days=6)
 
-        appointments = VendorAppointment.objects.filter(
+        appointments = VendorAppointment.objects.filter(vendor)name=request.user,
             date__range=[start_of_previous_week, end_of_previous_week]
         ).order_by('date', 'booking_time')
 
-        serializer = VendorAppointmentSerializer(appointments, many=True)
+        serializer = app_serializer_get(appointments, many=True)
         return Response(serializer.data)
