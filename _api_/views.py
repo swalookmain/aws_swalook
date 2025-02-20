@@ -1,5 +1,6 @@
 from collections import defaultdict
 from datetime import date, datetime, timedelta
+from django.utils.timezone import now
 import io
 import json
 import os
@@ -2896,3 +2897,39 @@ class CouponView(APIView):
 #             "errors": serializer.errors,
 #             "message": "Failed to send messages."
 #         }, status=status.HTTP_400_BAD_REQUEST)
+
+class DailyAppointmentsView(APIView):
+   
+    def get(self, request):
+        today = now().date()
+        appointments = VendorAppointment.objects.filter(date=today).order_by('booking_time')
+        serializer = VendorAppointmentSerializer(appointments, many=True)
+        return Response(serializer.data)
+
+class WeeklyAppointmentsView(APIView):
+  
+    def get(self, request):
+        today = now().date()
+        start_of_week = today - timedelta(days=today.weekday())
+        end_of_week = start_of_week + timedelta(days=6)
+
+        appointments = VendorAppointment.objects.filter(
+            date__range=[start_of_week, end_of_week]
+        ).order_by('date', 'booking_time')
+
+        serializer = VendorAppointmentSerializer(appointments, many=True)
+        return Response(serializer.data)
+
+class PreviousWeekAppointmentsView(APIView):
+   
+    def get(self, request):
+        today = now().date()
+        start_of_previous_week = today - timedelta(days=today.weekday() + 7)
+        end_of_previous_week = start_of_previous_week + timedelta(days=6)
+
+        appointments = VendorAppointment.objects.filter(
+            date__range=[start_of_previous_week, end_of_previous_week]
+        ).order_by('date', 'booking_time')
+
+        serializer = VendorAppointmentSerializer(appointments, many=True)
+        return Response(serializer.data)
