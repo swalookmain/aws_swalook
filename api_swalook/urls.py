@@ -39,6 +39,12 @@ urlpatterns = [
     path('api/swalook/billing/', vendor_billing.as_view(), name='vendor_billing'),
     path('api/swalook/save-pdf/', vendor_billing_pdf.as_view(), name='save_pdf'),
     path('api/swalook/appointment/', VendorAppointments.as_view(), name='appointment'),
+    
+    path('api/swalook/appointment/daily/', DailyAppointmentsView.as_view(), name='appointment-daily'),
+    path('api/swalook/appointment/current-week/', WeeklyAppointmentsView.as_view(), name='appointment-week'),
+    path('api/swalook/appointment/previous-week/', PreviousWeekAppointmentsView.as_view(), name='appointment-previous-week'),
+
+    
     path('api/swalook/view-appointment/', VendorAppointments.as_view(), name='view_appointment'),
     path('api/swalook/edit/appointment/', edit_appointment.as_view(), name='edit_appointment'),
     path('api/swalook/delete/appointment/', delete_appointment.as_view(), name='delete_appointment'),
