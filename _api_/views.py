@@ -2934,3 +2934,12 @@ class PreviousWeekAppointmentsView(APIView):
 
         serializer = app_serailizer_get(appointments, many=True)
         return Response(serializer.data)
+
+
+# class AppointmentsBystaffView(APIView):
+#     def get(self,request):
+#         # staff_name = request.query_params.get('staff_name')
+#         # VendorAppointment.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),vendor_name=request.user)
+#         # pass
+        
+        
