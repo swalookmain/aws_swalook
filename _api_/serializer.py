@@ -605,7 +605,7 @@ class HelpDesk_Serializer(serializers.ModelSerializer):
 class Inventory_Product_Serializer(serializers.ModelSerializer):
     class Meta:
         model = VendorInventoryProduct
-        fields = ["id", "product_name", "product_price", "product_description", "product_id", "stocks_in_hand", "unit"]
+        fields = ["id", "product_name", "product_price", "product_description", "product_id", "stocks_in_hand", "unit","category"]
         extra_kwargs = {'id': {'read_only': True}}
 
     def create(self, validated_data):
@@ -637,7 +637,7 @@ class update_inventory_product_serializer(serializers.Serializer):
     product_price = serializers.CharField()
     stocks_in_hand = serializers.CharField()
     unit = serializers.CharField()
-
+    category = serializers.UUIDField()
     def update(self, instance, validated_data):
         instance.product_id = validated_data.get('product_id', instance.product_id)
         instance.product_name = validated_data.get('product_name', instance.product_name)
@@ -645,6 +645,7 @@ class update_inventory_product_serializer(serializers.Serializer):
         instance.product_price = validated_data.get('product_price', instance.product_price)
         instance.stocks_in_hand = validated_data.get('stocks_in_hand', instance.stocks_in_hand)
         instance.unit = validated_data.get('unit', instance.unit)
+        instance.category_id = validated_data.get('category')
         instance.save()
         return instance
 
@@ -999,6 +1000,19 @@ class VendorServiceCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = VendorServiceCategory
         fields = ['id', 'service_category']
+        extra_kwargs = {'id': {'read_only': True}}
+
+    def create(self, validated_data):
+        validated_data['user'] = self.context.get('request').user
+        validated_data['vendor_branch_id'] = self.context.get('branch_id')
+        return super().create(validated_data)
+
+
+
+class VendorProductCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VendorServiceCategory
+        fields = ['id', 'product_category']
         extra_kwargs = {'id': {'read_only': True}}
 
     def create(self, validated_data):
