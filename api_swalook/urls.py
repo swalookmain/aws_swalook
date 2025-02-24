@@ -98,6 +98,7 @@ urlpatterns = [
     path('api/swalook/expense_management/', expense_management.as_view(), name='expense_management'),
     path('api/swalook/expense_category/', expense_category.as_view(), name='expense_category'),
     path('api/swalook/service_category/', service_category.as_view(), name='service_category'),
+    path('api/swalook/product_category/', product_category.as_view(), name='product_category'),
     path('api/swalook/coupon/', CouponView.as_view(), name='coupon'),
     # path('api/swalook/loyality/template/', LoyalityTemplate.as_view(), name='templates'),
     path('api/swalook/staff-header-mode-of-payment/', top5_header_staff_revenue.as_view(), name='staff_header_mode_of_payment'),
