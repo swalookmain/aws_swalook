@@ -280,6 +280,7 @@ class VendorAppointment(models.Model):
     vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
     customer_name = models.CharField(max_length=255)
     services = models.CharField(max_length=255)
+    service_by = models.CharField(max_length=255)
     booking_date = models.CharField(max_length=255)
     date = models.DateField()
     booking_time = models.CharField(max_length=255)
@@ -418,6 +419,21 @@ class HelpDesk(models.Model):
     def __str__(self) -> str:
         return str(self.user)
 
+class VendorProductCategory(models.Model):
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, db_index=True)
+    product_category = models.CharField(max_length=300, db_index=True)
+    vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
+
+    class Meta:
+        ordering = ['product_category']
+        verbose_name = "Vendor Product Category"
+        indexes = [
+            models.Index(fields=['user', 'vendor_branch', 'product_category']),
+        ]
+
+    def __str__(self):
+        return str(self.product_category)
 
 class VendorInventoryProduct(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
@@ -427,6 +443,7 @@ class VendorInventoryProduct(models.Model):
     product_price = models.DecimalField(blank=True, null=True, max_digits=10, decimal_places=2)
     product_description = models.TextField()
     vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
+    category = models.ForeignKey(VendorProductCategory, on_delete=models.SET_NULL, blank=True, null=True, db_index=True)
     stocks_in_hand = models.IntegerField(default=0)
     unit = models.CharField(max_length=400)
     date = models.DateField()
