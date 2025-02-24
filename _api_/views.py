@@ -3081,10 +3081,39 @@ class PreviousWeekAppointmentsView(APIView):
         return Response(serializer.data)
 
 
-# class AppointmentsBystaffView(APIView):
-#     def get(self,request):
-#         # staff_name = request.query_params.get('staff_name')
-#         # VendorAppointment.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),vendor_name=request.user)
-#         # pass
+class AppointmentsBystaffView(APIView):
+    def get(self,request):
+        today = now().date()
+        start_of_previous_week = today - timedelta(days=today.weekday() + 7)
+        end_of_previous_week = start_of_previous_week + timedelta(days=6)
+        staff_name = request.query_params.get('staff_name')
+        appointments_previous_week = VendorAppointment.objects.filter(vendor_name=request.user,vendor_branch_id=request.query_params.get('branch_name'),
+            date__range=[start_of_previous_week, end_of_previous_week],service_by=staff_name
+        ).order_by('date', 'booking_time')
+
+
+        today = now().date()
+        start_of_week = today - timedelta(days=today.weekday())
+        end_of_week = start_of_week + timedelta(days=6)
+
+        appointments_weekly = VendorAppointment.objects.filter(vendor_name=request.user,vendor_branch_id=request.query_params.get('branch_name'),
+            date__range=[start_of_week, end_of_week],service_by=staff_name
+        ).order_by('date', 'booking_time')
+
+
+        today = now().date()
+        appointments = VendorAppointment.objects.filter(vendor_name=request.user,vendor_branch_id=request.query_params.get('branch_name'),date=today,service_by=staff_name).order_by('booking_time')
+        serializer1 = app_serailizer_get(appointments_previous_week, many=True)
+        serializer2 = app_serailizer_get(appointments_weekly, many=True)
+        serializer3 = app_serailizer_get(appointments, many=True)
+        return Response(
+            {"previous_week":serializer1.data,
+            "current_week":serializer2.data,
+            "daily":serializer3.data
+            }
+        )
+
+
+
         
         
