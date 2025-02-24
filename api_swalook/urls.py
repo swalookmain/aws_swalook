@@ -43,6 +43,7 @@ urlpatterns = [
     path('api/swalook/appointment/daily/', DailyAppointmentsView.as_view(), name='appointment-daily'),
     path('api/swalook/appointment/current-week/', WeeklyAppointmentsView.as_view(), name='appointment-week'),
     path('api/swalook/appointment/previous-week/', PreviousWeekAppointmentsView.as_view(), name='appointment-previous-week'),
+    path('api/swalook/appointment/staff/', AppointmentsBystaffView.as_view(), name='appointment-staff-week'),
 
     
     path('api/swalook/view-appointment/', VendorAppointments.as_view(), name='view_appointment'),
