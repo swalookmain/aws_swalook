@@ -2648,7 +2648,7 @@ class service_category(APIView):
                 'data': None
             }, status=status.HTTP_404_NOT_FOUND)
 
-class service_category(APIView):
+class product_category(APIView):
     permission_classes = [IsAuthenticated]
     serializer_class = VendorProductCategorySerializer
 
