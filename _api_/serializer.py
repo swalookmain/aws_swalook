@@ -1011,7 +1011,7 @@ class VendorServiceCategorySerializer(serializers.ModelSerializer):
 
 class VendorProductCategorySerializer(serializers.ModelSerializer):
     class Meta:
-        model = VendorServiceCategory
+        model = VendorProductCategory
         fields = ['id', 'product_category']
         extra_kwargs = {'id': {'read_only': True}}
 
