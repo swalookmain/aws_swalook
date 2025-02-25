@@ -601,8 +601,20 @@ class HelpDesk_Serializer(serializers.ModelSerializer):
         validated_data['user'] = self.context.get('request').user
         return super().create(validated_data)
 
+class VendorProductCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VendorProductCategory
+        fields = ['id', 'product_category']
+        extra_kwargs = {'id': {'read_only': True}}
+
+    def create(self, validated_data):
+        validated_data['user'] = self.context.get('request').user
+        validated_data['vendor_branch_id'] = self.context.get('branch_id')
+        return super().create(validated_data)
+
 
 class Inventory_Product_Serializer(serializers.ModelSerializer):
+    category = VendorProductCategorySerializer(read_only=True)
     class Meta:
         model = VendorInventoryProduct
         fields = ["id", "product_name", "product_price", "product_description", "product_id", "stocks_in_hand", "unit","category"]
@@ -1008,17 +1020,6 @@ class VendorServiceCategorySerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
-
-class VendorProductCategorySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = VendorProductCategory
-        fields = ['id', 'product_category']
-        extra_kwargs = {'id': {'read_only': True}}
-
-    def create(self, validated_data):
-        validated_data['user'] = self.context.get('request').user
-        validated_data['vendor_branch_id'] = self.context.get('branch_id')
-        return super().create(validated_data)
 
 
 class VendorExpenseSerializer(serializers.ModelSerializer):
