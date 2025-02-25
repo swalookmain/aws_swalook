@@ -282,7 +282,7 @@ class app_serailizer_get(serializers.ModelSerializer):
 class appointment_serializer(serializers.ModelSerializer):
     class Meta:
         model = VendorAppointment
-        fields = ["id", "customer_name", "mobile_no", "email", "services", "service_by","booking_date", "booking_time", "comment"]
+        fields = ["id", "customer_name", "mobile_no", "email", "services", "service_by","booking_date", "booking_time", "comment","d_o_a","d_o_b"]
         extra_kwargs = {'id': {'read_only': True},}
 
     def create(self, validated_data):
