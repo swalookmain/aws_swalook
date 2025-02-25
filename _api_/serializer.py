@@ -640,7 +640,8 @@ class Inventory_Product_Serializer(serializers.ModelSerializer):
         validated_data['year'] = date.year
         validated_data['user'] = self.context.get('request').user
         validated_data['vendor_branch_id'] = self.context.get('branch_id')
-        validated_data['category_id'] = validated_data.get('category') 
+        category_uuid = validated_data.pop('category')
+        validated_data['category'] = VendorProductCategory.objects.get(id=category_uuid)
         return super().create(validated_data)
 
 
