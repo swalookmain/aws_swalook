@@ -614,10 +614,12 @@ class VendorProductCategorySerializer(serializers.ModelSerializer):
 
 
 class Inventory_Product_Serializer(serializers.ModelSerializer):
-    category = VendorProductCategorySerializer(read_only=True)
+    category = serializers.UUIDField(write_only=True, format='hex_verbose')
+    category_details =  VendorProductCategorySerializer(read_only=True, source='category')
+
     class Meta:
         model = VendorInventoryProduct
-        fields = ["id", "product_name", "product_price", "product_description", "product_id", "stocks_in_hand", "unit","category"]
+        fields = ["id", "product_name", "product_price", "product_description", "product_id", "stocks_in_hand", "unit","category","category_details"]
         extra_kwargs = {'id': {'read_only': True}}
 
     def create(self, validated_data):
