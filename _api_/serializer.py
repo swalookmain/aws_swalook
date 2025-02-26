@@ -1051,7 +1051,7 @@ class VendorExpenseSerializer(serializers.ModelSerializer):
         validated_data['month'] = date.month
         validated_data['week'] = self.get_week_number(date.day)
         validated_data['year'] = date.year
-        for i in inventory_item:
+        for i in validated_data.get('inventory_item'):
             product  = VendorInventoryProduct.objects.get(id=i.get('item'))
             product.stocks_in_hand+=int(i.get('quantity'))
             product.save()
