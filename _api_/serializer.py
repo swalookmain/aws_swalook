@@ -1053,7 +1053,7 @@ class VendorExpenseSerializer(serializers.ModelSerializer):
         validated_data['year'] = date.year
         for i in inventory_item:
             product  = VendorInventoryProduct.objects.get(id=i.get('item'))
-            product.quantity+=int(i.get('quantity'))
+            product.stocks_in_hand+=int(i.get('quantity'))
             product.save()
             
         
