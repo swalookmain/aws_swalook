@@ -797,55 +797,61 @@ class VendorCustomerLoyalityProfileSerializer(serializers.ModelSerializer):
 
         validated_data['user'] = user
         validated_data['vendor_branch_id'] = branch_id
+        try:
+           
+     
+            
+            
 
-
-        validated_data['membership_type'] = VendorLoyalityProgramTypes.objects.get(
+            validated_data['membership_type'] = VendorLoyalityProgramTypes.objects.get(
             program_type=validated_data['membership'],
             vendor_branch_id=branch_id,
             user=user
-        )
+            )
+    
+     
+            obj_loyality = VendorCustomerLoyalityPoints()
+            clp_object = VendorLoyalityProgramTypes.objects.get(
+                program_type=validated_data['membership'],
+                vendor_branch_id=branch_id,
+                user=user
+            )
+    
+            obj_loyality.current_customer_points = int(clp_object.points_hold)
 
- 
-        obj_loyality = VendorCustomerLoyalityPoints()
-        clp_object = VendorLoyalityProgramTypes.objects.get(
-            program_type=validated_data['membership'],
-            vendor_branch_id=branch_id,
-            user=user
-        )
-
-        obj_loyality.current_customer_points = int(clp_object.points_hold)
-
-        def get_date_after_months(input_date_str, months):
-            input_date = datetime.strptime(input_date_str, '%Y-%m-%d')
-            return (input_date + relativedelta(months=months)).strftime('%Y-%m-%d')
-
-        today = dt.date.today()
-        expiry_date = get_date_after_months(str(today), int(clp_object.expiry_duration) + 1)
-
-        obj_loyality.issue_date = today
-        obj_loyality.expire_date = expiry_date
-        obj_loyality.user = user
-        obj_loyality.vendor_branch_id = branch_id
-        obj_loyality.customer_id = validated_data['mobile_no']
-        obj_loyality.save()
-        validated_data['loyality_profile'] = obj_loyality
-
-      
+            def get_date_after_months(input_date_str, months):
+                input_date = datetime.strptime(input_date_str, '%Y-%m-%d')
+                return (input_date + relativedelta(months=months)).strftime('%Y-%m-%d')
+    
+            today = dt.date.today()
+            expiry_date = get_date_after_months(str(today), int(clp_object.expiry_duration) + 1)
+    
+            obj_loyality.issue_date = today
+            obj_loyality.expire_date = expiry_date
+            obj_loyality.user = user
+            obj_loyality.vendor_branch_id = branch_id
+            obj_loyality.customer_id = validated_data['mobile_no']
+            obj_loyality.save()
+            validated_data['loyality_profile'] = obj_loyality
+        except Exception:
+            pass
         customer_coupon_ids = []
-        coupon_data_list = validated_data.pop('coupon', None)  
-        if coupon_data_list: 
-            for coupon_data in coupon_data_list:
-                coupon_name_id = coupon_data.get('coupon_name')  
-
-                customer_coupon = CustomerCoupon.objects.create(
-                    user=user,
-                    vendor_branch_id=branch_id,
-                    customer_id=str(validated_data['mobile_no']),
-                    coupon_name_id=coupon_name_id,
-                    issue_date=today,
-                    expiry_date=expiry_date
-                )
-                customer_coupon_ids.append(customer_coupon.id)
+        if validated_data.get('coupon') != []
+          
+            coupon_data_list = validated_data.pop('coupon', None)  
+            if coupon_data_list: 
+                for coupon_data in coupon_data_list:
+                    coupon_name_id = coupon_data.get('coupon_name')  
+    
+                    customer_coupon = CustomerCoupon.objects.create(
+                        user=user,
+                        vendor_branch_id=branch_id,
+                        customer_id=str(validated_data['mobile_no']),
+                        coupon_name_id=coupon_name_id,
+                        issue_date=today,
+                        expiry_date=expiry_date
+                    )
+                    customer_coupon_ids.append(customer_coupon.id)
 
         vendor_customer = super().create(validated_data)
 
