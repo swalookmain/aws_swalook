@@ -836,7 +836,7 @@ class VendorCustomerLoyalityProfileSerializer(serializers.ModelSerializer):
         except Exception:
             pass
         customer_coupon_ids = []
-        if validated_data.get('coupon') != []
+        if validated_data.get('coupon') != []:
           
             coupon_data_list = validated_data.pop('coupon', None)  
             if coupon_data_list: 
