@@ -284,7 +284,7 @@ class VendorAppointment(models.Model):
     booking_date = models.CharField(max_length=255)
     date = models.DateField()
     booking_time = models.CharField(max_length=255)
-    email = models.CharField(max_length=50)
+    email = models.CharField(max_length=50,blank=True,null=True)
     mobile_no = models.CharField(max_length=10, blank=True)
     comment = models.CharField(max_length=255, blank=True)
     d_o_b = models.CharField(max_length=30, blank=True, null=True)
