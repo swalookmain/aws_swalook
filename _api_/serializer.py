@@ -1029,7 +1029,16 @@ class VendorServiceCategorySerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
+class VendorEnquerySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VendorEnquery
+        fields = ['id', 'customer_name','mobile_no','query_for','comment']
+        extra_kwargs = {'id': {'read_only': True}}
 
+    def create(self, validated_data):
+        validated_data['user'] = self.context.get('request').user
+        validated_data['vendor_branch_id'] = self.context.get('branch_id')
+        return super().create(validated_data)
 
 class VendorExpenseSerializer(serializers.ModelSerializer):
     expense_category = VendorExpenseCategorySerializer(many=True, read_only=True)
