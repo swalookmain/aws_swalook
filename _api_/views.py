@@ -2415,6 +2415,8 @@ class expense_management(APIView):
         pass
 
 
+
+
 class busniess_headers(APIView):
     def get(self, request):
         today = date.today()
@@ -3114,6 +3116,62 @@ class AppointmentsBystaffView(APIView):
         )
 
 
+class enquery(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = VendorEnquerySerializer
 
+    def __init__(self, **kwargs):
+        self.cache_key = None
+        super().__init__(**kwargs)
+
+    @transaction.atomic
+    def post(self, request):
+        branch_name = request.query_params.get('branch_name')
+
+        if not branch_name:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'error': {
+                    'code': 'Bad Request',
+                    'message': 'branch_name parameter is missing!'
+                },
+                'data': None
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = self.serializer_class(data=request.data, context={'request': request, 'branch_id': branch_name,})
+
+        serializer.create(validated_data=request.data)
+        return Response({
+            "status": True,
+            "message": "Vendor Enquery Added Succesfully"
+        }, status=status.HTTP_201_CREATED)
+
+    def get(self, request):
+        branch_name = request.query_params.get('branch_name')
+        if not branch_name:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'error': {
+                    'code': 'Bad Request',
+                    'message': 'branch_name parameter is missing!'
+                },
+                'data': None
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        data = VendorEnquery.objects.filter(user=request.user, vendor_branch_id=branch_name)
+        serializer = VendorEnquerySerializer_get(data, many=True)
+
+        return Response({
+            "status": True,
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)
+
+    def put(self, request):
+        pass
+
+    def delete(self, request):
+        pass
         
         
