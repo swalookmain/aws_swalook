@@ -1085,7 +1085,7 @@ class VendorExpenseSerializer_get(serializers.ModelSerializer):
         fields = "__all__"
 
 
-class VendorEnquery_get(serializers.ModelSerializer):
+class VendorEnquerySerializer_get(serializers.ModelSerializer):
    
 
     class Meta:
