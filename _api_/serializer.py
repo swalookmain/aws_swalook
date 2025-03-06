@@ -1085,3 +1085,9 @@ class VendorExpenseSerializer_get(serializers.ModelSerializer):
         fields = "__all__"
 
 
+class VendorEnquery_get(serializers.ModelSerializer):
+   
+
+    class Meta:
+        model = VendorEnquery
+        fields = "__all__"
