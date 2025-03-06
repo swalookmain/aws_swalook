@@ -10,8 +10,8 @@ class SalonBranch(models.Model):
     vendor_name = models.ForeignKey(User, on_delete=models.CASCADE, null=True, db_index=True)
     staff_name = models.CharField(max_length=255)
     branch_name = models.CharField(max_length=255)
-    password = models.CharField(max_length=11, blank=True)
-    admin_password = models.CharField(max_length=11, blank=True)
+    password = models.CharField(max_length=20, blank=True)
+    admin_password = models.CharField(max_length=20, blank=True)
     staff_url = models.CharField(max_length=255)
     admin_url = models.CharField(max_length=255)
     minimum_purchase_loyality = models.IntegerField(default=40, null=True)
@@ -572,6 +572,14 @@ class VendorExpense(models.Model):
 
 
 
+class VendorEnquery(models.Model):
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, db_index=True)
+    vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
+    query_for = models.CharField(max_length=200, null=True, blank=True)
+    customer_name = models.CharField(max_length=200, null=True, blank=True)
+    mobile_no = models.CharField(max_length=200, null=True, blank=True)
+    comment = models.CharField(max_length=200, null=True, blank=True)
+    
 
-
-
+   
