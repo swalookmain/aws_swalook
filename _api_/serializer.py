@@ -945,7 +945,7 @@ class Vendor_Type_Loyality_Update_Serializer(serializers.Serializer):
             return "ok"
 
 
-class LoyalityCustomerUpdateSerializer(serializers.Serializer):
+class loyality_customer_update_serializer(serializers.Serializer):
     name = serializers.CharField(required=False)
     mobile_no = serializers.CharField(required=False)
     email = serializers.CharField(required=False)
