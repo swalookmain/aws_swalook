@@ -1369,9 +1369,13 @@ class Vendor_loyality_customer_profile(CreateAPIView, ListAPIView, UpdateAPIView
     def delete(self, request):
         ids = request.query_params.get('id')
         obj = VendorCustomers.objects.get(id=ids)
-        clp = VendorCustomerLoyalityPoints.objects.get(id=obj.loyality_profile.id)
+        try:
+            clp = VendorCustomerLoyalityPoints.objects.get(id=obj.loyality_profile.id)
+            clp.delete()
+        except Exception:
+            pass
         obj.delete()
-        clp.delete()
+       
 
         return Response({
             "status": True,
