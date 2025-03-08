@@ -1046,7 +1046,7 @@ class VendorExpenseSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = VendorExpense
-        fields = ['id', 'expense_type', 'inventory_item', 'expense_account', 'expense_category', 'expense_amount', 'invoice_id', "date", "comment"]
+        fields = ['id', 'expense_type', 'inventory_item', 'expense_account', 'expense_category','amount_paid','due_date','completed_date', 'expense_amount', 'invoice_id', "date", "comment"]
         extra_kwargs = {'id': {'read_only': True}}
 
     def get_week_number(self, day):
