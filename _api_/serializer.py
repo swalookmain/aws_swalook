@@ -1039,6 +1039,16 @@ class VendorEnquerySerializer(serializers.ModelSerializer):
         validated_data['user'] = self.context.get('request').user
         validated_data['vendor_branch_id'] = self.context.get('branch_id')
         return super().create(validated_data)
+        
+    
+    
+    
+    def update(self, instance, validated_data):
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save()
+        return instance
 
 class VendorExpenseSerializer(serializers.ModelSerializer):
     expense_category = VendorExpenseCategorySerializer(many=True, read_only=True)
