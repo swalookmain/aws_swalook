@@ -447,8 +447,10 @@ class VendorInventoryProduct(models.Model):
     vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
     category = models.ForeignKey(VendorProductCategory, on_delete=models.SET_NULL, blank=True, null=True, db_index=True)
     stocks_in_hand = models.IntegerField(default=0)
+    
     unit = models.CharField(max_length=400)
     date = models.DateField()
+    expiry_date = models.DateField()
     month = models.CharField(max_length=30, null=True, blank=True)
     week = models.CharField(max_length=30, null=True, blank=True)
     year = models.CharField(max_length=30, null=True, blank=True)
