@@ -3173,9 +3173,86 @@ class enquery(APIView):
         }, status=status.HTTP_200_OK)
 
     def put(self, request):
-        pass
+        id = request.query_params.get('id')
+        branch_name = request.query_params.get('branch_name')
+
+        
+
+        try:
+            service_instance = VendorEnquery.objects.get(id=id, user=request.user, vendor_branch_id=branch_name)
+        except VendorEnquery.DoesNotExist:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_404_NOT_FOUND,
+                'error': {
+                    'code': 'Not Found',
+                    'message': 'Enquery not found!'
+                },
+                'data': None
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = self.serializer_class(instance=service_instance, data=request.data, context={'request': request, 'branch_id': branch_name})
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'success': True,
+                'status_code': status.HTTP_200_OK,
+                'error': {
+                    'code': 'The request was successful',
+                    'message': 'Enquery updated on this branch!'
+                },
+                'data': None
+            }, status=status.HTTP_200_OK)
+
+        return Response({
+            'success': False,
+            'status_code': status.HTTP_400_BAD_REQUEST,
+            'error': {
+                'code': 'Validation Error',
+                'message': 'Serializer data is invalid!'
+            },
+            'data': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request):
-        pass
+        id = request.query_params.get('id')
+
+        if not id:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'error': {
+                    'code': 'Bad Request',
+                    'message': 'ID parameter is missing!'
+                },
+                'data': None
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            queryset = VendorEnquery.objects.get(id=id, user=request.user)
+            queryset.delete()
+
+            return Response({
+                'success': True,
+                'status_code': status.HTTP_200_OK,
+                'error': {
+                    'code': 'The request was successful',
+                    'message': 'Enquery deleted successfully!'
+                },
+                'data': None
+            }, status=status.HTTP_200_OK)
+
+        except VendorEnquery.DoesNotExist:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_404_NOT_FOUND,
+                'error': {
+                    'code': 'Not Found',
+                    'message': 'Enquery not found!'
+                },
+                'data': None
+            }, status=status.HTTP_404_NOT_FOUND)
+
         
         
