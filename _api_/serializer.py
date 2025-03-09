@@ -619,7 +619,7 @@ class Inventory_Product_Serializer(serializers.ModelSerializer):
 
     class Meta:
         model = VendorInventoryProduct
-        fields = ["id", "product_name", "product_price", "product_description", "product_id", "stocks_in_hand", "unit","category","category_details"]
+        fields = ["id", "product_name", "product_price", "product_description", "product_id", "stocks_in_hand", "unit","category","category_details","expiry_date"]
         extra_kwargs = {'id': {'read_only': True}}
 
     def create(self, validated_data):
