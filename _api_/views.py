@@ -24,6 +24,9 @@ from .models import *
 from .serializer import *
 from api_swalook import settings
 import subprocess
+import datetime as dt
+
+
 
 class VendorSignin(CreateAPIView):
     permission_classes = [AllowAny]
@@ -3256,3 +3259,155 @@ class enquery(APIView):
 
         
         
+
+
+
+
+
+class StaffRevenueAPI(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        branch_name = request.query_params.get('branch_name')
+        filter_type = request.query_params.get('filter')
+        date_value = request.query_params.get('date')
+        week_value = request.query_params.get('week')
+        month_value = request.query_params.get('month')
+        year_value = request.query_params.get('year')
+        
+        invoices = VendorInvoice.objects.filter(vendor_name=request.user, vendor_branch_id=branch_name)
+        
+        if filter_type == 'day' and date_value:
+            invoices = invoices.filter(date=date_value)
+        elif filter_type == 'week' and week_value and year_value and month_value:
+            invoices = invoices.filter(date__week=week_value, date__month=month_value,date__year=year_value)
+        elif filter_type == 'month' and month_value and year_value:
+            invoices = invoices.filter(date__month=month_value, date__year=year_value)
+        elif filter_type == 'year' and year_value:
+            invoices = invoices.filter(date__year=year_value)
+        else:
+            return Response({"error": "Invalid filter parameters."}, status=400)
+        
+        grouped_data = defaultdict(lambda: {
+            "staff_data": defaultdict(lambda: {
+                "total_invoices": 0,
+                "total_sales": 0,
+                "services": defaultdict(lambda: {"total_sales": 0, "total_services": 0})
+            })
+        })
+        
+        for invoice in invoices:
+            services = json.loads(invoice.services) if isinstance(invoice.services, str) else invoice.services
+            for service in services:
+                staff_name = service.get('Staff')
+                service_name = service.get('Description')
+                price = float(service.get('Price', 0))
+                
+                if staff_name and service_name:
+                    staff_data = grouped_data[filter_type]["staff_data"][staff_name]
+                    staff_data["total_invoices"] += 1
+                    staff_data["total_sales"] += price
+                    staff_data["services"][service_name]["total_sales"] += price
+                    staff_data["services"][service_name]["total_services"] += 1
+                    
+        response_data = [
+            {
+                "filter_type": filter_type,
+                "staff_data": [
+                    {
+                        "staff_name": staff_name,
+                        "total_invoices": staff_data["total_invoices"],
+                        "total_sales": staff_data["total_sales"],
+                        "services": [
+                            {
+                                "service_name": service_name,
+                                "total_sales": service_data["total_sales"],
+                                "total_services": service_data["total_services"]
+                            }
+                            for service_name, service_data in staff_data["services"].items()
+                        ]
+                    }
+                    for staff_name, staff_data in grouped_data[filter_type]["staff_data"].items()
+                ]
+            }
+        ]
+        
+        return Response(response_data)
+
+class ModeOfPaymentAPI(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        branch_name = request.query_params.get('branch_name')
+        filter_type = request.query_params.get('filter')
+        date_value = request.query_params.get('date')
+        week_value = request.query_params.get('week')
+        month_value = request.query_params.get('month')
+        year_value = request.query_params.get('year')
+        
+        invoices = VendorInvoice.objects.filter(vendor_name=request.user, vendor_branch_id=branch_name)
+        
+        if filter_type == 'day' and date_value:
+            invoices = invoices.filter(date=date_value)
+        elif filter_type == 'week' and week_value and year_value and month_value:
+            invoices = invoices.filter(date__week=week_value,date__month=month_value, date__year=year_value)
+        elif filter_type == 'month' and month_value and year_value:
+            invoices = invoices.filter(date__month=month_value, date__year=year_value)
+        elif filter_type == 'year' and year_value:
+            invoices = invoices.filter(date__year=year_value)
+        else:
+            return Response({"error": "Invalid filter parameters."}, status=400)
+        
+        bills_by_payment = invoices.values('mode_of_payment').annotate(total_revenue=Sum('grand_total'))
+        response_data = [
+            {
+                "payment_mode": item['mode_of_payment'],
+                "total_revenue": item['total_revenue'],
+            }
+            for item in bills_by_payment
+        ]
+        
+        return Response(response_data)
+
+class RevenueSummaryAPI(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        branch_name = request.query_params.get('branch_name')
+        current_date = now().date()
+        previous_day = current_date - timedelta(days=1)
+        
+        invoices_today_count = VendorInvoice.objects.filter(
+            date=current_date,
+            vendor_name=request.user,
+            vendor_branch_id=branch_name
+        ).count()
+        
+        revenue_today = VendorInvoice.objects.filter(
+            vendor_name=request.user,
+            date=current_date,
+            vendor_branch_id=branch_name
+        ).aggregate(
+            total_revenue=Sum('grand_total')
+        )['total_revenue'] or 0
+        
+        previous_day_revenue = VendorInvoice.objects.filter(
+            vendor_name=request.user,
+            vendor_branch_id=branch_name,
+            date=previous_day
+        ).aggregate(
+            total_revenue=Sum('grand_total')
+        )['total_revenue'] or 0
+        
+        appointmet_today_count = VendorAppointment.objects.filter(
+            vendor_name=request.user,
+            vendor_branch_id=branch_name,
+            date=current_date
+        ).count()
+        
+        return Response({
+            "today_no_of_invoices": invoices_today_count,
+            "today_revenue": revenue_today,
+            "previous_day_rev": previous_day_revenue,
+            "today_no_of_app": appointmet_today_count,
+        })
