@@ -171,11 +171,13 @@ class UpdateProfileSerializer(serializers.Serializer):
     profile_pic = serializers.ImageField(required=False)
     s_gst_percent = serializers.CharField()
     c_gst_percent = serializers.CharField()
+    user_ip = serializers.CharField()
 
     def update(self, instance, validated_data):
         instance.gst_number = validated_data.get('gst_number', instance.gst_number)
         instance.s_gst_percent = validated_data.get('s_gst_percent', instance.s_gst_percent)
         instance.c_gst_percent = validated_data.get('c_gst_percent', instance.c_gst_percent)
+        instance.user_ip = validated_data.get('user_ip', instance.user_ip)
 
         profile_pic = self.context.get('request').FILES.get('profile_pic')
         if profile_pic:
