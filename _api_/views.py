@@ -3279,8 +3279,10 @@ class StaffRevenueAPI(APIView):
         
         if filter_type == 'day' and date_value:
             invoices = invoices.filter(date=date_value)
-        elif filter_type == 'week' and week_value and month_value:
-            invoices = invoices.filter(date__week=week_value, date__month=month_value,date__year=year_value)
+        elif filter_type == 'week':
+            start_of_week = today - timedelta(days=today.weekday())
+            end_of_week = start_of_week + timedelta(days=6)
+            invoices = invoices.filter(date__range=(start_of_week,end_of_week))
         elif filter_type == 'month' and month_value and year_value:
             invoices = invoices.filter(date__month=month_value, date__year=year_value)
         elif filter_type == 'year' and year_value:
@@ -3349,8 +3351,11 @@ class ModeOfPaymentAPI(APIView):
         
         if filter_type == 'day' and date_value:
             invoices = invoices.filter(date=date_value)
-        elif filter_type == 'week' and week_value and month_value:
-            invoices = invoices.filter(date__week=week_value,date__month=month_value, date__year=year_value)
+        elif filter_type == 'week':
+            start_of_week = today - timedelta(days=today.weekday())
+            end_of_week = start_of_week + timedelta(days=6)
+            invoices = invoices.filter(date__range=(start_of_week,end_of_week))
+           
         elif filter_type == 'month' and month_value and year_value:
             invoices = invoices.filter(date__month=month_value, date__year=year_value)
         elif filter_type == 'year' and year_value:
@@ -3359,6 +3364,7 @@ class ModeOfPaymentAPI(APIView):
             return Response({"error": "Invalid filter parameters."}, status=400)
         
         bills_by_payment = invoices.values('mode_of_payment').annotate(total_revenue=Sum('grand_total'))
+        bills_by_payment_2 = invoices.values('new_mode').annotate(total_revenue=Sum('grand_total'))
         response_data = [
             {
                 "payment_mode": item['mode_of_payment'],
@@ -3366,8 +3372,18 @@ class ModeOfPaymentAPI(APIView):
             }
             for item in bills_by_payment
         ]
+        response_data_1 = [
+            {
+                "payment_mode": item['new_mode'],
+                "total_revenue": item['total_revenue'],
+            }
+            for item in bills_by_payment_2
+        ]
         
-        return Response(response_data)
+        
+        return Response({"data_of_mode_of_payment":response_data,
+                        "data_of_new_mode":response_data_1})
+        
 
 class RevenueSummaryAPI(APIView):
     permission_classes = [IsAuthenticated]
