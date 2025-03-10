@@ -3279,7 +3279,7 @@ class StaffRevenueAPI(APIView):
         
         if filter_type == 'day' and date_value:
             invoices = invoices.filter(date=date_value)
-        elif filter_type == 'week' and week_value and year_value and month_value:
+        elif filter_type == 'week' and week_value and month_value:
             invoices = invoices.filter(date__week=week_value, date__month=month_value,date__year=year_value)
         elif filter_type == 'month' and month_value and year_value:
             invoices = invoices.filter(date__month=month_value, date__year=year_value)
@@ -3349,7 +3349,7 @@ class ModeOfPaymentAPI(APIView):
         
         if filter_type == 'day' and date_value:
             invoices = invoices.filter(date=date_value)
-        elif filter_type == 'week' and week_value and year_value and month_value:
+        elif filter_type == 'week' and week_value and month_value:
             invoices = invoices.filter(date__week=week_value,date__month=month_value, date__year=year_value)
         elif filter_type == 'month' and month_value and year_value:
             invoices = invoices.filter(date__month=month_value, date__year=year_value)
