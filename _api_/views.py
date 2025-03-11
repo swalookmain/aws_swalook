@@ -3280,6 +3280,11 @@ class StaffRevenueAPI(APIView):
         if filter_type == 'day' and date_value:
             invoices = invoices.filter(date=date_value)
         elif filter_type == 'week':
+            today = dt.date.today()
+            current_date = dt.date.today()
+            current_week = today.isocalendar()[1]
+            current_month = today.month
+            current_year = today.year
             start_of_week = today - timedelta(days=today.weekday())
             end_of_week = start_of_week + timedelta(days=6)
             invoices = invoices.filter(date__range=(start_of_week,end_of_week))
@@ -3352,6 +3357,11 @@ class ModeOfPaymentAPI(APIView):
         if filter_type == 'day' and date_value:
             invoices = invoices.filter(date=date_value)
         elif filter_type == 'week':
+            today = dt.date.today()
+            current_date = dt.date.today()
+            current_week = today.isocalendar()[1]
+            current_month = today.month
+            current_year = today.year
             start_of_week = today - timedelta(days=today.weekday())
             end_of_week = start_of_week + timedelta(days=6)
             invoices = invoices.filter(date__range=(start_of_week,end_of_week))
