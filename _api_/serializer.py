@@ -260,7 +260,7 @@ class billing_serializer(serializers.ModelSerializer):
     def update_inventory(self, json_data):
         products_to_update = []
         for item in json_data:
-            item.pop('staff')
+         
             try:
                 product = VendorInventoryProduct.objects.get(id=item.get('id'))
                 product.stocks_in_hand -= int(item.get('quantity'))
