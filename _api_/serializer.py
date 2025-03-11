@@ -1079,7 +1079,10 @@ class VendorExpenseSerializer(serializers.ModelSerializer):
         validated_data['month'] = date.month
         validated_data['week'] = self.get_week_number(date.day)
         validated_data['year'] = date.year
-        validated_data['due_amount'] = int(validated_data.get('expense_amount')) - int(validated_data.get('amount_paid'))
+        try:
+            validated_data['due_amount'] = int(validated_data.get('expense_amount')) - int(validated_data.get('amount_paid'))
+        except Exception:
+            validated_data['due_amount'] = 0
         for i in validated_data.get('inventory_item'):
             product  = VendorInventoryProduct.objects.get(id=i.get('item'))
             product.stocks_in_hand+=int(i.get('quantity'))
