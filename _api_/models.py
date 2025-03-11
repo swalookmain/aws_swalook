@@ -548,6 +548,7 @@ class VendorExpense(models.Model):
     expense_account = models.CharField(max_length=200, null=True, blank=True)
     expense_category = models.ManyToManyField(VendorExpenseCategory, blank=True)
     expense_amount = models.DecimalField(default=0, max_digits=10, decimal_places=2, null=True, blank=True)
+    due_amount = models.DecimalField(default=0, max_digits=10, decimal_places=2, null=True, blank=True)
     invoice_id = models.TextField(null=True, blank=True)  
     amount_paid = models.TextField(null=True, blank=True)  
     completed_date = models.DateField(null=True, blank=True)
