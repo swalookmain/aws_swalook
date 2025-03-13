@@ -3274,7 +3274,9 @@ class StaffRevenueAPI(APIView):
         branch_name = request.query_params.get('branch_name')
         filter_type = request.query_params.get('filter')
         date_value = request.query_params.get('date')
-        week_value = request.query_params.get('week')
+
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
         month_value = request.query_params.get('month')
         year_value = request.query_params.get('year')
         
@@ -3283,14 +3285,14 @@ class StaffRevenueAPI(APIView):
         if filter_type == 'day' and date_value:
             invoices = invoices.filter(date=date_value)
         elif filter_type == 'week':
-            today = dt.date.today()
-            current_date = dt.date.today()
-            current_week = today.isocalendar()[1]
-            current_month = today.month
-            current_year = today.year
-            start_of_week = today - timedelta(days=today.weekday())
-            end_of_week = start_of_week + timedelta(days=6)
-            invoices = invoices.filter(date__range=(start_of_week,end_of_week))
+            # today = dt.date.today()
+            # current_date = dt.date.today()
+            # current_week = today.isocalendar()[1]
+            # current_month = today.month
+            # current_year = today.year
+            # start_of_week = today - timedelta(days=today.weekday())
+            # end_of_week = start_of_week + timedelta(days=6)
+            invoices = invoices.filter(date__range=(start_date,end_date))
         elif filter_type == 'month' and month_value and year_value:
             invoices = invoices.filter(date__month=month_value, date__year=year_value)
         elif filter_type == 'year' and year_value:
@@ -3351,7 +3353,8 @@ class ModeOfPaymentAPI(APIView):
         branch_name = request.query_params.get('branch_name')
         filter_type = request.query_params.get('filter')
         date_value = request.query_params.get('date')
-        week_value = request.query_params.get('week')
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
         month_value = request.query_params.get('month')
         year_value = request.query_params.get('year')
         
@@ -3360,14 +3363,14 @@ class ModeOfPaymentAPI(APIView):
         if filter_type == 'day' and date_value:
             invoices = invoices.filter(date=date_value)
         elif filter_type == 'week':
-            today = dt.date.today()
-            current_date = dt.date.today()
-            current_week = today.isocalendar()[1]
-            current_month = today.month
-            current_year = today.year
-            start_of_week = today - timedelta(days=today.weekday())
-            end_of_week = start_of_week + timedelta(days=6)
-            invoices = invoices.filter(date__range=(start_of_week,end_of_week))
+            # today = dt.date.today()
+            # current_date = dt.date.today()
+            # current_week = today.isocalendar()[1]
+            # current_month = today.month
+            # current_year = today.year
+            # start_of_week = today - timedelta(days=today.weekday())
+            # end_of_week = start_of_week + timedelta(days=6)
+            invoices = invoices.filter(date__range=(start_date,end_date))
            
         elif filter_type == 'month' and month_value and year_value:
             invoices = invoices.filter(date__month=month_value, date__year=year_value)
@@ -3473,3 +3476,20 @@ class VendorCustomerStatsAPIView(APIView):
         }
 
         return Response(data)
+
+
+
+class ExpiringProductsAPIView(APIView):
+    def get(self, request):
+        today = now().date()
+        next_month = today + timedelta(days=30)  # Get the date one month from today
+
+
+        expiring_products = VendorInventoryProduct.objects.filter(expiry_date__lte=next_month, expiry_date__gte=today)
+
+        data = {
+            "expiring_products": VendorInventoryProductSerializer(expiring_products, many=True).data
+        }
+
+        return Response(data)
+
