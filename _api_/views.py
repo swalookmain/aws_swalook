@@ -3466,26 +3466,26 @@ class VendorCustomerStatsAPIView(APIView):
         today = now().strftime("%Y-%m-%d")  # Get today's date in YYYY-MM-DD format
 
         # New Customers (Last 30 Days)
-        recent_customers = VendorCustomers.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),user=request.user,created_at__gte=now() - timedelta(days=30))
+        recent_customers = VendorCustomers.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),user=request.user,created_at__gte=now() - timedelta(days=30)).count()
 
         # Active Memberships
-        active_memberships = VendorCustomers.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),user=request.user,membership__isnull=False)
+        active_memberships = VendorCustomers.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),user=request.user,membership__isnull=False).count()
 
         # Active Coupons (Customers with at least one coupon)
         active_coupons = VendorCustomers.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),user=request.user,coupon__isnull=False).distinct()
 
         # Birthdays Today
-        birthdays = VendorCustomers.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),user=request.user,d_o_b=today)
+        birthdays = VendorCustomers.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),user=request.user,d_o_b=today).count()
 
         # Anniversaries Today
-        anniversaries = VendorCustomers.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),user=request.user,d_o_a=today)
+        anniversaries = VendorCustomers.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),user=request.user,d_o_a=today).count()
 
         data = {
-            "new_customers": VendorCustomerLoyalityProfileSerializer_get(recent_customers, many=True).data,
-            "active_memberships": VendorCustomerLoyalityProfileSerializer_get(active_memberships, many=True).data,
-            "active_coupons": VendorCustomerLoyalityProfileSerializer_get(active_coupons, many=True).data,
-            "birthdays": VendorCustomerLoyalityProfileSerializer_get(birthdays, many=True).data,
-            "anniversaries": VendorCustomerLoyalityProfileSerializer_get(anniversaries, many=True).data
+            "new_customers": recent_customers,
+            "active_memberships": active_memberships,
+            "active_coupons": active_coupons.count(),
+            "birthdays": birthdays,
+            "anniversaries": anniversaries
         }
 
         return Response(data)
