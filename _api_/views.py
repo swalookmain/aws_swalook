@@ -25,6 +25,9 @@ from .serializer import *
 from api_swalook import settings
 import subprocess
 import datetime as dt
+from django.utils.timezone import now
+from datetime import timedelta
+
 
 
 
@@ -3437,3 +3440,36 @@ class RevenueSummaryAPI(APIView):
             "previous_day_rev": previous_day_revenue,
             "today_no_of_app": appointmet_today_count,
         })
+
+
+
+
+
+class VendorCustomerStatsAPIView(APIView):
+    def get(self, request):
+        today = now().strftime("%Y-%m-%d")  # Get today's date in YYYY-MM-DD format
+
+        # New Customers (Last 30 Days)
+        recent_customers = VendorCustomers.objects.filter(created_at__gte=now() - timedelta(days=30))
+
+        # Active Memberships
+        active_memberships = VendorCustomers.objects.filter(membership__isnull=False)
+
+        # Active Coupons (Customers with at least one coupon)
+        active_coupons = VendorCustomers.objects.filter(coupon__isnull=False).distinct()
+
+        # Birthdays Today
+        birthdays = VendorCustomers.objects.filter(d_o_b=today)
+
+        # Anniversaries Today
+        anniversaries = VendorCustomers.objects.filter(d_o_a=today)
+
+        data = {
+            "new_customers": VendorCustomerSerializer(recent_customers, many=True).data,
+            "active_memberships": VendorCustomerSerializer(active_memberships, many=True).data,
+            "active_coupons": VendorCustomerSerializer(active_coupons, many=True).data,
+            "birthdays": VendorCustomerSerializer(birthdays, many=True).data,
+            "anniversaries": VendorCustomerSerializer(anniversaries, many=True).data
+        }
+
+        return Response(data)
