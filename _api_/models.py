@@ -148,6 +148,7 @@ class CustomerCoupon(models.Model):
 class VendorCustomers(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
     loyality_profile = models.ForeignKey(VendorCustomerLoyalityPoints, on_delete=models.SET_NULL,blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True,blank=True,null=True)
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, db_index=True)
     name = models.CharField(max_length=30, blank=True, null=True)
     mobile_no = models.CharField(max_length=30, blank=True, null=True)
