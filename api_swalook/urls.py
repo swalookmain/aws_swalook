@@ -107,7 +107,10 @@ urlpatterns = [
     path('api/swalook/revenue-analysis/', RevenueSummaryAPI.as_view(), name='daily_previous_revenue'),
     # path('api/swalook/loyality/template/', LoyalityTemplate.as_view(), name='templates'),
     path('api/swalook/staff-header-mode-of-payment/', top5_header_staff_revenue.as_view(), name='staff_header_mode_of_payment'),
+    path('api/swalook/vendor-customers/stats/', VendorCustomerStatsAPIView.as_view(), name='vendor-customer-stats'),
+    path('api/swalook/inventory/expiring-products/', ExpiringProductsAPIView.as_view(), name='expiring-products'),
     path('api/swalook/test-error/', Table_servicess.as_view(), name='test_error'),
+    
     re_path(r'^media/{}/(?P<path>.*)$'.format(settings.MEDIA_URL_PREFIX), serve, {'document_root': settings.MEDIA_ROOT}, name='media'),
     re_path(r'^static/{}/(?P<path>.*)$'.format(settings.STATIC_URL_PREFIX), serve, {'document_root': settings.STATIC_URL}, name='static'),
 ]
