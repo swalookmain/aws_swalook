@@ -1978,19 +1978,32 @@ class Sales_in_a_week(APIView):
         branch_name = request.query_params.get('branch_name')
         today = date.today()
         current_week = today.isocalendar()[1]
-
-        sales_by_day = VendorInvoice.objects.filter(
-            vendor_name=request.user,
-            vendor_branch_id=branch_name,
-            date__week=current_week,
-            date__lte=today
-        ).annotate(
-            day_of_week=ExtractWeekDay('date')
-        ).values(
-            'day_of_week'
-        ).annotate(
-            total_sales=Sum('grand_total')
-        ).order_by('day_of_week')
+        if request.query_params.get('start_date') and request.query_params.get('end_date'):
+              sales_by_day = VendorInvoice.objects.filter(
+                    vendor_name=request.user,
+                    vendor_branch_id=branch_name,
+                    date__range = [request.query_params.get('start_date'),request.query_params.get('end_date')]
+              ).annotate(
+                    day_of_week=ExtractWeekDay('date')
+              ).values(
+                    'day_of_week'
+              ).annotate(
+                    total_sales=Sum('grand_total')
+              ).order_by('day_of_week')
+        else:
+            
+            sales_by_day = VendorInvoice.objects.filter(
+                vendor_name=request.user,
+                vendor_branch_id=branch_name,
+                date__week=current_week,
+                date__lte=today
+            ).annotate(
+                day_of_week=ExtractWeekDay('date')
+            ).values(
+                'day_of_week'
+            ).annotate(
+                total_sales=Sum('grand_total')
+            ).order_by('day_of_week')
 
         return Response({
             "data": sales_by_day,
@@ -3066,12 +3079,12 @@ class DailyAppointmentsView(APIView):
 class WeeklyAppointmentsView(APIView):
   
     def get(self, request):
-        today = now().date()
-        start_of_week = today - timedelta(days=today.weekday())
-        end_of_week = start_of_week + timedelta(days=6)
+        # today = now().date()
+        # start_of_week = today - timedelta(days=today.weekday())
+        # end_of_week = start_of_week + timedelta(days=6)
 
         appointments = VendorAppointment.objects.filter(vendor_name=request.user,vendor_branch_id=request.query_params.get('branch_name'),
-            date__range=[start_of_week, end_of_week]
+            date__range=[request.query_params.get('start_date'), request.query_params.get('end_date')]
         ).order_by('date', 'booking_time')
 
         serializer = app_serailizer_get(appointments, many=True)
@@ -3292,7 +3305,7 @@ class StaffRevenueAPI(APIView):
             # current_year = today.year
             # start_of_week = today - timedelta(days=today.weekday())
             # end_of_week = start_of_week + timedelta(days=6)
-            invoices = invoices.filter(date__range=(start_date,end_date))
+            invoices = invoices.filter(date__range=[start_date,end_date])
         elif filter_type == 'month' and month_value and year_value:
             invoices = invoices.filter(date__month=month_value, date__year=year_value)
         elif filter_type == 'year' and year_value:
@@ -3370,7 +3383,7 @@ class ModeOfPaymentAPI(APIView):
             # current_year = today.year
             # start_of_week = today - timedelta(days=today.weekday())
             # end_of_week = start_of_week + timedelta(days=6)
-            invoices = invoices.filter(date__range=(start_date,end_date))
+            invoices = invoices.filter(date__range=[start_date,end_date])
            
         elif filter_type == 'month' and month_value and year_value:
             invoices = invoices.filter(date__month=month_value, date__year=year_value)
