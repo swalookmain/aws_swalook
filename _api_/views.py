@@ -3481,11 +3481,11 @@ class VendorCustomerStatsAPIView(APIView):
         anniversaries = VendorCustomers.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),user=request.user,d_o_a=today)
 
         data = {
-            "new_customers": VendorCustomerSerializer(recent_customers, many=True).data,
-            "active_memberships": VendorCustomerSerializer(active_memberships, many=True).data,
-            "active_coupons": VendorCustomerSerializer(active_coupons, many=True).data,
-            "birthdays": VendorCustomerSerializer(birthdays, many=True).data,
-            "anniversaries": VendorCustomerSerializer(anniversaries, many=True).data
+            "new_customers": VendorCustomerLoyalityProfileSerializer_get(recent_customers, many=True).data,
+            "active_memberships": VendorCustomerLoyalityProfileSerializer_get(active_memberships, many=True).data,
+            "active_coupons": VendorCustomerLoyalityProfileSerializer_get(active_coupons, many=True).data,
+            "birthdays": VendorCustomerLoyalityProfileSerializer_get(birthdays, many=True).data,
+            "anniversaries": VendorCustomerLoyalityProfileSerializer_get(anniversaries, many=True).data
         }
 
         return Response(data)
