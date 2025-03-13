@@ -3475,17 +3475,19 @@ class VendorCustomerStatsAPIView(APIView):
         active_coupons = VendorCustomers.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),user=request.user,coupon__isnull=False).distinct()
 
         # Birthdays Today
-        birthdays = VendorCustomers.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),user=request.user,d_o_b=today).count()
+        birthdays = VendorCustomers.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),user=request.user,d_o_b=today)
 
         # Anniversaries Today
-        anniversaries = VendorCustomers.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),user=request.user,d_o_a=today).count()
+        anniversaries = VendorCustomers.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),user=request.user,d_o_a=today)
 
         data = {
             "new_customers": recent_customers,
             "active_memberships": active_memberships,
             "active_coupons": active_coupons.count(),
-            "birthdays": birthdays,
-            "anniversaries": anniversaries
+            "birthdays": VendorCustomerLoyalityProfileSerializer_get(birthdays,many=True).data,
+            "anniversaries": VendorCustomerLoyalityProfileSerializer_get(anniversaries,many=True).data,
+            "birthday_count": birthdays.count(),
+            "anniversaries_count": anniversaries.count()
         }
 
         return Response(data)
