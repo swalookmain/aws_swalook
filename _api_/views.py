@@ -3498,7 +3498,7 @@ class ExpiringProductsAPIView(APIView):
         next_month = today + timedelta(days=30)  # Get the date one month from today
         
 
-        expiring_products = VendorInventoryProduct.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),user=request.user,expiry_date__lte=next_month, expiry_date__gte=today).values('product_name')
+        expiring_products = VendorInventoryProduct.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),user=request.user,expiry_date__lte=next_month, expiry_date__gte=today).values('product_name','expiry_date')
 
         data = {
             "expiring_products": list(expiring_products)
