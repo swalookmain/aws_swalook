@@ -3079,12 +3079,12 @@ class DailyAppointmentsView(APIView):
 class WeeklyAppointmentsView(APIView):
   
     def get(self, request):
-        # today = now().date()
-        # start_of_week = today - timedelta(days=today.weekday())
-        # end_of_week = start_of_week + timedelta(days=6)
+        today = now().date()
+        start_of_week = today - timedelta(days=today.weekday())
+        end_of_week = start_of_week + timedelta(days=6)
 
         appointments = VendorAppointment.objects.filter(vendor_name=request.user,vendor_branch_id=request.query_params.get('branch_name'),
-            date__range=[request.query_params.get('start_date'), request.query_params.get('end_date')]
+            date__range=[start_of_week,end_of_week]
         ).order_by('date', 'booking_time')
 
         serializer = app_serailizer_get(appointments, many=True)
