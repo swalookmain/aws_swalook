@@ -1704,6 +1704,32 @@ class vendor_staff_setting_slabs(APIView):
             "message": "Failed to add staff."
         }, status=status.HTTP_400_BAD_REQUEST)
 
+    def get(self, request):
+        branch_name = request.query_params.get('branch_name')
+        if not branch_name:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'error': {
+                    'code': 'Bad Request',
+                    'message': 'branch_name parameter is missing!'
+                },
+                'data': None
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        queryset = StaffSetting.objects.filter(
+            vendor_name=request.user,
+            vendor_branch_id=branch_name
+        ).order_by('-id')
+
+        serializer = (queryset, many=True)
+
+        return Response({
+            "status": True,
+            "table_data": serializer.data,
+            "message": "Staff Setting records retrieved successfully."
+        }, status=status.HTTP_200_OK)
+
 
 class vendor_staff_attendance(APIView):
     permission_classes = [IsAuthenticated]
