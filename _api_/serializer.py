@@ -515,6 +515,13 @@ class staff_salary_serializer(ModelSerializer):
         model = StaffSalary
         fields = "__all__"
 
+class staff_setting_serializer_get(ModelSerializer):
+    
+
+    class Meta:
+        model = StaffSetting
+        fields = "__all__"
+
 # class TemplateSerializer(ModelSerializer):
 
 
