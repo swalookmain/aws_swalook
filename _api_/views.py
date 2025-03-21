@@ -1722,7 +1722,7 @@ class vendor_staff_setting_slabs(APIView):
             vendor_branch_id=branch_name
         ).order_by('-id')
 
-        serializer = (queryset, many=True)
+        serializer = staff_setting_serializer_get(queryset, many=True)
 
         return Response({
             "status": True,
@@ -3527,7 +3527,7 @@ class ExpiringProductsAPIView(APIView):
         
 
         expiring_products = VendorInventoryProduct.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),user=request.user,expiry_date__lte=next_month, expiry_date__gte=today).values('product_name','expiry_date')
-        expiring_expenses = VendorExpense.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),user=request.user,date__month=next_month).values('due_amount','due_date','expense_type')
+        expiring_expenses = VendorExpense.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),user=request.user,date__month=dt.date.today()).values('due_amount','due_date','expense_type')
 
         data = {
             "expiring_products": list(expiring_products),
