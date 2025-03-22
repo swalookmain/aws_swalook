@@ -1115,3 +1115,16 @@ class VendorEnquerySerializer_get(serializers.ModelSerializer):
     class Meta:
         model = VendorEnquery
         fields = "__all__"
+
+from rest_framework import serializers
+from .models import SalesTargetSetting
+
+class SalesTargetSettingSerializer(serializers.ModelSerializer):
+    staff_name = serializers.ReadOnlyField(source='staff.name')
+    vendor_name = serializers.ReadOnlyField(source='vendor_name')  
+    vendor_branch = serializers.ReadOnlyField(source='vendor_branch')
+
+    class Meta:
+        model = SalesTargetSetting
+        fields = '__all__'
+
