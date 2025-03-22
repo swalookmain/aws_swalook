@@ -21,6 +21,7 @@ from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import *
+from django.shortcuts import get_object_or_404
 from .serializer import *
 from api_swalook import settings
 import subprocess
@@ -3541,5 +3542,38 @@ class ExpiringProductsAPIView(APIView):
 
         return Response(data)
 
+
+
+class SalesTargetSettingListCreateView(APIView):
+    def get(self, request):
+        sales_targets = SalesTargetSetting.objects.all()
+        serializer = SalesTargetSettingSerializer(sales_targets, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        serializer = SalesTargetSettingSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class SalesTargetSettingDetailView(APIView):
+    def get(self, request, pk):
+        sales_target = get_object_or_404(SalesTargetSetting, pk=pk)
+        serializer = SalesTargetSettingSerializer(sales_target)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def put(self, request, pk):
+        sales_target = get_object_or_404(SalesTargetSetting, pk=pk)
+        serializer = SalesTargetSettingSerializer(sales_target, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        sales_target = get_object_or_404(SalesTargetSetting, pk=pk)
+        sales_target.delete()
+        return Response({"message": "Sales target deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
 
 
