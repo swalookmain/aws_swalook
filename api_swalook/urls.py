@@ -110,7 +110,8 @@ urlpatterns = [
     path('api/swalook/vendor-customers/stats/', VendorCustomerStatsAPIView.as_view(), name='vendor-customer-stats'),
     path('api/swalook/inventory/expiring-products/', ExpiringProductsAPIView.as_view(), name='expiring-products'),
     path('api/swalook/test-error/', Table_servicess.as_view(), name='test_error'),
-    
+    path('api/swalook/sales-targets/', SalesTargetSettingListCreateView.as_view(), name='sales-target-list-create'),
+    path('api/swalook/sales-targets/<uuid:pk>/', SalesTargetSettingDetailView.as_view(), name='sales-target-detail'),
     re_path(r'^media/{}/(?P<path>.*)$'.format(settings.MEDIA_URL_PREFIX), serve, {'document_root': settings.MEDIA_ROOT}, name='media'),
     re_path(r'^static/{}/(?P<path>.*)$'.format(settings.STATIC_URL_PREFIX), serve, {'document_root': settings.STATIC_URL}, name='static'),
 ]
