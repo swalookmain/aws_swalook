@@ -328,7 +328,18 @@ class VendorStaff(models.Model):
             models.Index(fields=['vendor_name', 'vendor_branch', 'staff_name']),
         ]
 
-
+class SalesTargetSetting(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    service_target = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    product_target = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    membership_coupon_target = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    overall_target = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    staff = models.ForeignKey(VendorStaff, on_delete=models.CASCADE)
+    staff_target = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    commission_cap = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
 class VendorStaffAttendance(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
     vendor_name = models.ForeignKey(User, on_delete=models.CASCADE, null=True, db_index=True)
