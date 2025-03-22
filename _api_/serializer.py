@@ -1127,4 +1127,19 @@ class SalesTargetSettingSerializer(serializers.ModelSerializer):
     class Meta:
         model = SalesTargetSetting
         fields = '__all__'
+        read_only_fields = ['id']
 
+    def create(self, validated_data):
+        validated_data['user'] = self.context.get('request').user
+        validated_data['vendor_branch_id'] = self.context.get('branch_id')
+        return super().create(validated_data)
+        
+    
+    
+    
+    def update(self, instance, validated_data):
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save()
+        return instance
