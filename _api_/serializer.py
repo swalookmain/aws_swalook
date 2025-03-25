@@ -1120,14 +1120,13 @@ from rest_framework import serializers
 from .models import SalesTargetSetting
 
 class SalesTargetSettingSerializer(serializers.ModelSerializer):
-    staff_name = serializers.ReadOnlyField(source='staff.name')
-    vendor_name = serializers.ReadOnlyField(source='vendor_name')  
-    vendor_branch = serializers.ReadOnlyField(source='vendor_branch')
+
+
 
     class Meta:
         model = SalesTargetSetting
         fields = '__all__'
-        read_only_fields = ['id']
+        read_only_fields = ['id','vendor_name','vendor_branch']
 
     def create(self, validated_data):
         validated_data['user'] = self.context.get('request').user
