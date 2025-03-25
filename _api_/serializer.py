@@ -552,6 +552,7 @@ class staff_update_earning_deduction_serializer(ModelSerializer):
                 vendor_name=self.context.get('request').user,
                 month=i,
                 number_of_working_days=validated_data['json_data'].get(str(i)),
+                vendor_branch_id = self.context.get('branch_id')
             )
             staff_settings.append(s)
 
@@ -560,6 +561,7 @@ class staff_update_earning_deduction_serializer(ModelSerializer):
         for i in validated_data['slab_data']:
             s = StaffSettingSlab(
                 vendor_name=self.context.get('request').user,
+                vendor_branch_id = self.context.get('branch_id'),
                 staff_slab=i.get("staff_slab"),
                 staff_target_business=i.get("staff_target_business"),
                 staff_commision_cap=i.get("staff_commision_cap"),
