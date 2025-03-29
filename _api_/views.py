@@ -3552,6 +3552,10 @@ class SalesTargetSettingListCreateView(APIView):
 
     def post(self, request):
         branch_name = request.query_params.get('branch_name')
+        obj = SalesTargetSetting.objects.filter(branch_name=request.query_params.get('branch_name'),vendor_branch=request.user)
+        if len(obj) != 0:
+            obj.delete()
+            
         serializer = SalesTargetSettingSerializer(data=request.data,context={'request': request, 'branch_id': branch_name})
         if serializer.is_valid():
             serializer.save()
@@ -3560,6 +3564,7 @@ class SalesTargetSettingListCreateView(APIView):
 
 class SalesTargetSettingDetailView(APIView):
     def get(self, request, pk):
+        
         sales_target = get_object_or_404(SalesTargetSetting, pk=pk)
         serializer = SalesTargetSettingSerializer(sales_target)
         return Response(serializer.data, status=status.HTTP_200_OK)
