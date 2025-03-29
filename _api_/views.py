@@ -3578,3 +3578,25 @@ class SalesTargetSettingDetailView(APIView):
         return Response({"message": "Sales target deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
 
 
+
+
+
+class PictureUploadView(APIView):
+  
+
+    def get(self, request, *args, **kwargs):
+        branch_name  = request.query_params.get('branch_name')
+        pictures = Picture.objects.filter(user=request.user,vendor_branch_id=branch_name)
+        serializer = PictureSerializer(pictures, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request, *args, **kwargs):
+        branch_name  = request.query_params.get('branch_name')
+        serializer = PictureSerializer(data=request.data, context={'request': request,'branch_id':branch_name})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
