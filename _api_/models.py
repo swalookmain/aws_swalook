@@ -600,6 +600,21 @@ class VendorEnquery(models.Model):
     customer_name = models.CharField(max_length=200, null=True, blank=True)
     mobile_no = models.CharField(max_length=200, null=True, blank=True)
     comment = models.CharField(max_length=200, null=True, blank=True)
+
+
+
+
+class Picture(models.Model):
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, db_index=True)
+    vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
+    image_name = models.CharField(max_length=255)
+    image = models.ImageField(upload_to='clp')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.image_name
+
     
 
    
