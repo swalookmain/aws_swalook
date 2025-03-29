@@ -1683,11 +1683,11 @@ class vendor_staff_setting_slabs(APIView):
                 'data': None
             }, status=status.HTTP_400_BAD_REQUEST)
         s_s = StaffSetting.objects.filter(vendor_name=request.user)
-        s_s_s = StaffSettingSlab.objects.filter(vendor_name=request.user)
+   
         if len(s_s) != 0:
-            if len(s_s_s) != 0:
+            
                 s_s.delete()
-                s_s_s.delete()
+              
         serializer = self.serializer_class(data=request.data, context={'request': request, 'branch_id': branch_name})
 
         if serializer.is_valid():
