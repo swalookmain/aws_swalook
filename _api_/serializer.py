@@ -1144,3 +1144,24 @@ class SalesTargetSettingSerializer(serializers.ModelSerializer):
 
         instance.save()
         return instance
+
+
+
+class PictureSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Picture
+        fields = ['image_name', 'image', 'uploaded_at']
+
+    def create(self, validated_data):
+        request = self.context.get('request')  
+        validated_data['image'] = request.FILES.get('image')  
+
+        if not image:
+            raise serializers.ValidationError({"image": "This field is required."})
+
+           
+        validated_data['vendor_branch_id'] = self.context.get('branch_id')
+        validated_data['user']  = request.user
+        
+        return super().create(validated_data)
+
