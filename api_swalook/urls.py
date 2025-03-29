@@ -112,6 +112,7 @@ urlpatterns = [
     path('api/swalook/test-error/', Table_servicess.as_view(), name='test_error'),
     path('api/swalook/sales-targets/', SalesTargetSettingListCreateView.as_view(), name='sales-target-list-create'),
     path('api/swalook/sales-targets/<uuid:pk>/', SalesTargetSettingDetailView.as_view(), name='sales-target-detail'),
+    path('api/swalook/upload/image/', PictureUploadView.as_view(), name='upload-picture'),
     re_path(r'^media/{}/(?P<path>.*)$'.format(settings.MEDIA_URL_PREFIX), serve, {'document_root': settings.MEDIA_ROOT}, name='media'),
     re_path(r'^static/{}/(?P<path>.*)$'.format(settings.STATIC_URL_PREFIX), serve, {'document_root': settings.STATIC_URL}, name='static'),
 ]
