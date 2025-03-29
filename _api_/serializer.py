@@ -538,11 +538,11 @@ class staff_setting_serializer_get(ModelSerializer):
 
 class staff_update_earning_deduction_serializer(ModelSerializer):
     json_data = serializers.DictField(child=serializers.CharField())
-    slab_data = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
+    # slab_data = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
 
     class Meta:
         model = StaffSetting
-        fields = ["slab_data", "json_data"]
+        fields = ["json_data"]
 
     def create(self, validated_data):
         staff_settings = []
@@ -556,20 +556,20 @@ class staff_update_earning_deduction_serializer(ModelSerializer):
             )
             staff_settings.append(s)
 
-        staff_slabs = []
-        slab_data = validated_data['slab_data']
-        for i in validated_data['slab_data']:
-            s = StaffSettingSlab(
-                vendor_name=self.context.get('request').user,
-                vendor_branch_id = self.context.get('branch_id'),
-                staff_slab=i.get("staff_slab"),
-                staff_target_business=i.get("staff_target_business"),
-                staff_commision_cap=i.get("staff_commision_cap"),
-            )
-            staff_slabs.append(s)
+        # staff_slabs = []
+        # slab_data = validated_data['slab_data']
+        # for i in validated_data['slab_data']:
+        #     s = StaffSettingSlab(
+        #         vendor_name=self.context.get('request').user,
+        #         vendor_branch_id = self.context.get('branch_id'),
+        #         staff_slab=i.get("staff_slab"),
+        #         staff_target_business=i.get("staff_target_business"),
+        #         staff_commision_cap=i.get("staff_commision_cap"),
+        #     )
+        #     staff_slabs.append(s)
 
         StaffSetting.objects.bulk_create(staff_settings)
-        StaffSettingSlab.objects.bulk_create(staff_slabs)
+        # StaffSettingSlab.objects.bulk_create(staff_slabs)
 
         return validated_data
 
