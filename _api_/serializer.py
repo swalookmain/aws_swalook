@@ -1158,9 +1158,7 @@ class PictureSerializer(serializers.ModelSerializer):
         request = self.context.get('request')  
         validated_data['image'] = request.FILES.get('image')  
 
-        if not image:
-            raise serializers.ValidationError({"image": "This field is required."})
-
+      
            
         validated_data['vendor_branch_id'] = self.context.get('branch_id')
         validated_data['user']  = request.user
