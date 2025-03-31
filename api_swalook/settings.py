@@ -170,7 +170,7 @@ ADMINS = [
 
 STATIC_URL_PREFIX = "swalook_22"
 MEDIA_URL_PREFIX = "swalook_22"
-
+DATA_UPLOAD_MAX_MEMORY_SIZE = 5242880
 STATIC_URL = '/static/'
 MEDIA_URL = '/media/'
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'statics')]
