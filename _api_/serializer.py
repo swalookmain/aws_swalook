@@ -1122,7 +1122,7 @@ from rest_framework import serializers
 from .models import SalesTargetSetting
 
 class SalesTargetSettingSerializer(serializers.ModelSerializer):
-
+    staff_targets = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
 
 
     class Meta:
@@ -1131,7 +1131,7 @@ class SalesTargetSettingSerializer(serializers.ModelSerializer):
         read_only_fields = ['id','vendor_name','vendor_branch','created_at','updated_at']
 
     def create(self, validated_data):
-        validated_data['user'] = self.context.get('request').user
+        validated_data['vendor_name'] = self.context.get('request').user
         validated_data['vendor_branch_id'] = self.context.get('branch_id')
         validated_data['created_at'] = ""
         validated_data['updated_at'] = ""
