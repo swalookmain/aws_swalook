@@ -3552,7 +3552,7 @@ class SalesTargetSettingListCreateView(APIView):
 
     def post(self, request):
         branch_name = request.query_params.get('branch_name')
-        obj = SalesTargetSetting.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),vendor_branch=request.user)
+        obj = SalesTargetSetting.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),user=request.user)
         if len(obj) != 0:
             obj.delete()
             
