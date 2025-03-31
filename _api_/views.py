@@ -3548,7 +3548,7 @@ class SalesTargetSettingListCreateView(APIView):
     def get(self, request):
         sales_targets = SalesTargetSetting.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),vendor_name=request.user)
         # serializer = SalesTargetSettingSerializer(sales_targets, many=True)
-        return Response({"list":list(sales_targets), status=status.HTTP_200_OK)
+        return Response({"list":list(sales_targets)}, status=status.HTTP_200_OK)
 
     def post(self, request):
         branch_name = request.query_params.get('branch_name')
