@@ -334,7 +334,7 @@ class SalesTargetSetting(models.Model):
     product_target = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     membership_coupon_target = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     overall_target = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    staff_targets = models.JSONField(default=list)
+    staff_targets = models.TextField(blank=True,null=True)
     # staff_target = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     # commission_cap = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     created_at = models.CharField(max_length=200, blank=True,null=True)
