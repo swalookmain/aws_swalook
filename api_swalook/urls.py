@@ -113,6 +113,7 @@ urlpatterns = [
     path('api/swalook/sales-targets/', SalesTargetSettingListCreateView.as_view(), name='sales-target-list-create'),
     path('api/swalook/sales-targets/<uuid:pk>/', SalesTargetSettingDetailView.as_view(), name='sales-target-detail'),
     path('api/swalook/upload/image/', PictureUploadView.as_view(), name='upload-picture'),
+    path('merge-images/', MergeImagesAPIView.as_view(), name='merge-images')
     re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}, name='media'),
     re_path(r'^static/(?P<path>.*)$', serve, {'document_root': settings.STATIC_URL}, name='static'),
 ]
