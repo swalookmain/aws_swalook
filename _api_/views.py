@@ -21,6 +21,10 @@ from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import *
+from rest_framework.parsers import MultiPartParser, FormParser
+from PIL import Image
+import io
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from .serializer import *
 from api_swalook import settings
@@ -3604,4 +3608,34 @@ class PictureUploadView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+
+
+
+class MergeImagesAPIView(APIView):
+   
+    def post(self, request, *args, **kwargs):
+        serializer = ImageMergeSerializer(data=request.data)
+        if serializer.is_valid():
+            image1 = Image.open(request.FILES.get('image1'))
+            image2 = Image.open(request.FILES.get('image2'))
+
+       
+            image1 = image1.convert("RGB")
+            image2 = image2.convert("RGB")
+
+            new_width = max(image1.width, image2.width)
+            new_height = image1.height + image2.height
+
+            
+            merged_image = Image.new("RGB", (new_width, new_height), (255, 255, 255))
+            merged_image.paste(image1, (0, 0))
+            merged_image.paste(image2, (0, image1.height))
+
+           
+            img_io = io.BytesIO()
+            merged_image.save(img_io, format="JPEG")
+            img_io.seek(0)
+
+            return HttpResponse(img_io, content_type="image/jpeg")
+        return Response(serializer.errors, status=400)
 
