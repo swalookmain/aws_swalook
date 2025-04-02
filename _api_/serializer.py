@@ -1165,3 +1165,10 @@ class PictureSerializer(serializers.ModelSerializer):
         
         return super().create(validated_data)
 
+
+
+class ImageMergeSerializer(serializers.Serializer):
+    image1 = serializers.ImageField()
+    image2 = serializers.ImageField()
+
+
