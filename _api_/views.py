@@ -3550,6 +3550,22 @@ class ExpiringProductsAPIView(APIView):
 
 class SalesTargetSettingListCreateView(APIView):
     def get(self, request):
+        if request.query_params.get('type') == "admin":
+            sales_targets = (
+                SalesTargetSetting.objects
+                .filter(vendor_name=request.user)
+                .values('vendor_branch_id__branch_name')  
+                .annotate(
+                    total_target=Sum('target_value'),      
+                    total_achieved=Sum('achieved_value')
+                )
+                .order_by('vendor_branch_id__branch_name')
+            )
+            return Response({"list": list(sales_targets)}, status=status.HTTP_200_OK)
+
+            
+            
+            
         sales_targets = SalesTargetSetting.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),vendor_name=request.user).values()
         # serializer = SalesTargetSettingSerializer(sales_targets, many=True)
         return Response({"list":list(sales_targets)}, status=status.HTTP_200_OK)
