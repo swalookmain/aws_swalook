@@ -3554,12 +3554,14 @@ class SalesTargetSettingListCreateView(APIView):
             sales_targets = (
                 SalesTargetSetting.objects
                 .filter(vendor_name=request.user)
-                .values('vendor_branch_id__branch_name')  
+                .values('vendor_branch__branch_name')  
                 .annotate(
-                    total_target=Sum('target_value'),      
-                    total_achieved=Sum('achieved_value')
+                    total_service_target=Sum('service_target'),
+                    total_product_target=Sum('product_target'),
+                    total_membership_coupon_target=Sum('membership_coupon_target'),
+                    total_overall_target=Sum('overall_target')
                 )
-                .order_by('vendor_branch_id__branch_name')
+                .order_by('vendor_branch__branch_name')
             )
             return Response({"list": list(sales_targets)}, status=status.HTTP_200_OK)
 
