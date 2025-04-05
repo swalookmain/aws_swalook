@@ -3655,40 +3655,36 @@ class MergeImagesAPIView(APIView):
     
         original_img = Image.open(original_image_file).convert("RGB")
         width, original_height = original_img.size
+
     
-        
         logo_img = Image.open(logo_image_file).convert("RGBA")
         logo_img.thumbnail((100, 100))  
-    
-      
-        footer_height = 120
+        footer_height = 65
         footer = Image.new("RGB", (width, footer_height), color="white")
-    
-       
         logo_y = (footer_height - logo_img.height) // 2
-        footer.paste(logo_img, (20, logo_y), logo_img)
-    
-    
+        footer.paste(logo_img, (20, 8), logo_img)
         draw = ImageDraw.Draw(footer)
-        try:
-            font = ImageFont.truetype("arial.ttf", 20)
-        except:
-            font = ImageFont.load_default()
-    
-        text_x = 140  
-        draw.text((text_x, 20), salon_name, fill="black", font=font)
-        draw.text((text_x, 50), f"Mobile: {mobile_number}", fill="black", font=font)
-        draw.text((text_x, 80), address, fill="black", font=font)
-    
-     
+        # font = ImageFont.truetype("arial.ttf", 20)
+        
+        font = ImageFont.load_default()
+        
+        text_x = 80
+        salon_name = "Test Salon"
+        mobile_number = "9007262846"
+        address = "abcd - street 43"
+        draw.text((text_x, 5), salon_name, fill="black", font=font)
+        draw.text((text_x, 19), f"Mobile: {mobile_number}", fill="black", font=font)
+        draw.text((text_x, 32), address, fill="black", font=font)
         combined_img = Image.new("RGB", (width, original_height + footer_height), color="white")
-        combined_img.paste(original_img, (0, 0))
+        combined_img.paste(image, (0, 0))
         combined_img.paste(footer, (0, original_height))
-    
-       
+        
+        
         output = io.BytesIO()
         combined_img.save(output, format='JPEG')
         output.seek(0)
+        output
+
         return output
 
    
