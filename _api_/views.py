@@ -30,6 +30,7 @@ from api_swalook import settings
 import subprocess
 import datetime as dt
 from django.utils.timezone import now
+from django.utils import timezone
 from datetime import timedelta
 
 
@@ -3565,7 +3566,7 @@ class SalesTargetSettingListCreateView(APIView):
             sales_target = SalesTargetSetting.objects.filter(
                 vendor_name=request.user
             ).values('vendor_branch__branch_name','staff_targets')
-
+            
             # branch_staff_data = []
             # for target in sales_target:
             #     staff_data = []
@@ -3579,10 +3580,37 @@ class SalesTargetSettingListCreateView(APIView):
             #         "branch_name": target.vendor_branch.branch_name if target.vendor_branch else None,
             #         "staff_targets": staff_data
             #     })
+            now = timezone.now()
+            current_year = now.year
+            current_month = now.month
+        
+            
+            branch_revenue = VendorInvoice.objects.filter(
+                vendor_name=request.user,
+                date__year=current_year,
+                date__month=current_month
+            ).values(
+                'vendor_branch__name'  
+            ).annotate(
+                monthly_total=Sum('grand_total')
+            ).order_by('vendor_branch__name')
+        
+      
+            revenue_data = [
+                {
+                    "branch_name": item['vendor_branch__name'],
+                    "monthly_total": item['monthly_total']
+                }
+                for item in branch_revenue
+            ]
+        
+           
 
     
 
-            return Response({"list": list(sales_targets),"staff_targets_by_branch": list(sales_target)}, status=status.HTTP_200_OK)
+            return Response({"list": list(sales_targets),"staff_targets_by_branch": list(sales_target), "month": now.strftime('%B'),
+                "year": current_year,
+                "branch_revenue": revenue_data}, status=status.HTTP_200_OK)
 
             
             
