@@ -3603,6 +3603,71 @@ class SalesTargetSettingListCreateView(APIView):
                 }
                 for item in branch_revenue
             ]
+            invoices = VendorInvoice.objects.filter(
+            vendor_name=request.user,
+            date__month=current_month,
+            date__year=current_year
+            ).select_related('vendor_branch__branch_name')  
+
+   
+            grouped_data = defaultdict(lambda: {
+                "staff_data": defaultdict(lambda: {
+                    "total_invoices": 0,
+                    "total_sales": 0,
+                    "services": defaultdict(lambda: {
+                        "total_sales": 0,
+                        "total_services": 0
+                    })
+                })
+            })
+        
+            for invoice in invoices:
+                branch_name = invoice.vendor_branch.name if invoice.vendor_branch else "Unknown Branch"
+                services = json.loads(invoice.services) if isinstance(invoice.services, str) else invoice.services
+        
+                for service in services:
+                    staff_name = service.get('Staff')
+                    service_name = service.get('Description')
+                    price = float(service.get('Price', 0))
+        
+                    if staff_name and service_name:
+                        staff_data = grouped_data[branch_name]["staff_data"][staff_name]
+                        staff_data["total_invoices"] += 1
+                        staff_data["total_sales"] += price
+                        staff_data["services"][service_name]["total_sales"] += price
+                        staff_data["services"][service_name]["total_services"] += 1
+        
+      
+            response_data = {
+                "month": now.strftime('%B'),
+                "year": current_year,
+                "branches": [
+                    {
+                        "branch_name": branch_name,
+                        "staff_data": [
+                            {
+                                "staff_name": staff_name,
+                                "total_invoices": staff_data["total_invoices"],
+                                "total_sales": staff_data["total_sales"],
+                                "services": [
+                                    {
+                                        "service_name": service_name,
+                                        "total_sales": service_data["total_sales"],
+                                        "total_services": service_data["total_services"]
+                                    }
+                                    for service_name, service_data in staff_data["services"].items()
+                                ]
+                            }
+                            for staff_name, staff_data in branch_data["staff_data"].items()
+                        ]
+                    }
+                    for branch_name, branch_data in grouped_data.items()
+                ]
+            }
+
+                
+    
+            
         
            
 
@@ -3610,7 +3675,8 @@ class SalesTargetSettingListCreateView(APIView):
 
             return Response({"list": list(sales_targets),"staff_targets_by_branch": list(sales_target), "month": now.strftime('%B'),
                 "year": current_year,
-                "branch_revenue": revenue_data}, status=status.HTTP_200_OK)
+                "branch_revenue": revenue_data,"staff_revenue":response_data}, status=status.HTTP_200_OK)
+            
 
             
             
