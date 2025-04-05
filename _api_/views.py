@@ -3607,7 +3607,7 @@ class SalesTargetSettingListCreateView(APIView):
             vendor_name=request.user,
             date__month=current_month,
             date__year=current_year
-            ).select_related('vendor_branch__branch_name')  
+            ) 
 
    
             grouped_data = defaultdict(lambda: {
@@ -3622,7 +3622,7 @@ class SalesTargetSettingListCreateView(APIView):
             })
         
             for invoice in invoices:
-                branch_name = invoice.vendor_branch.name if invoice.vendor_branch else "Unknown Branch"
+                branch_name = invoice.vendor_branch.branch_name if invoice.vendor_branch else "Unknown Branch"
                 services = json.loads(invoice.services) if isinstance(invoice.services, str) else invoice.services
         
                 for service in services:
