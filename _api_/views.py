@@ -3564,25 +3564,25 @@ class SalesTargetSettingListCreateView(APIView):
             )
             sales_target = SalesTargetSetting.objects.filter(
                 vendor_name=request.user
-            ).select_related('vendor_branch')
+            ).values('vendor_branch__branch_name','staff_targets')
 
-            branch_staff_data = []
-            for target in sales_target:
-                staff_data = []
-                if target.staff_targets:
-                    try:
-                        staff_data = json.loads(target.staff_targets)
-                    except json.JSONDecodeError:
-                        staff_data = []
+            # branch_staff_data = []
+            # for target in sales_target:
+            #     staff_data = []
+            #     if target.staff_targets:
+            #         try:
+            #             staff_data = json.loads(target.staff_targets)
+            #         except json.JSONDecodeError:
+            #             staff_data = []
 
-                branch_staff_data.append({
-                    "branch_name": target.vendor_branch.branch_name if target.vendor_branch else None,
-                    "staff_targets": staff_data
-                })
+            #     branch_staff_data.append({
+            #         "branch_name": target.vendor_branch.branch_name if target.vendor_branch else None,
+            #         "staff_targets": staff_data
+            #     })
 
     
 
-            return Response({"list": list(sales_targets),"staff_targets_by_branch": branch_staff_data}, status=status.HTTP_200_OK)
+            return Response({"list": list(sales_targets),"staff_targets_by_branch": list(sales_target)}, status=status.HTTP_200_OK)
 
             
             
@@ -3705,5 +3705,5 @@ class MergeImagesAPIView(APIView):
            
        
             
-  \
+  
 
