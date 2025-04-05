@@ -3590,15 +3590,15 @@ class SalesTargetSettingListCreateView(APIView):
                 date__year=current_year,
                 date__month=current_month
             ).values(
-                'vendor_branch__name'  
+                'vendor_branch__branch_name'  
             ).annotate(
                 monthly_total=Sum('grand_total')
-            ).order_by('vendor_branch__name')
+            ).order_by('vendor_branch__branch_name')
         
       
             revenue_data = [
                 {
-                    "branch_name": item['vendor_branch__name'],
+                    "branch_name": item['vendor_branch__branch_name'],
                     "monthly_total": item['monthly_total']
                 }
                 for item in branch_revenue
