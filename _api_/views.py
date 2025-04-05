@@ -2,6 +2,7 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta
 from django.utils.timezone import now
 import io
+from PIL import Image, ImageDraw, ImageFont
 import json
 import os
 from django.contrib import auth
@@ -22,8 +23,6 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import *
 from rest_framework.parsers import MultiPartParser, FormParser
-from PIL import Image
-import io
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from .serializer import *
@@ -3651,29 +3650,64 @@ class PictureUploadView(APIView):
 
 class MergeImagesAPIView(APIView):
    
-    def post(self, request, *args, **kwargs):
-        serializer = ImageMergeSerializer(data=request.data)
-        if serializer.is_valid():
-            image1 = Image.open(request.FILES.get('image1'))
-            image2 = Image.open(request.FILES.get('image2'))
 
+    def add_footer_box(original_image_file, logo_image_file, salon_name, mobile_number, address):
+    
+        original_img = Image.open(original_image_file).convert("RGB")
+        width, original_height = original_img.size
+    
+        
+        logo_img = Image.open(logo_image_file).convert("RGBA")
+        logo_img.thumbnail((100, 100))  
+    
+      
+        footer_height = 120
+        footer = Image.new("RGB", (width, footer_height), color="white")
+    
        
-            image1 = image1.convert("RGB")
-            image2 = image2.convert("RGB")
+        logo_y = (footer_height - logo_img.height) // 2
+        footer.paste(logo_img, (20, logo_y), logo_img)
+    
+    
+        draw = ImageDraw.Draw(footer)
+        try:
+            font = ImageFont.truetype("arial.ttf", 20)
+        except:
+            font = ImageFont.load_default()
+    
+        text_x = 140  
+        draw.text((text_x, 20), salon_name, fill="black", font=font)
+        draw.text((text_x, 50), f"Mobile: {mobile_number}", fill="black", font=font)
+        draw.text((text_x, 80), address, fill="black", font=font)
+    
+     
+        combined_img = Image.new("RGB", (width, original_height + footer_height), color="white")
+        combined_img.paste(original_img, (0, 0))
+        combined_img.paste(footer, (0, original_height))
+    
+       
+        output = io.BytesIO()
+        combined_img.save(output, format='JPEG')
+        output.seek(0)
+        return output
 
-            new_width = max(image1.width, image2.width)
-            new_height = image1.height + image2.height
+   
+    def post(self, request, *args, **kwargs):
+        
+        image = request.FILES.get('image')
+        logo = request.FILES.get('logo')
+    
+    
+        salon_name = request.data.get('salon_name')
+        mobile_number = request.data.get('mobile_no')
+        address = request.data.get('address')
+    
 
-            
-            merged_image = Image.new("RGB", (new_width, new_height), (255, 255, 255))
-            merged_image.paste(image1, (0, 0))
-            merged_image.paste(image2, (0, image1.height))
-
+        final_image = self.add_footer_box(image, logo, salon_name, mobile_number, address)
+    
+        return FileResponse(final_image, content_type='image/jpeg')
            
-            img_io = io.BytesIO()
-            merged_image.save(img_io, format="JPEG")
-            img_io.seek(0)
-
-            return HttpResponse(img_io, content_type="image/jpeg")
-        return Response(serializer.errors, status=400)
+       
+            
+  \
 
