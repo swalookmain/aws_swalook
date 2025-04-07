@@ -3764,14 +3764,12 @@ class MergeImagesAPIView(APIView):
         font = ImageFont.load_default()
         
         text_x = 80
-        salon_name = "Test Salon"
-        mobile_number = "9007262846"
-        address = "abcd - street 43"
+        
         draw.text((text_x, 5), salon_name, fill="black", font=font)
         draw.text((text_x, 19), f"Mobile: {mobile_number}", fill="black", font=font)
         draw.text((text_x, 32), address, fill="black", font=font)
         combined_img = Image.new("RGB", (width, original_height + footer_height), color="white")
-        combined_img.paste(image, (0, 0))
+        combined_img.paste(original_image, (0, 0))
         combined_img.paste(footer, (0, original_height))
         
         
