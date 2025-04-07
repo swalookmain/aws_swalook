@@ -617,7 +617,7 @@ class vendor_billing(APIView):
 
         queryset = VendorInvoice.objects.filter(
             vendor_name=request.user,
-            vendor_branch_id = branch_name
+            vendor_branch_id = branch_name,
             date=date
         ).order_by('-date')
 
