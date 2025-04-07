@@ -3745,7 +3745,7 @@ class PictureUploadView(APIView):
 class MergeImagesAPIView(APIView):
    
 
-    def add_footer_box(original_image_file, logo_image_file, salon_name, mobile_number, address):
+    def add_footer_box(self,original_image_file, logo_image_file, salon_name, mobile_number, address):
     
         original_img = Image.open(original_image_file).convert("RGB")
         width, original_height = original_img.size
