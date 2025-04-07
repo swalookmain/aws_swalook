@@ -2,6 +2,7 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta
 from django.utils.timezone import now
 import io
+from django.http import FileResponse
 from PIL import Image, ImageDraw, ImageFont
 import json
 import os
