@@ -3552,11 +3552,25 @@ class ExpiringProductsAPIView(APIView):
 
 class SalesTargetSettingListCreateView(APIView):
     def get(self, request):
-        if request.query_params.get('type') == "admin":
+        month = request.query_params.get("month")
+        year = request.query_params.get("year")
+        report_type = request.query_params.get("type")
+        branch_id = request.query_params.get("branch_name")
+
+        try:
+            current_month = int(month)
+            current_year = int(year)
+            month_name = datetime(current_year, current_month, 1).strftime('%B')
+        except (TypeError, ValueError):
+            return Response({"error": "Invalid or missing 'month' or 'year' in query parameters."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        if report_type == "admin":
+            # Sales Target Summary
             sales_targets = (
                 SalesTargetSetting.objects
                 .filter(vendor_name=request.user)
-                .values('vendor_branch__branch_name')  
+                .values('vendor_branch__branch_name')
                 .annotate(
                     total_service_target=Sum('service_target'),
                     total_product_target=Sum('product_target'),
@@ -3565,53 +3579,36 @@ class SalesTargetSettingListCreateView(APIView):
                 )
                 .order_by('vendor_branch__branch_name')
             )
-            sales_target = SalesTargetSetting.objects.filter(
-                vendor_name=request.user
-            ).values('vendor_branch__branch_name','staff_targets')
-            
-            # branch_staff_data = []
-            # for target in sales_target:
-            #     staff_data = []
-            #     if target.staff_targets:
-            #         try:
-            #             staff_data = json.loads(target.staff_targets)
-            #         except json.JSONDecodeError:
-            #             staff_data = []
 
-            #     branch_staff_data.append({
-            #         "branch_name": target.vendor_branch.branch_name if target.vendor_branch else None,
-            #         "staff_targets": staff_data
-            #     })
-            now = timezone.now()
-            current_year = now.year
-            current_month = now.month
-        
-            
-            branch_revenue = VendorInvoice.objects.filter(
+            # Staff Targets (raw)
+            staff_targets = SalesTargetSetting.objects.filter(
+                vendor_name=request.user
+            ).values('vendor_branch__branch_name', 'staff_targets')
+
+            # Monthly Branch Revenue
+            branch_revenue_qs = VendorInvoice.objects.filter(
                 vendor_name=request.user,
                 date__year=current_year,
                 date__month=current_month
-            ).values(
-                'vendor_branch__branch_name'  
-            ).annotate(
+            ).values('vendor_branch__branch_name').annotate(
                 monthly_total=Sum('grand_total')
-            ).order_by('vendor_branch__branch_name')
-        
-      
-            revenue_data = [
+            )
+
+            branch_revenue = [
                 {
                     "branch_name": item['vendor_branch__branch_name'],
                     "monthly_total": item['monthly_total']
                 }
-                for item in branch_revenue
+                for item in branch_revenue_qs
             ]
-            invoices = VendorInvoice.objects.filter(
-            vendor_name=request.user,
-            date__month=current_month,
-            date__year=current_year
-            ) 
 
-   
+            # Staff Revenue Details
+            invoices = VendorInvoice.objects.filter(
+                vendor_name=request.user,
+                date__year=current_year,
+                date__month=current_month
+            )
+
             grouped_data = defaultdict(lambda: {
                 "staff_data": defaultdict(lambda: {
                     "total_invoices": 0,
@@ -3622,26 +3619,28 @@ class SalesTargetSettingListCreateView(APIView):
                     })
                 })
             })
-        
+
             for invoice in invoices:
                 branch_name = invoice.vendor_branch.branch_name if invoice.vendor_branch else "Unknown Branch"
-                services = json.loads(invoice.services) if isinstance(invoice.services, str) else invoice.services
-        
+                try:
+                    services = json.loads(invoice.services) if isinstance(invoice.services, str) else invoice.services
+                except json.JSONDecodeError:
+                    services = []
+
                 for service in services:
                     staff_name = service.get('Staff')
                     service_name = service.get('Description')
                     price = float(service.get('Price', 0))
-        
+
                     if staff_name and service_name:
                         staff_data = grouped_data[branch_name]["staff_data"][staff_name]
                         staff_data["total_invoices"] += 1
                         staff_data["total_sales"] += price
                         staff_data["services"][service_name]["total_sales"] += price
                         staff_data["services"][service_name]["total_services"] += 1
-        
-      
-            response_data = {
-                "month": now.strftime('%B'),
+
+            staff_revenue = {
+                "month": month_name,
                 "year": current_year,
                 "branches": [
                     {
@@ -3667,25 +3666,22 @@ class SalesTargetSettingListCreateView(APIView):
                 ]
             }
 
-                
-    
-            
-        
-           
-
-    
-
-            return Response({"list": list(sales_targets),"staff_targets_by_branch": list(sales_target), "month": now.strftime('%B'),
+            return Response({
+                "list": list(sales_targets),
+                "staff_targets_by_branch": list(staff_targets),
+                "month": month_name,
                 "year": current_year,
-                "branch_revenue": revenue_data,"staff_revenue":response_data}, status=status.HTTP_200_OK)
-            
+                "branch_revenue": branch_revenue,
+                "staff_revenue": staff_revenue
+            }, status=status.HTTP_200_OK)
 
-            
-            
-            
-        sales_targets = SalesTargetSetting.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),vendor_name=request.user).values()
-        # serializer = SalesTargetSettingSerializer(sales_targets, many=True)
-        return Response({"list":list(sales_targets)}, status=status.HTTP_200_OK)
+        # If type is not admin, just filter by branch
+        sales_targets = SalesTargetSetting.objects.filter(
+            vendor_branch_id=branch_id,
+            vendor_name=request.user
+        ).values()
+
+        return Response({"list": list(sales_targets)}, status=status.HTTP_200_OK)
 
     def post(self, request):
         branch_name = request.query_params.get('branch_name')
