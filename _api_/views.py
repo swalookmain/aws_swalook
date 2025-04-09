@@ -3849,7 +3849,7 @@ class MergeImagesAPIView(APIView):
         
         font = ImageFont.load_default()
         
-        text_x = 60
+        text_x = 115
         
         draw.text((text_x, 5), salon_name, fill="black", font=font)
         draw.text((text_x, 19), f"Mobile: {mobile_number}", fill="black", font=font)
