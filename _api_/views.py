@@ -3840,16 +3840,16 @@ class MergeImagesAPIView(APIView):
     
         logo_img = Image.open(logo_image_file).convert("RGBA")
         logo_img.thumbnail((100, 100))  
-        footer_height = 80
+        footer_height = 100
         footer = Image.new("RGB", (width, footer_height), color="white")
         logo_y = (footer_height - logo_img.height) // 2
-        footer.paste(logo_img, (20, 8), logo_img)
+        footer.paste(logo_img, (20, 12), logo_img)
         draw = ImageDraw.Draw(footer)
         # font = ImageFont.truetype("arial.ttf", 20)
         
         font = ImageFont.load_default()
         
-        text_x = 115
+        text_x = 119
         
         draw.text((5, 2), text, fill="black", font=font)
         draw.text((text_x, 9), salon_name, fill="black", font=font)
