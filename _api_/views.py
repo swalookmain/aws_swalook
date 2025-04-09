@@ -3879,7 +3879,7 @@ class MergeImagesAPIView(APIView):
         address = request.data.get('address')
     
 
-        final_image = self.add_footer_box(image, logo, salon_name, mobile_number, address,text=request.data.get('text'))
+        final_image = self.add_footer_box(image, logo, salon_name, mobile_number, request.data.get('text'),address)
     
         return FileResponse(final_image, content_type='image/jpeg')
            
