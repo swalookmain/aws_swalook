@@ -3569,7 +3569,7 @@ class SalesTargetSettingListCreateView(APIView):
             # Sales Target Summary
             sales_targets = (
                 SalesTargetSetting.objects
-                .filter(vendor_name=request.user)
+                .filter(vendor_name=request.user,month=current_month,year=current_year)
                 .values('vendor_branch__branch_name')
                 .annotate(
                     total_service_target=Sum('service_target'),
@@ -3582,7 +3582,7 @@ class SalesTargetSettingListCreateView(APIView):
 
             # Staff Targets (raw)
             staff_targets = SalesTargetSetting.objects.filter(
-                vendor_name=request.user
+                vendor_name=request.user,month=current_month,year=current_year
             ).values('vendor_branch__branch_name', 'staff_targets')
 
             # Monthly Branch Revenue
@@ -3678,7 +3678,9 @@ class SalesTargetSettingListCreateView(APIView):
         # If type is not admin, just filter by branch
         sales_targets = SalesTargetSetting.objects.filter(
             vendor_branch_id=branch_id,
-            vendor_name=request.user
+            vendor_name=request.user,
+            month=current_month,
+            year=current_year
         ).values()
 
         return Response({"list": list(sales_targets)}, status=status.HTTP_200_OK)
@@ -3751,7 +3753,7 @@ class MergeImagesAPIView(APIView):
     
         logo_img = Image.open(logo_image_file).convert("RGBA")
         logo_img.thumbnail((100, 100))  
-        footer_height = 65
+        footer_height = 80
         footer = Image.new("RGB", (width, footer_height), color="white")
         logo_y = (footer_height - logo_img.height) // 2
         footer.paste(logo_img, (20, 8), logo_img)
