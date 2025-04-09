@@ -3766,7 +3766,7 @@ class SalesTargetSettingListCreateView(APIView):
 
         return Response({
                 "list": list(sales_targets),
-                "staff_targets_by_branch": list(staff_targets),
+               
                 "month": month_name,
                 "year": current_year,
                 "branch_revenue": branch_revenue,
