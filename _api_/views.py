@@ -3674,7 +3674,7 @@ class SalesTargetSettingListCreateView(APIView):
                 "branch_revenue": branch_revenue,
                 "staff_revenue": staff_revenue
             }, status=status.HTTP_200_OK)
-
+    
    
         sales_targets = SalesTargetSetting.objects.filter(
             vendor_branch_id=branch_id,
@@ -3682,12 +3682,96 @@ class SalesTargetSettingListCreateView(APIView):
             month=current_month,
             year=current_year
         ).values()
-        staff_targets = SalesTargetSetting.objects.filter(
-                vendor_name=request.user,month=current_month,year=current_year,vendor_branch_id=branch_id,vendor_name=request.user,
-            ).values('vendor_branch__branch_name', 'staff_targets')
+        branch_revenue_qs = VendorInvoice.objects.filter(
+                vendor_name=request.user,
+                vendor_branch_id=branch_id,
+                date__year=current_year,
+                date__month=current_month
+            ).values('vendor_branch__branch_name').annotate(
+                monthly_total=Sum('grand_total')
+            )
 
-        return Response({"list": list(sales_targets),"staff_targets":list(staff_targets)}, status=status.HTTP_200_OK)
+        branch_revenue = [
+            {
+            "branch_name": item['vendor_branch__branch_name'],
+            "monthly_total": item['monthly_total']
+            }
+            for item in branch_revenue_qs
+        ]
 
+            
+        invoices = VendorInvoice.objects.filter(
+                vendor_name=request.user,
+                date__year=current_year,
+                vendor_branch_id=branch_id,
+                date__month=current_month
+        )
+
+        grouped_data = defaultdict(lambda: {
+                "staff_data": defaultdict(lambda: {
+                "total_invoices": 0,
+                "total_sales": 0,
+                "services": defaultdict(lambda: {
+                "total_sales": 0,
+                "total_services": 0
+                })
+            })
+        })
+
+        for invoice in invoices:
+            branch_name = invoice.vendor_branch.branch_name if invoice.vendor_branch else "Unknown Branch"
+            try:
+                services = json.loads(invoice.services) if isinstance(invoice.services, str) else invoice.services
+            except json.JSONDecodeError:
+                services = []
+
+            for service in services:
+                staff_name = service.get('Staff')
+                service_name = service.get('Description')
+                price = float(service.get('Price', 0))
+
+                if staff_name and service_name:
+                    staff_data = grouped_data[branch_name]["staff_data"][staff_name]
+                    staff_data["total_invoices"] += 1
+                    staff_data["total_sales"] += price
+                    staff_data["services"][service_name]["total_sales"] += price
+                    staff_data["services"][service_name]["total_services"] += 1
+
+        staff_revenue = {
+            "month": month_name,
+            "year": current_year,
+            "branches": [
+                {
+                    "branch_name": branch_name,
+                    "staff_data": [
+                        {
+                            "staff_name": staff_name,
+                            "total_invoices": staff_data["total_invoices"],
+                            "total_sales": staff_data["total_sales"],
+                            "services": [
+                                {
+                                    "service_name": service_name,
+                                    "total_sales": service_data["total_sales"],
+                                    "total_services": service_data["total_services"]
+                                }
+                                for service_name, service_data in staff_data["services"].items()
+                            ]
+                        }
+                        for staff_name, staff_data in branch_data["staff_data"].items()
+                    ]
+                }
+                for branch_name, branch_data in grouped_data.items()
+            ]
+        }
+
+        return Response({
+                "list": list(sales_targets),
+                "staff_targets_by_branch": list(staff_targets),
+                "month": month_name,
+                "year": current_year,
+                "branch_revenue": branch_revenue,
+                "staff_revenue": staff_revenue
+            }, status=status.HTTP_200_OK)
     def post(self, request):
         branch_name = request.query_params.get('branch_name')
         obj = SalesTargetSetting.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),vendor_name=request.user)
