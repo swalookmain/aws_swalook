@@ -3840,10 +3840,10 @@ class MergeImagesAPIView(APIView):
     
         logo_img = Image.open(logo_image_file).convert("RGBA")
         logo_img.thumbnail((50, 50))  
-        footer_height = 100
+        footer_height = 75
         footer = Image.new("RGB", (width, footer_height), color="white")
         logo_y = (footer_height - logo_img.height) // 2
-        footer.paste(logo_img, (20, 12), logo_img)
+        footer.paste(logo_img, (20, 16), logo_img)
         draw = ImageDraw.Draw(footer)
         # font = ImageFont.truetype("arial.ttf", 20)
         
@@ -3851,10 +3851,10 @@ class MergeImagesAPIView(APIView):
         
         text_x = 119
         
-        draw.text((5, 2), text, fill="black", font=font)
-        draw.text((text_x, 13), salon_name, fill="black", font=font)
-        draw.text((text_x, 27), f"Mobile: {mobile_number}", fill="black", font=font)
-        draw.text((text_x, 41), address, fill="black", font=font)
+        draw.text((135, 4), text, fill="black", font=font)
+        draw.text((text_x, 17), salon_name, fill="black", font=font)
+        draw.text((text_x, 31), f"Mobile: {mobile_number}", fill="black", font=font)
+        draw.text((text_x, 45), address, fill="black", font=font)
         combined_img = Image.new("RGB", (width, original_height + footer_height), color="white")
         combined_img.paste(original_img, (0, 0))
         combined_img.paste(footer, (0, original_height))
