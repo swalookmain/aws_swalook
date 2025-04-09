@@ -3832,7 +3832,7 @@ class PictureUploadView(APIView):
 class MergeImagesAPIView(APIView):
    
 
-    def add_footer_box(self,original_image_file, logo_image_file, salon_name, mobile_number, address):
+    def add_footer_box(self,original_image_file, logo_image_file, salon_name, mobile_number, text,address):
     
         original_img = Image.open(original_image_file).convert("RGB")
         width, original_height = original_img.size
@@ -3851,6 +3851,7 @@ class MergeImagesAPIView(APIView):
         
         text_x = 115
         
+        draw.text((5, 2), text, fill="black", font=font)
         draw.text((text_x, 9), salon_name, fill="black", font=font)
         draw.text((text_x, 23), f"Mobile: {mobile_number}", fill="black", font=font)
         draw.text((text_x, 36), address, fill="black", font=font)
@@ -3878,7 +3879,7 @@ class MergeImagesAPIView(APIView):
         address = request.data.get('address')
     
 
-        final_image = self.add_footer_box(image, logo, salon_name, mobile_number, address)
+        final_image = self.add_footer_box(image, logo, salon_name, mobile_number, address,text=request.data.get('text'))
     
         return FileResponse(final_image, content_type='image/jpeg')
            
