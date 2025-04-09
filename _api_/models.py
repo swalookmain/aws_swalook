@@ -341,6 +341,7 @@ class SalesTargetSetting(models.Model):
     updated_at = models.CharField(max_length=200, blank=True,null=True)
     vendor_name = models.ForeignKey(User, on_delete=models.CASCADE, null=True, db_index=True)
     vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
+    date = models.DateField()
     
 class VendorStaffAttendance(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
