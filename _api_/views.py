@@ -3566,7 +3566,7 @@ class SalesTargetSettingListCreateView(APIView):
                             status=status.HTTP_400_BAD_REQUEST)
 
         if report_type == "admin":
-            # Sales Target Summary
+           
             sales_targets = (
                 SalesTargetSetting.objects
                 .filter(vendor_name=request.user,month=current_month,year=current_year)
@@ -3602,7 +3602,7 @@ class SalesTargetSettingListCreateView(APIView):
                 for item in branch_revenue_qs
             ]
 
-            # Staff Revenue Details
+            
             invoices = VendorInvoice.objects.filter(
                 vendor_name=request.user,
                 date__year=current_year,
@@ -3675,15 +3675,18 @@ class SalesTargetSettingListCreateView(APIView):
                 "staff_revenue": staff_revenue
             }, status=status.HTTP_200_OK)
 
-        # If type is not admin, just filter by branch
+   
         sales_targets = SalesTargetSetting.objects.filter(
             vendor_branch_id=branch_id,
             vendor_name=request.user,
             month=current_month,
             year=current_year
         ).values()
+        staff_targets = SalesTargetSetting.objects.filter(
+                vendor_name=request.user,month=current_month,year=current_year,vendor_branch_id=branch_id,vendor_name=request.user,
+            ).values('vendor_branch__branch_name', 'staff_targets')
 
-        return Response({"list": list(sales_targets)}, status=status.HTTP_200_OK)
+        return Response({"list": list(sales_targets),"staff_targets":list(staff_targets)}, status=status.HTTP_200_OK)
 
     def post(self, request):
         branch_name = request.query_params.get('branch_name')
