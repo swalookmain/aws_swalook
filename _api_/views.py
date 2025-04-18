@@ -1871,7 +1871,7 @@ class vendor_staff_attendance(APIView):
 
     def put(self, request):
         
-        id = request.query_params.get('id')
+        id = request.query_params.get('staff_id')
         branch_name = request.query_params.get('branch_name')
 
         if not id or not branch_name:
@@ -1885,7 +1885,7 @@ class vendor_staff_attendance(APIView):
         serializer = staff_attendance_serializer(instance, data=request.data, context={'request': request, 'branch_id': branch_name})
         if serializer.is_valid():
             serializer.save()
-            out_time = request.data.get('json_data')[0].get('out_time')
+            out_time = request.data.get('out_time')
             prefered_out_time = StaffAttendanceTime.objects.get(vendor_name=request.user,vendor_branch_id=branch_name)
             # calculation remaining. 
             return Response({"status": True, "out_time":request.data.get('json_data')[0].get('out_time'),"late_time":"" }, status=status.HTTP_200_OK)
