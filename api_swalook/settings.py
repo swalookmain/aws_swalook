@@ -217,6 +217,6 @@ LOGGING = {
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-FB_IG_APP_ID = ""
-FB_IG_APP_SECRET = ""
+IG_FB_APP_ID = ""
+IG_FB_APP_SECRET = ""
 
