@@ -6,6 +6,9 @@ from django.http import FileResponse
 from PIL import Image, ImageDraw, ImageFont
 import json
 import os
+import requests
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 from django.contrib import auth
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
@@ -3880,10 +3883,83 @@ class MergeImagesAPIView(APIView):
     
 
         final_image = self.add_footer_box(image, logo, salon_name, mobile_number, request.data.get('text'),address)
+        IG_FB_shared_picture.objects.create(user=request.user,vendor_branch_id=request.query_params.get('branch_name'),image=final_image)
     
         return FileResponse(final_image, content_type='image/jpeg')
            
        
             
   
+
+
+FB_APP_ID = settings.IG_FB_APP_ID
+FB_APP_SECRET = settings.IG_FB_APP_SECRET
+
+
+
+class FacebookTokenExchange(APIView):
+    def post(self, request):
+        short_token = request.data.get('access_token')
+        url = 'https://graph.facebook.com/v19.0/oauth/access_token'
+        params = {
+            'grant_type': 'fb_exchange_token',
+            'client_id': FB_APP_ID,
+            'client_secret': FB_APP_SECRET,
+            'fb_exchange_token': short_token
+        }
+        response = requests.get(url, params=params)
+        return Response(response.json(), status=response.status_code)
+
+
+class FacebookPages(APIView):
+    def post(self, request):
+        access_token = request.data.get('access_token')
+        url = 'https://graph.facebook.com/v19.0/me/accounts'
+        response = requests.get(url, params={'access_token': access_token})
+        return Response(response.json(), status=response.status_code)
+
+
+class InstagramBusinessID(APIView):
+    def post(self, request):
+        page_id = request.data.get('page_id')
+        access_token = request.data.get('access_token')
+        url = f'https://graph.facebook.com/v19.0/{page_id}'
+        params = {
+            'fields': 'instagram_business_account',
+            'access_token': access_token
+        }
+        response = requests.get(url, params=params)
+        return Response(response.json(), status=response.status_code)
+
+
+
+class InstagramUpload(APIView):
+    def post(self, request):
+        instagram_id = request.data.get('instagram_id')
+        image_object = IG_FB_shared_picture.objects.last(user_request.user,vendor_branch_id=request.query_params.get('branch_name')).values('image')
+        image_url = image_objects[0].url
+        caption = request.data.get('caption')
+        access_token = request.data.get('access_token')
+
+       
+        create_url = f'https://graph.facebook.com/v19.0/{instagram_id}/media'
+        create_data = {
+            'image_url': image_url,
+            'caption': caption,
+            'access_token': access_token
+        }
+        create_res = requests.post(create_url, data=create_data).json()
+        creation_id = create_res.get("id")
+
+        if not creation_id:
+            return Response({'error': 'Failed to create media'}, status=400)
+
+        
+        publish_url = f'https://graph.facebook.com/v19.0/{instagram_id}/media_publish'
+        publish_data = {
+            'creation_id': creation_id,
+            'access_token': access_token
+        }
+        publish_res = requests.post(publish_url, data=publish_data).json()
+        return Response(publish_res)
 
