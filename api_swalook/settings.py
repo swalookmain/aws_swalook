@@ -81,10 +81,10 @@ ROOT_URLCONF = 'api_swalook.urls'
 # SECURE_HSTS_SECONDS = 31536000
 # SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 # SECURE_HSTS_PRELOAD = True
-from rest_framework.throttling import UserRateThrottle
+# from rest_framework.throttling import UserRateThrottle
 
-class InstagramUploadRateThrottle(UserRateThrottle):
-        scope = 'upload_instagram'
+# class InstagramUploadRateThrottle(UserRateThrottle):
+#         scope = 'upload_instagram'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework.authentication.TokenAuthentication',
@@ -92,15 +92,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
-    'DEFAULT_THROTTLE_CLASSES': [
-        'rest_framework.throttling.UserRateThrottle',
-        'rest_framework.throttling.AnonRateThrottle',
-    ],
-    'DEFAULT_THROTTLE_RATES': {
-        'user': '5/minute',
-        'upload_instagram': '5/day',
-      
-    }
+    
 }
 
 TEMPLATES = [
