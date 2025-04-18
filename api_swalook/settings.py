@@ -98,7 +98,7 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_THROTTLE_RATES': {
         'user': '5/minute',
-        'upload_instagram': '3/minute',
+        'upload_instagram': '5/day',
       
     }
 }
