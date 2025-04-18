@@ -1812,7 +1812,7 @@ class vendor_staff_attendance(APIView):
 
         attendance_queryset = VendorStaffAttendance.objects.filter(
             vendor_name=request.user,
-            vendor_branch_id=branch_name,
+            # vendor_branch_id=branch_name,
             of_month=month,
             year=current_date.year,
         ).values(
