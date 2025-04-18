@@ -1693,11 +1693,16 @@ class vendor_staff_setting_slabs(APIView):
                 },
                 'data': None
             }, status=status.HTTP_400_BAD_REQUEST)
-        s_s = StaffSetting.objects.filter(vendor_name=request.user)
+        s_s = StaffSetting.objects.filter(vendor_name=request.user,vendor_branch_id=branch_name)
    
         if len(s_s) != 0:
             
-                s_s.delete()
+            s_s.delete()
+       
+        time_object = StaffAttendanceTime.objects.filter(vendor_name=request.user,vendor_branch_id=branch_name)
+        if len(time_object) != 0:
+            time_object.delete()
+        
               
         serializer = self.serializer_class(data=request.data, context={'request': request, 'branch_id': branch_name})
 
