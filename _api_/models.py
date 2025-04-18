@@ -343,6 +343,7 @@ class SalesTargetSetting(models.Model):
     updated_at = models.CharField(max_length=200, blank=True,null=True)
     vendor_name = models.ForeignKey(User, on_delete=models.CASCADE, null=True, db_index=True)
     vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
+    
 
     
     
@@ -356,6 +357,8 @@ class VendorStaffAttendance(models.Model):
     attend = models.BooleanField(default=False, blank=True, null=True)
     leave = models.BooleanField(default=False, blank=True, null=True)
     staff = models.ForeignKey(VendorStaff, on_delete=models.CASCADE, null=True)
+    in_time =  models.CharField(max_length=200, blank=True)
+    out_time =  models.CharField(max_length=200, blank=True)
 
     class Meta:
         indexes = [
@@ -386,12 +389,19 @@ class StaffSetting(models.Model):
     number_of_working_days = models.IntegerField()
     signature = models.FileField(upload_to="staff-sign", blank=True, null=True)
     month = models.IntegerField(blank=True, null=True)
+    
 
     class Meta:
         indexes = [
             models.Index(fields=['vendor_name', 'vendor_branch', 'month']),
         ]
-
+class StaffAttendanceTime(models.Model):
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    vendor_name = models.ForeignKey(User, on_delete=models.CASCADE, null=True, db_index=True)
+    vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
+    in_time = models.CharField(max_length=200)
+    out_time = models.CharField(max_length=200)
+    
 
 class StaffSettingSlab(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
