@@ -7,6 +7,7 @@ from PIL import Image, ImageDraw, ImageFont
 import json
 import os
 import requests
+from rest_framework.throttling import ScopedRateThrottle
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.contrib import auth
@@ -36,7 +37,8 @@ import datetime as dt
 from django.utils.timezone import now
 from django.utils import timezone
 from datetime import timedelta
-
+FB_APP_ID = settings.IG_FB_APP_ID
+FB_APP_SECRET = settings.IG_FB_APP_SECRET
 
 
 
@@ -3916,16 +3918,9 @@ class MergeImagesAPIView(APIView):
         return FileResponse(final_image, content_type='image/jpeg')
            
        
-            
-  
-
-
-FB_APP_ID = settings.IG_FB_APP_ID
-FB_APP_SECRET = settings.IG_FB_APP_SECRET
-
-
-
 class FacebookTokenExchange(APIView):
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'upload_instagram'
     def post(self, request):
         short_token = request.data.get('access_token')
         url = 'https://graph.facebook.com/v19.0/oauth/access_token'
@@ -3940,6 +3935,8 @@ class FacebookTokenExchange(APIView):
 
 
 class FacebookPages(APIView):
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'upload_instagram'
     def post(self, request):
         access_token = request.data.get('access_token')
         url = 'https://graph.facebook.com/v19.0/me/accounts'
@@ -3948,6 +3945,8 @@ class FacebookPages(APIView):
 
 
 class InstagramBusinessID(APIView):
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'upload_instagram'
     def post(self, request):
         page_id = request.data.get('page_id')
         access_token = request.data.get('access_token')
@@ -3962,6 +3961,8 @@ class InstagramBusinessID(APIView):
 
 
 class InstagramUpload(APIView):
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'upload_instagram'
     def post(self, request):
         instagram_id = request.data.get('instagram_id')
         image_object = IG_FB_shared_picture.objects.last(user_request.user,vendor_branch_id=request.query_params.get('branch_name')).values('image')
