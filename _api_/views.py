@@ -1812,36 +1812,33 @@ class vendor_staff_attendance(APIView):
 
         attendance_queryset = VendorStaffAttendance.objects.filter(
             vendor_name=request.user,
-            # vendor_branch_id=branch_name,
+            vendor_branch_id=branch_name,
             of_month=month,
             year=current_date.year,
-        ).values(
-            "staff_id",
-            "attend",
-            "leave",
-            "date",
-            "in_time",
-            "out_time"
         )
 
         attendance_data = {}
         for record in attendance_queryset:
-            staff_id = record["staff_id"]
+            staff_id = record.staff.id
             if staff_id not in attendance_data:
                 attendance_data[staff_id] = {
                     "present_dates": [],
                     "in_time": [],
+                    "out_time": [],
                     "leave_dates": [],
                     "number_of_days_present": 0,
                     "no_of_days_absent": 0,
                 }
-            if record["attend"]:
-                attendance_data[staff_id]["present_dates"].append(record["date"])
-                attendance_data[staff_id]["in_time"].append(record["in_time"])
-                attendance_data[staff_id]["out_time"].append(record["out_time"])
+                
+            
+            if record.attend:
+                attendance_data[staff_id]["present_dates"].append(record.date)
+                attendance_data[staff_id]["in_time"].append(record.in_time)
+                attendance_data[staff_id]["out_time"].append(record.out_time)
+           
                 attendance_data[staff_id]["number_of_days_present"] += 1
-            if record["leave"]:
-                attendance_data[staff_id]["leave_dates"].append(record["date"])
+            if record.leave:
+                attendance_data[staff_id]["leave_dates"].append(record.date)
                 attendance_data[staff_id]["no_of_days_absent"] += 1
          
                
