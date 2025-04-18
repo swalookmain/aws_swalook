@@ -1852,11 +1852,13 @@ class vendor_staff_attendance(APIView):
             vendor_branch_id = branch_name,
             month=month,
         ).first()
-
+        time_obj = StaffAttendanceTime.objects.get(vendor_name=request.user,vendor_branch_id = branch_name)
         return Response({
             "status": True,
             "table_data": all_staff_attendance,
             "current_month_days": staff_settings_obj.number_of_working_days if staff_settings_obj else 0,
+            "in_time": time_obj.in_time,
+            "out_time": time_obj.out_time,
             "message": "Attendance records retrieved successfully."
         }, status=status.HTTP_200_OK)
 
