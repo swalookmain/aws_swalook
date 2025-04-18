@@ -1878,7 +1878,7 @@ class vendor_staff_attendance(APIView):
             return Response({"status": False, "text": "ID and branch name are required."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            instance = VendorStaffAttendance.objects.get(id=id)
+            instance = VendorStaffAttendance.objects.get(staff_id=id,date=dt.date.today())
         except ObjectDoesNotExist:
             return Response({"status": False, "text": "Attendance not found."}, status=status.HTTP_404_NOT_FOUND)
 
