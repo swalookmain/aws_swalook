@@ -1819,7 +1819,9 @@ class vendor_staff_attendance(APIView):
             "staff_id",
             "attend",
             "leave",
-            "date"
+            "date",
+            "in_time",
+            "out_time"
         )
 
         attendance_data = {}
@@ -1828,16 +1830,22 @@ class vendor_staff_attendance(APIView):
             if staff_id not in attendance_data:
                 attendance_data[staff_id] = {
                     "present_dates": [],
+                    "in_time": [],
                     "leave_dates": [],
                     "number_of_days_present": 0,
                     "no_of_days_absent": 0,
                 }
             if record["attend"]:
                 attendance_data[staff_id]["present_dates"].append(record["date"])
+                attendance_data[staff_id]["in_time"].append(record["in_time"])
+                attendance_data[staff_id]["out_time"].append(record["out_time"])
                 attendance_data[staff_id]["number_of_days_present"] += 1
             if record["leave"]:
                 attendance_data[staff_id]["leave_dates"].append(record["date"])
                 attendance_data[staff_id]["no_of_days_absent"] += 1
+         
+               
+      
 
         all_staff_attendance = {}
         for staff_member in staff:
@@ -1885,7 +1893,7 @@ class vendor_staff_attendance(APIView):
         serializer = staff_attendance_serializer(instance, data=request.data, context={'request': request, 'branch_id': branch_name})
         if serializer.is_valid():
             serializer.save()
-            out_time = request.data.get('out_time')
+            out_time = request.data.get('json_data')[0].get('out_time')
             prefered_out_time = StaffAttendanceTime.objects.get(vendor_name=request.user,vendor_branch_id=branch_name)
             # calculation remaining. 
             return Response({"status": True, "out_time":request.data.get('json_data')[0].get('out_time'),"late_time":"" }, status=status.HTTP_200_OK)
