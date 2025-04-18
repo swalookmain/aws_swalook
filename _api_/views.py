@@ -1776,13 +1776,19 @@ class vendor_staff_attendance(APIView):
         serializer = self.serializer_class(data=request.data, context={'request': request, 'branch_id': branch_name})
 
         serializer.create(validated_data=request.data)
+        prefered_in_time = StaffAttendanceTime.objects.get(vendor_name=request.user,vendor_branch_id=branch_name)
+        # calculation remaining. 
         return Response({
             "status": True,
-            "message": "staff attendance added successfully."
+            "message": "staff attendance added successfully.",
+            "in_time":request.data.get('json_data')[0].get('in_time'),
+            "late_time":""
+            
         }, status=status.HTTP_201_CREATED)
 
     def get(self, request):
         branch_name = request.query_params.get('branch_name')
+        month = request.query_params.get('month')
         if not branch_name:
             return Response({
                 'success': False,
@@ -1794,13 +1800,13 @@ class vendor_staff_attendance(APIView):
                 'data': None
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        staff = VendorStaff.objects.filter(vendor_name=request.user)
+        staff = VendorStaff.objects.filter(vendor_name=request.user,vendor_branch_id=branch_name)
         current_date = dt.date.today()
 
         attendance_queryset = VendorStaffAttendance.objects.filter(
             vendor_name=request.user,
             vendor_branch_id=branch_name,
-            of_month=current_date.month,
+            of_month=month,
             year=current_date.year,
         ).values(
             "staff_id",
@@ -1837,13 +1843,14 @@ class vendor_staff_attendance(APIView):
             })
             all_staff_attendance[staff_member.mobile_no] = {
                 "id": staff_id,
-                "month": current_date.month,
+                "month": month,
                 **data
             }
 
         staff_settings_obj = StaffSetting.objects.filter(
             vendor_name=request.user,
-            month=current_date.month
+            vendor_branch_id = branch_name,
+            month=month,
         ).first()
 
         return Response({
@@ -1854,7 +1861,26 @@ class vendor_staff_attendance(APIView):
         }, status=status.HTTP_200_OK)
 
     def put(self, request):
-        pass
+        
+        id = request.query_params.get('id')
+        branch_name = request.query_params.get('branch_name')
+
+        if not id or not branch_name:
+            return Response({"status": False, "text": "ID and branch name are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            instance = VendorStaffAttendance.objects.get(id=id)
+        except ObjectDoesNotExist:
+            return Response({"status": False, "text": "Attendance not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = staff_attendance_serializer(instance, data=request.data, context={'request': request, 'branch_id': branch_name})
+        if serializer.is_valid():
+            serializer.save()
+            out_time = request.data.get('json_data')[0].get('out_time')
+            prefered_out_time = StaffAttendanceTime.objects.get(vendor_name=request.user,vendor_branch_id=branch_name)
+            # calculation remaining. 
+            return Response({"status": True, "out_time":request.data.get('json_data')[0].get('out_time'),"late_time":"" }, status=status.HTTP_200_OK)
+        return Response({"status": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request):
         pass
