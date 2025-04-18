@@ -117,7 +117,7 @@ urlpatterns = [
     path('api/swalook/fb/exchange-token/', FacebookTokenExchange.as_view(),name='authentication-instagram'),
     path('api/swalook/fb/pages/', FacebookPages.as_view(),name='pages-instagram'),
     path('api/swalook/fb/instagram-id/', InstagramBusinessID.as_view(),name='getting-id-for-page-instagram'),
-    path('api/swalook/fb/upload-instagram/', InstagramUpload.as_view()),name='image-upload-instagram',
+    path('api/swalook/fb/upload-instagram/', InstagramUpload.as_view(),name='image-upload-instagram'),
     re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}, name='media'),
     re_path(r'^static/(?P<path>.*)$', serve, {'document_root': settings.STATIC_URL}, name='static'),
 ]
