@@ -480,7 +480,7 @@ class staff_serializer(serializers.ModelSerializer):
 
 class staff_attendance_serializer(serializers.Serializer):
     json_data = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
-
+    
     def create(self, validated_data):
         for objects in validated_data['json_data']:
             attendance_staff_object = VendorStaffAttendance()
@@ -491,10 +491,21 @@ class staff_attendance_serializer(serializers.Serializer):
             attendance_staff_object.attend = objects.get('attend')
             attendance_staff_object.staff_id = self.context.get('request').query_params.get('staff_id')
             attendance_staff_object.date = objects.get('date')
+            
+            attendance_staff_object.in_time = objects.get('in_time')
+            attendance_staff_object.out_time = ""
             attendance_staff_object.save()
 
         return "ok"
 
+    
+    def update(self, instance, validated_data):
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        
+        instance.save()
+        return instance
 
 class staff_setting_serializer(serializers.ModelSerializer):
     class Meta:
@@ -538,11 +549,12 @@ class staff_setting_serializer_get(ModelSerializer):
 
 class staff_update_earning_deduction_serializer(ModelSerializer):
     json_data = serializers.DictField(child=serializers.CharField())
-    # slab_data = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
+    in_time = serializers.CharField()
+    out_time = serializers.CharField()
 
     class Meta:
         model = StaffSetting
-        fields = ["json_data"]
+        fields = ["json_data","in_time","out_time"]
 
     def create(self, validated_data):
         staff_settings = []
@@ -555,18 +567,13 @@ class staff_update_earning_deduction_serializer(ModelSerializer):
                 vendor_branch_id = self.context.get('branch_id')
             )
             staff_settings.append(s)
-
-        # staff_slabs = []
-        # slab_data = validated_data['slab_data']
-        # for i in validated_data['slab_data']:
-        #     s = StaffSettingSlab(
-        #         vendor_name=self.context.get('request').user,
-        #         vendor_branch_id = self.context.get('branch_id'),
-        #         staff_slab=i.get("staff_slab"),
-        #         staff_target_business=i.get("staff_target_business"),
-        #         staff_commision_cap=i.get("staff_commision_cap"),
-        #     )
-        #     staff_slabs.append(s)
+        StaffAttendanceTime.objects.create(
+            vendor_name=self.context.get('request').user,
+            vendor_branch_id = self.context.get('branch_id'),
+            in_time=validated_data.get('in_time'),
+            out_time=validated_data.get('out_time')
+        )
+        
 
         StaffSetting.objects.bulk_create(staff_settings)
         # StaffSettingSlab.objects.bulk_create(staff_slabs)
