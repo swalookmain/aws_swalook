@@ -1834,7 +1834,7 @@ class vendor_staff_attendance(APIView):
             if record.attend:
                 attendance_data[staff_id]["present_dates"].append(record.date)
                 attendance_data[staff_id]["in_time"].append(record.in_time)
-                attendance_data[staff_id]["out_time"].append(record.out_time)
+         
            
                 attendance_data[staff_id]["number_of_days_present"] += 1
             if record.leave:
