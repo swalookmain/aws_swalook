@@ -619,6 +619,16 @@ class Picture(models.Model):
     def __str__(self):
         return self.image_name
 
+
+class IG_FB_shared_picture(models.Model):
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, db_index=True)
+    vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
+    image = models.ImageField(upload_to='clp')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    
+
+    
     
 
    
