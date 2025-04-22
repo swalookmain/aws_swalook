@@ -1937,50 +1937,137 @@ class vendor_staff_attendance(APIView):
         pass
 
 
+# class salary_disburse(APIView):
+#     permission_classes = [IsAuthenticated]
+#     serializer_class = staff_salary_serializer
+
+#     def __init__(self, **kwargs):
+#         self.cache_key = None
+
+#     def get(self, request):
+#         id = request.query_params.get('id')
+#         staff_attendance = VendorStaffAttendance.objects.filter(staff_id=id, of_month=dt.date.today().month)
+#         staff_setting = StaffSetting.objects.select_related('vendor_name').get(vendor_name=request.user, month=dt.date.today().month)
+#         staff_slab = StaffSettingSlab.objects.select_related('vendor_name').filter(vendor_name=request.user).values_list('staff_target_business', 'staff_slab').order_by('-staff_target_business')
+
+#         def calculate_commission(business_amount, slabs):
+#             commission = 0
+#             for threshold, percentage in slabs:
+#                 if business_amount > int(threshold):
+#                     extra_amount = int(business_amount) - int(threshold)
+#                     commission += (extra_amount * float(percentage)) / 100
+#             return commission
+
+#         commission = calculate_commission(int(staff_attendance[0].staff.business_of_the_current_month), staff_slab)
+#         staff_salary = StaffSalary()
+
+#         staff_salary.of_month = dt.date.today().month
+#         staff_salary.salary_payble_amount = (int(staff_attendance[0].staff.staff_salary_monthly) / staff_setting.number_of_working_days) * int(staff_attendance.count())
+#         staff_salary.salary_payble_amount = staff_salary.salary_payble_amount + commission
+#         staff_salary.staff_id = id
+#         staff_salary.year = dt.date.today().year
+#         staff_salary.save()
+
+#         serializer = staff_salary_serializer(staff_salary)
+
+#         if commission == 0:
+#             commission = int(staff_salary.salary_payble_amount)
+
+#         return Response({
+#             "status": True,
+#             "id": id,
+#             "net_payble_amount": int(staff_salary.salary_payble_amount),
+#             "no_of_working_days": staff_attendance.count(),
+#             "earning": commission,
+#             "message": "staff salary records retrieved successfully."
+#         }, status=status.HTTP_200_OK)
+
+
+from datetime import datetime
+
 class salary_disburse(APIView):
     permission_classes = [IsAuthenticated]
     serializer_class = staff_salary_serializer
 
-    def __init__(self, **kwargs):
-        self.cache_key = None
-
     def get(self, request):
         id = request.query_params.get('id')
-        staff_attendance = VendorStaffAttendance.objects.filter(staff_id=id, of_month=dt.date.today().month)
-        staff_setting = StaffSetting.objects.select_related('vendor_name').get(vendor_name=request.user, month=dt.date.today().month)
-        staff_slab = StaffSettingSlab.objects.select_related('vendor_name').filter(vendor_name=request.user).values_list('staff_target_business', 'staff_slab').order_by('-staff_target_business')
+        if not id:
+            return Response({"status": False, "message": "Staff ID is required."}, status=status.HTTP_400_BAD_REQUEST)
 
+        today = dt.date.today()
+        month = today.month
+        year = today.year
+
+        staff_attendance = VendorStaffAttendance.objects.filter(staff_id=id, of_month=month)
+        if not staff_attendance.exists():
+            return Response({"status": False, "message": "No attendance found for this staff."}, status=status.HTTP_404_NOT_FOUND)
+
+        staff_setting = StaffSetting.objects.get(vendor_name=request.user, month=month)
+        staff_slab = StaffSettingSlab.objects.filter(vendor_name=request.user).values_list('staff_target_business', 'staff_slab').order_by('-staff_target_business')
+        working_days = staff_attendance.count()
+
+       
+        business_amount = int(staff_attendance[0].staff.business_of_the_current_month)
         def calculate_commission(business_amount, slabs):
             commission = 0
             for threshold, percentage in slabs:
                 if business_amount > int(threshold):
-                    extra_amount = int(business_amount) - int(threshold)
+                    extra_amount = business_amount - int(threshold)
                     commission += (extra_amount * float(percentage)) / 100
             return commission
 
-        commission = calculate_commission(int(staff_attendance[0].staff.business_of_the_current_month), staff_slab)
-        staff_salary = StaffSalary()
+        commission = calculate_commission(business_amount, staff_slab)
 
-        staff_salary.of_month = dt.date.today().month
-        staff_salary.salary_payble_amount = (int(staff_attendance[0].staff.staff_salary_monthly) / staff_setting.number_of_working_days) * int(staff_attendance.count())
-        staff_salary.salary_payble_amount = staff_salary.salary_payble_amount + commission
-        staff_salary.staff_id = id
-        staff_salary.year = dt.date.today().year
-        staff_salary.save()
+   
+        try:
+            attendance_time = StaffAttendanceTime.objects.get(vendor_name=request.user, vendor_branch=staff_attendance[0].vendor_branch)
+            required_in_time = datetime.strptime(attendance_time.in_time, "%H:%M")
+        except StaffAttendanceTime.DoesNotExist:
+            return Response({"status": False, "message": "Attendance time not set for this branch."}, status=status.HTTP_400_BAD_REQUEST)
+
+        working_hours_per_day = (datetime.strptime(attendance_time.out_time, "%H:%M") - required_in_time).seconds / 3600
+        total_required_minutes = int(working_hours_per_day * working_days * 60)
+
+        
+        late_minutes_total = 0
+        for entry in staff_attendance:
+            try:
+                if entry.in_time:
+                    actual_in = datetime.strptime(entry.in_time, "%H:%M")
+                    late_diff = (actual_in - required_in_time).total_seconds() / 60
+                    if late_diff > 0:
+                        late_minutes_total += int(late_diff)
+            except Exception:
+                pass  
+     
+        base_salary = int(staff_attendance[0].staff.staff_salary_monthly)
+        salary_per_minute = base_salary / total_required_minutes
+        late_fine = late_minutes_total * salary_per_minute
+        payable_salary = ((base_salary / staff_setting.number_of_working_days) * working_days) + commission - late_fine
+
+        
+        staff_salary = StaffSalary.objects.create(
+            of_month=month,
+            year=year,
+            staff_id=id,
+            salary_payble_amount=payable_salary
+        )
 
         serializer = staff_salary_serializer(staff_salary)
-
-        if commission == 0:
-            commission = int(staff_salary.salary_payble_amount)
 
         return Response({
             "status": True,
             "id": id,
-            "net_payble_amount": int(staff_salary.salary_payble_amount),
-            "no_of_working_days": staff_attendance.count(),
-            "earning": commission,
-            "message": "staff salary records retrieved successfully."
+            "net_payble_amount": round(payable_salary, 2),
+            "no_of_working_days": working_days,
+            "total_required_minutes": total_required_minutes,
+            "late_minutes": late_minutes_total,
+            "salary_per_minute": round(salary_per_minute, 2),
+            "late_fine": round(late_fine, 2),
+            "commission": round(commission, 2),
+            "message": "Staff salary calculated successfully."
         }, status=status.HTTP_200_OK)
+
 
 class Sales_Per_Customer(APIView):
     permission_classes = [IsAuthenticated]
