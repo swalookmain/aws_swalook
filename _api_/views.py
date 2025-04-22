@@ -1887,7 +1887,7 @@ class vendor_staff_attendance(APIView):
         if type == "admin":
            for i in request.data.get('json_data'):
                 # try:
-                    instance = VendorStaffAttendance.objects.get(staff_id=id,date=i.get('date'))
+                    instance, created = VendorStaffAttendance.objects.get_or_create(staff_id=id,date=i.get('date'))
                     instance.in_time = i.get('in_time')
                     instance.out_time = i.get('out_time')
                     instance.attend = i.get('attend')
