@@ -1897,7 +1897,7 @@ class vendor_staff_attendance(APIView):
                     instance.save()
                 
                     
-                except ObjectDoesNotExist:
+                except Exception:
                     instance = VendorStaffAttendance()
                     instance.in_time = i.get('in_time')
                     instance.out_time = i.get('out_time')
