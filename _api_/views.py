@@ -1896,12 +1896,12 @@ class vendor_staff_attendance(APIView):
                     instance.year = i.get('year')
                     instance.save()
                 except VendorStaffAttendance.DoesNotExist:
-                    # Ensure all required fields are provided
+         
                     instance = VendorStaffAttendance(
                         staff_id=id,
                         vendor_name=request.user,
-                        vendor_branch_id=request.query_params.get('vendor_branch_id'),
-                        date=i.get('date'),  # ✅ This was missing
+                        vendor_branch_id=request.query_params.get('branch_name'),
+                        date=i.get('date'),  
                         in_time=i.get('in_time'),
                         out_time=i.get('out_time'),
                         attend=i.get('attend'),
