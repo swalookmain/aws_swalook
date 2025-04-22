@@ -1886,7 +1886,7 @@ class vendor_staff_attendance(APIView):
             return Response({"status": False, "text": "ID and branch name are required."}, status=status.HTTP_400_BAD_REQUEST)
         if type == "admin":
            for i in request.data.get('json_data'):
-                try:
+                # try:
                     instance = VendorStaffAttendance.objects.get(staff_id=id,date=i.get('date'))
                     instance.in_time = i.get('in_time')
                     instance.out_time = i.get('out_time')
@@ -1897,17 +1897,17 @@ class vendor_staff_attendance(APIView):
                     instance.save()
                 
                     
-                except ObjectDoesNotExist:
-                    VendorStaffAttendance.objects.create(
-                        in_time = i.get('in_time'),
-                        out_time = i.get('out_time'),
-                        of_month = i.get('of_month'),
-                        year = i.get('year'),
-                        attend = i.get('attend'),
-                        leave = i.get('leave'),
-                        staff_id = request.query_params.get('staff_id'),
-                        vendor_name = request.user,
-                        vendor_branch_id = request.query_params.get('vendor_branch_id'),
+                # except ObjectDoesNotExist:
+                #     VendorStaffAttendance.objects.create(
+                #         in_time = i.get('in_time'),
+                #         out_time = i.get('out_time'),
+                #         of_month = i.get('of_month'),
+                #         year = i.get('year'),
+                #         attend = i.get('attend'),
+                #         leave = i.get('leave'),
+                #         staff_id = request.query_params.get('staff_id'),
+                #         vendor_name = request.user,
+                #         vendor_branch_id = request.query_params.get('vendor_branch_id'),
                         
                         
                         
