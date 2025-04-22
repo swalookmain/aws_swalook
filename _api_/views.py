@@ -1894,6 +1894,8 @@ class vendor_staff_attendance(APIView):
                     instance.leave = i.get('leave')
                     instance.of_month = i.get('of_month')
                     instance.year = i.get('year')
+                    instance.staff_id = id
+                    instance.date = i.get('date')
                     instance.save()
                 
                     
