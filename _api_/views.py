@@ -1881,21 +1881,41 @@ class vendor_staff_attendance(APIView):
         id = request.query_params.get('staff_id')
         branch_name = request.query_params.get('branch_name')
         type = request.query_params.get('type')
-        start_date = request.query_params.get('start_date')
-        end_date = request.query_params.get('end_date')
-
+       
         if not id or not branch_name:
             return Response({"status": False, "text": "ID and branch name are required."}, status=status.HTTP_400_BAD_REQUEST)
         if type == "admin":
-            try:
-                instance = VendorStaffAttendance.objects.filter(staff_id=id,date__range=[start_date,end_date])
-            except ObjectDoesNotExist:
-                return Response({"status": False, "text": "Attendance not found."}, status=status.HTTP_404_NOT_FOUND)
-            for datas in instance:
-                serializer = staff_attendance_serializer(datas, data=request.data, context={'request': request, 'branch_id': branch_name,'type':'admin'})
-                if serializer.is_valid():
-                    serializer.save()
-            return Response({"status":"True"})
+           for i in request.data.get('json_data'):
+                try:
+                    instance = VendorStaffAttendance.objects.get(staff_id=id,date=i.get('date'))
+                    instance.in_time = i.get('in_time')
+                    instance.out_time = i.get('out_time')
+                    instance.attend = i.get('attend')
+                    instance.leave = i.get('leave')
+                    instance.of_month = i.get('of_month')
+                    instance.year = i.get('year')
+                    instance.save()
+                
+                    
+                except ObjectDoesNotExist:
+                    VendorStaffAttendance.objects.create(
+                        in_time = i.get('in_time'),
+                        out_time = i.get('out_time'),
+                        of_month = i.get('of_month'),
+                        year = i.get('year'),
+                        attend = i.get('attend'),
+                        leave = i.get('leave'),
+                        staff_id = request.query_params.get('staff_id'),
+                        user = request.user,
+                        vendor_branch_id = request.query_params.get('vendor_branch_id'),
+                        
+                        
+                        
+                    )
+                    
+            
+            
+           return Response({"status":"True"})
         else:
     
             try:
