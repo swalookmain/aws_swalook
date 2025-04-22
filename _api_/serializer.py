@@ -500,7 +500,12 @@ class staff_attendance_serializer(serializers.Serializer):
 
     
     def update(self, instance, validated_data):
-        validated_data['out_time'] = validated_data.pop('json_data')[0].get('out_time')
+        
+        if self.context.get('type') == "admin":
+            validated_data['out_time'] = validated_data.pop('json_data')[0].get('out_time')
+            validated_data['in_time'] = validated_data.pop('json_data')[0].get('in_time')
+        else:
+            validated_data['out_time'] = validated_data.pop('json_data')[0].get('out_time')
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
 
