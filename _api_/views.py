@@ -1885,9 +1885,9 @@ class vendor_staff_attendance(APIView):
         if not id or not branch_name:
             return Response({"status": False, "text": "ID and branch name are required."}, status=status.HTTP_400_BAD_REQUEST)
         if type == "admin":
-           for i in request.data.get('json_data'):
+            for i in request.data.get('json_data'):
                 try:
-                    instance = VendorStaffAttendance.objects.get(staff_id=id,date=i.get('date'))
+                    instance = VendorStaffAttendance.objects.get(staff_id=id, date=i.get('date'))
                     instance.in_time = i.get('in_time')
                     instance.out_time = i.get('out_time')
                     instance.attend = i.get('attend')
@@ -1895,28 +1895,28 @@ class vendor_staff_attendance(APIView):
                     instance.of_month = i.get('of_month')
                     instance.year = i.get('year')
                     instance.save()
-                
-                    
-                except Exception:
-                    instance = VendorStaffAttendance()
-                    instance.in_time = i.get('in_time')
-                    instance.out_time = i.get('out_time')
-                    instance.of_month = i.get('of_month')
-                    instance.year = i.get('year')
-                    instance.attend = i.get('attend')
-                    instance.leave = i.get('leave')
-                    instance.staff_id = request.query_params.get('staff_id')
-                    instance.vendor_name = request.user
-                    instance.vendor_branch_id = request.query_params.get('vendor_branch_id')
+                except VendorStaffAttendance.DoesNotExist:
+                    # Ensure all required fields are provided
+                    instance = VendorStaffAttendance(
+                        staff_id=id,
+                        vendor_name=request.user,
+                        vendor_branch_id=request.query_params.get('vendor_branch_id'),
+                        date=i.get('date'),  # ✅ This was missing
+                        in_time=i.get('in_time'),
+                        out_time=i.get('out_time'),
+                        attend=i.get('attend'),
+                        leave=i.get('leave'),
+                        of_month=i.get('of_month'),
+                        year=i.get('year'),
+                    )
                     instance.save()
-                        
-                        
-                        
-                   
-                    
+                except Exception as e:
+                    return Response({"status": False, "error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
             
             
-           return Response({"status":"True"})
+            
+            return Response({"status": True})
         else:
     
             try:
