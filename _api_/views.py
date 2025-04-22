@@ -1906,7 +1906,7 @@ class vendor_staff_attendance(APIView):
                         attend = i.get('attend'),
                         leave = i.get('leave'),
                         staff_id = request.query_params.get('staff_id'),
-                        user = request.user,
+                        vendor_name = request.user,
                         vendor_branch_id = request.query_params.get('vendor_branch_id'),
                         
                         
