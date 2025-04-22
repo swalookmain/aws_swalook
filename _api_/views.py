@@ -3945,8 +3945,8 @@ class MergeImagesAPIView(APIView):
            
        
 class FacebookTokenExchange(APIView):
-    throttle_classes = [ScopedRateThrottle]
-    throttle_scope = 'upload_instagram'
+    # throttle_classes = [ScopedRateThrottle]
+    # throttle_scope = 'upload_instagram'
     def post(self, request):
         short_token = request.data.get('access_token')
         url = 'https://graph.facebook.com/v19.0/oauth/access_token'
@@ -3961,8 +3961,8 @@ class FacebookTokenExchange(APIView):
 
 
 class FacebookPages(APIView):
-    throttle_classes = [ScopedRateThrottle]
-    throttle_scope = 'upload_instagram'
+    # throttle_classes = [ScopedRateThrottle]
+    # throttle_scope = 'upload_instagram'
     def post(self, request):
         access_token = request.data.get('access_token')
         url = 'https://graph.facebook.com/v19.0/me/accounts'
@@ -3971,8 +3971,8 @@ class FacebookPages(APIView):
 
 
 class InstagramBusinessID(APIView):
-    throttle_classes = [ScopedRateThrottle]
-    throttle_scope = 'upload_instagram'
+    # throttle_classes = [ScopedRateThrottle]
+    # throttle_scope = 'upload_instagram'
     def post(self, request):
         page_id = request.data.get('page_id')
         access_token = request.data.get('access_token')
@@ -3987,8 +3987,8 @@ class InstagramBusinessID(APIView):
 
 
 class InstagramUpload(APIView):
-    throttle_classes = [ScopedRateThrottle]
-    throttle_scope = 'upload_instagram'
+    # throttle_classes = [ScopedRateThrottle]
+    # throttle_scope = 'upload_instagram'
     def post(self, request):
         instagram_id = request.data.get('instagram_id')
         image_object = IG_FB_shared_picture.objects.last(user_request.user,vendor_branch_id=request.query_params.get('branch_name')).values('image')
