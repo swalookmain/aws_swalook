@@ -3674,7 +3674,7 @@ class ModeOfPaymentAPI(APIView):
             mode = invoice.mode_of_payment
             if mode and isinstance(mode, str):
                 mode_clean = mode.strip().lower()
-                mode_totals[mode_clean] += invoice.grand_total or 0
+                mode_totals[mode_clean] += float(invoice.grand_total)
 
             if isinstance(invoice.new_mode, list):
                 for item in invoice.new_mode:
