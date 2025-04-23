@@ -2015,6 +2015,7 @@ class salary_disburse(APIView):
 
     def get(self, request):
         id = request.query_params.get('id')
+        branch_name = request.query_params.get('branch_name')
         if not id:
             return Response({"status": False, "message": "Staff ID is required."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -2027,7 +2028,7 @@ class salary_disburse(APIView):
             return Response({"status": False, "message": "No attendance found for this staff."}, status=status.HTTP_404_NOT_FOUND)
 
         staff_setting = StaffSetting.objects.get(vendor_name=request.user, month=month)
-        staff_slab = StaffSettingSlab.objects.filter(vendor_name=request.user).values_list('staff_target_business', 'staff_slab').order_by('-staff_target_business')
+        staff_slab = StaffSettingSlab.objects.filter(vendor_name=request.user,vendor_branch_id=branch_name).values_list('staff_target_business', 'staff_slab').order_by('-staff_target_business')
         working_days = staff_attendance.count()
 
        
@@ -2044,7 +2045,7 @@ class salary_disburse(APIView):
 
    
         try:
-            attendance_time = StaffAttendanceTime.objects.get(vendor_name=request.user, vendor_branch=staff_attendance[0].vendor_branch)
+            attendance_time = StaffAttendanceTime.objects.get(vendor_name=request.user, vendor_branch_id=branch_name)
             required_in_time = datetime.strptime(attendance_time.in_time, "%H:%M")
         except StaffAttendanceTime.DoesNotExist:
             return Response({"status": False, "message": "Attendance time not set for this branch."}, status=status.HTTP_400_BAD_REQUEST)
