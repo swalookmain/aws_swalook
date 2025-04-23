@@ -3681,7 +3681,7 @@ class ModeOfPaymentAPI(APIView):
                     if isinstance(item, dict):
                         new_mode = item.get("mode", "").strip().lower()
                         amount = item.get("amount", 0)
-                        new_mode_totals[new_mode] += amount
+                        new_mode_totals[new_mode] += float(amount)
 
         response_data = [{"mode": mode, "amount": round(amount, 2)} for mode, amount in mode_totals.items()]
         response_data_1 = [{"mode": mode, "amount": round(amount, 2)} for mode, amount in new_mode_totals.items()]
