@@ -3640,11 +3640,11 @@ class StaffRevenueAPI(APIView):
 
 
 
+
 class ModeOfPaymentAPI(APIView):
     permission_classes = [IsAuthenticated]
     
     def get(self, request):
-        from collections import defaultdict
         branch_name = request.query_params.get('branch_name')
         filter_type = request.query_params.get('filter')
         date_value = request.query_params.get('date')
@@ -3652,9 +3652,9 @@ class ModeOfPaymentAPI(APIView):
         end_date = request.query_params.get('end_date')
         month_value = request.query_params.get('month')
         year_value = request.query_params.get('year')
-        
+
         invoices = VendorInvoice.objects.filter(vendor_name=request.user, vendor_branch_id=branch_name)
-        
+
         if filter_type == 'day' and date_value:
             invoices = invoices.filter(date=date_value)
         elif filter_type == 'week' and start_date and end_date:
@@ -3665,20 +3665,23 @@ class ModeOfPaymentAPI(APIView):
             invoices = invoices.filter(date__year=year_value)
         else:
             return Response({"error": "Invalid filter parameters."}, status=400)
-        
-       
+
         mode_totals = defaultdict(float)
         new_mode_totals = defaultdict(float)
 
         for invoice in invoices:
-            mode = (invoice.mode_of_payment or "").strip().lower()
-            new_mode = (invoice.new_mode or "").strip().lower()
-            total = invoice.grand_total or 0
+          
+            mode = invoice.mode_of_payment
+            if mode and isinstance(mode, str):
+                mode_clean = mode.strip().lower()
+                mode_totals[mode_clean] += invoice.grand_total or 0
 
-            if mode:
-                mode_totals[mode] += total
-            if new_mode:
-                new_mode_totals[new_mode] += total
+            if isinstance(invoice.new_mode, list):
+                for item in invoice.new_mode:
+                    if isinstance(item, dict):
+                        new_mode = item.get("mode", "").strip().lower()
+                        amount = item.get("amount", 0)
+                        new_mode_totals[new_mode] += amount
 
         response_data = [{"mode": mode, "amount": round(amount, 2)} for mode, amount in mode_totals.items()]
         response_data_1 = [{"mode": mode, "amount": round(amount, 2)} for mode, amount in new_mode_totals.items()]
@@ -3687,6 +3690,7 @@ class ModeOfPaymentAPI(APIView):
             "data_of_mode_of_payment": response_data,
             "data_of_new_mode": response_data_1
         })
+
 
 
 class RevenueSummaryAPI(APIView):
