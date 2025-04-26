@@ -1182,3 +1182,34 @@ class ImageMergeSerializer(serializers.Serializer):
     image2 = serializers.ImageField()
 
 
+
+
+class RenderInvoicePreviewDataSerializer(serializers.ModelSerializer):
+    grand_total = serializers.SerializerMethodField(read_only=True)
+    total_quantity = serializers.SerializerMethodField(read_only=True))
+    total_price = serializers.SerializerMethodField(read_only=True))
+
+    class Meta:
+        model = RenderInvoicePreviewData
+        fields = '__all__'
+        read_only_fields  = ["id","user","vendor_branch"]
+
+    def get_grand_total(self, obj):
+        return sum(float(item.get('total_amount', 0)) for item in obj.services)
+
+    def get_total_quantity(self, obj):
+        return sum(int(item.get('quantity', 0)) for item in obj.services)
+
+    def get_total_price(self, obj):
+        return sum(float(item.get('price', 0)) * int(item.get('quantity', 1)) for item in obj.services)
+
+
+
+
+    def create(self,validated_data):
+        validated_data['user'] = self.context.get('user')
+        validated_data['vendor_branch_id'] = self.context.get('branch_id')
+
+        return super().create(validated_data)
+
+
