@@ -96,6 +96,7 @@ urlpatterns = [
     path('api/swalook/business-analysis/service/', service_analysis.as_view(), name='business_analysis_service'),
     path('api/swalook/business-analysis/headers/', busniess_headers.as_view(), name='business_analysis_headers'),
     path('api/swalook/get-customer-bill-app-data/', GetCustomerBillAppDetails.as_view(), name='get_customer_bill_app_data'),
+    path('api/swalook/get-customer-bill-app-data/2/', GetCustomerBillAppDetails_copy.as_view(), name='get_customer_bill_app_data_copy'),
     path('api/swalook/expense_management/', expense_management.as_view(), name='expense_management'),
     path('api/swalook/expense_category/', expense_category.as_view(), name='expense_category'),
     path('api/swalook/service_category/', service_category.as_view(), name='service_category'),
