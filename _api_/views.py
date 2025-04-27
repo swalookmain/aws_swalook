@@ -2546,7 +2546,7 @@ class GetCustomerBillAppDetails_copy(APIView):
             # "customer_email": customer_email,
             # "customer_dob": customer_dob,
             # "customer_doa": customer_doa,
-            "total_billing_amount": total_billing_amount,
+            "total_billing_amount": total_billing_amount,})
 
 class GetCustomerBillAppDetails(APIView):
     permission_classes = [IsAuthenticated]
