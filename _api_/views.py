@@ -2481,6 +2481,72 @@ class top5_header_staff_revenue(APIView):
             "mode_of_payment": response_data,
             "today_no_of_app": appointmet_today_count,
         })
+class GetCustomerBillAppDetails_copy(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        mobile_no = request.query_params.get('mobile_no')
+        branch_name = request.query_params.get('branch_name')
+
+        if not mobile_no:
+            return Response({
+                "status": False,
+                "message": "Mobile number is required."
+            }, status=400)
+        if not branch_name:
+            return Response({
+                "status": False,
+                "message": "Branch_name is required."
+            }, status=400)
+
+        appointments_all = VendorAppointment.objects.filter(mobile_no=mobile_no, vendor_name=request.user, vendor_branch_id=branch_name)
+        invoice_all = VendorInvoice.objects.filter(
+            mobile_no=mobile_no, vendor_name=request.user, vendor_branch_id=branch_name
+        ).select_related(
+            'vendor_customers_profile__loyality_profile'
+        )
+
+        # if invoice_all.exists():
+        #     customer_name = invoice_all[0].customer_name
+        #     customer_email = invoice_all[0].email
+        #     try:
+        #         customer_dob = invoice_all[0].vendor_customers_profile.d_o_b
+        #         customer_doa = invoice_all[0].vendor_customers_profile.d_o_a
+        #     except Exception:
+        #         customer_dob = ""
+        #         customer_doa = ""
+        # else:
+        #     return Response({
+        #         "status": False,
+        #         "message": "No invoices found for this customer."
+        #     }, status=404)
+
+        count_1 = appointments_all.count()
+        count_2 = invoice_all.count()
+        total_billing_amount = invoice_all.aggregate(total=Sum('grand_total'))['total']
+
+        # appointment_data = appointment_serializer(appointments_all, many=True).data
+        # invoice_data = billing_serializer_get(invoice_all, many=True).data
+        data_object = VendorCustomers.objects.filter(user=request.user, vendor_branch_id=branch_name, mobile_no=mobile_no)
+        serializer_obj = VendorCustomerLoyalityProfileSerializer_get(data_object, many=True)
+
+        return Response({
+            "status": True,
+            "data": serializer_obj.data
+        })
+        return Response({
+            "status": True,
+            "total_appointment": count_1,
+            "total_invoices": count_2,
+            # "previous_appointments": appointment_data,
+            # "previous_invoices": invoice_data,
+            "customer_data": serializer_obj.data
+            # "customer_name": customer_name,
+            # "customer_mobile_no": mobile_no,
+            # "customer_email": customer_email,
+            # "customer_dob": customer_dob,
+            # "customer_doa": customer_doa,
+            "total_billing_amount": total_billing_amount,
 
 class GetCustomerBillAppDetails(APIView):
     permission_classes = [IsAuthenticated]
@@ -2528,13 +2594,19 @@ class GetCustomerBillAppDetails(APIView):
 
         appointment_data = appointment_serializer(appointments_all, many=True).data
         invoice_data = billing_serializer_get(invoice_all, many=True).data
+        
 
+        return Response({
+            "status": True,
+            "data": serializer_obj.data
+        })
         return Response({
             "status": True,
             "total_appointment": count_1,
             "total_invoices": count_2,
             "previous_appointments": appointment_data,
             "previous_invoices": invoice_data,
+            # "customer_data": serializer_obj.data
             "customer_name": customer_name,
             "customer_mobile_no": mobile_no,
             "customer_email": customer_email,
