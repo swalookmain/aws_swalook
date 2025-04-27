@@ -1186,8 +1186,8 @@ class ImageMergeSerializer(serializers.Serializer):
 
 class RenderInvoicePreviewDataSerializer(serializers.ModelSerializer):
     grand_total = serializers.SerializerMethodField(read_only=True)
-    total_quantity = serializers.SerializerMethodField(read_only=True))
-    total_price = serializers.SerializerMethodField(read_only=True))
+    total_quantity = serializers.SerializerMethodField(read_only=True)
+    total_price = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = RenderInvoicePreviewData
