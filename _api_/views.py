@@ -2596,10 +2596,7 @@ class GetCustomerBillAppDetails(APIView):
         invoice_data = billing_serializer_get(invoice_all, many=True).data
         
 
-        return Response({
-            "status": True,
-            "data": serializer_obj.data
-        })
+     
         return Response({
             "status": True,
             "total_appointment": count_1,
