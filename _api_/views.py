@@ -2540,7 +2540,7 @@ class GetCustomerBillAppDetails_copy(APIView):
             "total_invoices": count_2,
             # "previous_appointments": appointment_data,
             # "previous_invoices": invoice_data,
-            "customer_data": serializer_obj.data
+            "customer_data": serializer_obj.data,
             # "customer_name": customer_name,
             # "customer_mobile_no": mobile_no,
             # "customer_email": customer_email,
