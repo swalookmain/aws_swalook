@@ -706,8 +706,17 @@ class vendor_billing(APIView):
             vendor_branch_id = branch_name,
             date=date
         ).order_by('-date')
+       
+        invoice_data = billing_serializer_get(queryset, many=True)
+        for idx, invoice in enumerate(invoice_data):
+                    slno = invoice.get('slno')
+                    if slno:  
+                        invoice_filename = f"Invoice-{slno}.pdf"
+                        invoice_path = os.path.join('media/pdf', invoice_filename)
+                        invoice_data[idx]['pdf_path'] = invoice_path
+                    else:
+                        invoice_data[idx]['pdf_path'] = None  
 
-        serializer = billing_serializer_get(queryset, many=True)
 
         return Response({
             "status": True,
@@ -2616,7 +2625,7 @@ class GetCustomerBillAppDetails_copy(APIView):
             "total_invoices": count_2,
             # "previous_appointments": appointment_data,
             # "previous_invoices": invoice_data,
-            "customer_data": serializer_obj.data,
+            "data": serializer_obj.data,
             # "customer_name": customer_name,
             # "customer_mobile_no": mobile_no,
             # "customer_email": customer_email,
@@ -2696,8 +2705,7 @@ class GetCustomerBillAppDetails_copy_details(APIView):
         mobile_no = request.query_params.get('mobile_no')
         branch_name = request.query_params.get('branch_name')
         type = request.query_params.get('type')
-        value = request.query_params.get('paging_start')
-        value_end = request.query_params.get('paging_end')
+       
 
         if not mobile_no:
             return Response({
@@ -2711,62 +2719,34 @@ class GetCustomerBillAppDetails_copy_details(APIView):
             }, status=400)
 
         if type == "appointment":
-            range_ = int(value_end) + 1
+           
             appointments_all = VendorAppointment.objects.filter(mobile_no=mobile_no, vendor_name=request.user, vendor_branch_id=branch_name)
-            if len(appointments_all) >= range_:
-                appointment_all = appointment_all[int(value):range_]
-                appointment_data = appointment_serializer(appointments_all, many=True).data
-                return Response({
-                    "status": True,
-                    
-                    "previous_appointments": appointment_data,
-                })
-
-            appointment_all = appointment_all
+           
             appointment_data = appointment_serializer(appointments_all, many=True).data
             return Response({
                 "status": True,
                 
                 "previous_appointments": appointment_data,
             })
+
+           
         if type == "invoice":
-            range_ = int(value_end) + 1
+            
             invoice_all = VendorInvoice.objects.filter(
                 mobile_no=mobile_no, vendor_name=request.user, vendor_branch_id=branch_name
             )
-            if len(invoice_all) >= range_:
-                invoice_all = invoice_all[int(value):range_]
-                invoice_data = billing_serializer_get(invoice_all, many=True).data
-                for idx, invoice in enumerate(invoice_data):
-                    slno = invoice.get('slno')
-                    if slno:  
-                        invoice_filename = f"Invoice-{slno}.pdf"
-                        invoice_path = os.path.join('media/pdf', invoice_filename)
-                        invoice_data[idx]['pdf_path'] = invoice_path
-                    else:
-                        invoice_data[idx]['pdf_path'] = None  
-    
-                return Response({
-                            "status": True,
-                            "previous_invoices": invoice_data,
-                            
-                 })
             
-            invoice_all = invoice_all
+       
             invoice_data = billing_serializer_get(invoice_all, many=True).data
-            for idx, invoice in enumerate(invoice_data):
-                slno = invoice.get('slno')
-                if slno: 
-                    invoice_filename = f"Invoice-{slno}.pdf"
-                    invoice_path = os.path.join('media/pdf', invoice_filename)
-                    invoice_data[idx]['pdf_path'] = invoice_path
-                else:
-                    invoice_data[idx]['pdf_path'] = None 
+                
+    
             return Response({
-                            "status": True,
-                            "previous_invoices": invoice_data,
-                            
-            })
+                        "status": True,
+                        "previous_invoices": invoice_data,
+                        
+             })
+            
+            
            
 
 
