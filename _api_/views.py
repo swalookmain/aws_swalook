@@ -2582,9 +2582,8 @@ class GetCustomerBillAppDetails_copy(APIView):
         appointments_all = VendorAppointment.objects.filter(mobile_no=mobile_no, vendor_name=request.user, vendor_branch_id=branch_name)
         invoice_all = VendorInvoice.objects.filter(
             mobile_no=mobile_no, vendor_name=request.user, vendor_branch_id=branch_name
-        ).select_related(
-            'vendor_customers_profile__loyality_profile'
         )
+
 
         # if invoice_all.exists():
         #     customer_name = invoice_all[0].customer_name
@@ -2610,10 +2609,7 @@ class GetCustomerBillAppDetails_copy(APIView):
         data_object = VendorCustomers.objects.filter(user=request.user, vendor_branch_id=branch_name, mobile_no=mobile_no)
         serializer_obj = VendorCustomerLoyalityProfileSerializer_get(data_object, many=True)
 
-        return Response({
-            "status": True,
-            "data": serializer_obj.data
-        })
+        
         return Response({
             "status": True,
             "total_appointment": count_1,
