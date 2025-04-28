@@ -1435,7 +1435,7 @@ class Vendor_loyality_customer_profile(CreateAPIView, ListAPIView, UpdateAPIView
         if "%20" in branch_name:
             branch_name = branch_name.replace("%20", " ")
 
-        data_object = VendorCustomers.objects.select_related('loyality_profile').filter(user=request.user)[::-1]
+        data_object = VendorCustomers.objects.filter(user=request.user)[::-1]
         serializer_obj = VendorCustomerLoyalityProfileSerializer_get(data_object, many=True)
 
         return Response({
@@ -2653,10 +2653,7 @@ class GetCustomerBillAppDetails(APIView):
         
         invoice_all = VendorInvoice.objects.filter(
             mobile_no=mobile_no, vendor_name=request.user, vendor_branch_id=branch_name
-        ).select_related(
-            'vendor_customers_profile__loyality_profile'
         )
-
         if invoice_all.exists():
             customer_name = invoice_all[0].customer_name
             customer_email = invoice_all[0].email
@@ -2740,8 +2737,6 @@ class GetCustomerBillAppDetails_copy_details(APIView):
             range_ = int(value_end) + 1
             invoice_all = VendorInvoice.objects.filter(
                 mobile_no=mobile_no, vendor_name=request.user, vendor_branch_id=branch_name
-            ).select_related(
-                'vendor_customers_profile__loyality_profile'
             )
             if len(invoice_all) >= range_:
                 invoice_all = invoice_all[int(value):range_]
