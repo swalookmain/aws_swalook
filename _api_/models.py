@@ -147,7 +147,7 @@ class CustomerCoupon(models.Model):
 
 class VendorCustomers(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
-    loyality_profile = models.ForeignKey(VendorCustomerLoyalityPoints, on_delete=models.SET_NULL,blank=True, null=True)
+    loyality_profile = models.ManyToManyField(VendorCustomerLoyalityPoints,blank=True)
     created_at = models.DateTimeField(auto_now_add=True,blank=True,null=True)
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, db_index=True)
     name = models.CharField(max_length=30, blank=True, null=True)
@@ -156,7 +156,7 @@ class VendorCustomers(models.Model):
     d_o_a = models.CharField(max_length=30, blank=True, null=True)
     email = models.CharField(max_length=30, blank=True)
     membership = models.CharField(max_length=30, blank=True, null=True)
-    membership_type = models.ForeignKey(VendorLoyalityProgramTypes, on_delete=models.SET_NULL, blank=True,null=True)
+    membership_type = models.ManyToManyField(VendorLoyalityProgramTypes,blank=True)
     vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
     coupon = models.ManyToManyField(CustomerCoupon,blank=True)
 
