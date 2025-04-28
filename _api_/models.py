@@ -645,6 +645,7 @@ class RenderInvoicePreviewData(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, db_index=True) # request.user
     vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True) # request.query_params.get('branch_ame')
     mobile_no = models.CharField(max_length=15)
+    slno = models.CharField(max_length=100)
     email_id = models.CharField(max_length=200,blank=True,null=True)
     name = models.CharField(max_length=200)
     dob = models.CharField(max_length=200,blank=True,null=True)
