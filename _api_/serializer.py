@@ -1190,7 +1190,7 @@ class RenderInvoicePreviewDataSerializer(serializers.ModelSerializer):
     class Meta:
         model = RenderInvoicePreviewData
         fields = '__all__'
-        read_only_fields  = ["id","user","vendor_branch"]
+        read_only_fields  = ["id","user","vendor_branch","slno"]
 
     def get_grand_total(self, obj):
         return sum(float(item.get('total_amount', 0)) for item in obj.services)
@@ -1207,6 +1207,25 @@ class RenderInvoicePreviewDataSerializer(serializers.ModelSerializer):
     def create(self,validated_data):
         validated_data['user'] = self.context.get('user')
         validated_data['vendor_branch_id'] = self.context.get('branch_id')
+        current_date = dt.date.today()
+        current_month = current_date.month
+        current_year = current_date.year
+
+        
+        user_profile = SwalookUserProfile.objects.get(mobile_no=str(self.context.get('user'))
+
+        user_profile.invoice_generated += 1
+        user_profile.save()
+
+        slno = (
+            f"{user_profile.vendor_id.lower()}"
+            f"{user_profile.invoice_generated}"
+            f"{current_month}"
+            f"{current_year}"
+            f"{user_profile.invoice_generated}"
+        )
+        validated_data['slno'] = slno
+        
 
         return super().create(validated_data)
 
