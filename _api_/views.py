@@ -707,7 +707,7 @@ class vendor_billing(APIView):
             date=date
         ).order_by('-date')
        
-        invoice_data = billing_serializer_get(queryset, many=True)
+        invoice_data = billing_serializer_get(queryset, many=True).data
         for idx, invoice in enumerate(invoice_data):
                     slno = invoice.get('slno')
                     if slno:  
