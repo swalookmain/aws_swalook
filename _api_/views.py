@@ -566,6 +566,82 @@ class get_slno(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+
+from rest_framework import status
+from django.db import transaction
+
+class vendor_billing_copy(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = billing_serializer
+
+    def __init__(self, **kwargs):
+        self.cache_key = None
+        super().__init__(**kwargs)
+
+    def dispatch(self, request, *args, **kwargs):
+        self.cache_key = f"VendorBilling/{request.user.id}"
+        return super().dispatch(request, *args, **kwargs)
+
+    @transaction.atomic
+    def post(self, request):
+        branch_name = request.query_params.get('branch_name')
+        if not branch_name:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'error': {
+                    'code': 'Bad Request',
+                    'message': 'branch_name parameter is missing!'
+                },
+                'data': None
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        slno = request.data.get('slno')
+        if not slno:
+            return Response({
+                "status": False,
+                "message": "slno is required in the request data."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            obj = VendorInvoice.objects.get(slno=slno)
+      
+            serializer = self.serializer_class(obj, data=request.data, partial=True, context={'request': request, 'branch_id': branch_name})
+            
+            if serializer.is_valid():
+                serializer.save()
+                return Response({
+                    "status": True,
+                    "slno": obj.slno,
+                    "message": "Billing record updated successfully."
+                }, status=status.HTTP_200_OK)
+            
+            return Response({
+                "status": False,
+                "errors": serializer.errors,
+                "message": "Failed to update billing record."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        except VendorInvoice.DoesNotExist:
+       
+            serializer = self.serializer_class(data=request.data, context={'request': request, 'branch_id': branch_name})
+            
+            if serializer.is_valid():
+                saved_obj = serializer.save()
+                return Response({
+                    "status": True,
+                    "slno": saved_obj.slno,
+                    "message": "Billing record created successfully."
+                }, status=status.HTTP_201_CREATED)
+
+            return Response({
+                "status": False,
+                "errors": serializer.errors,
+                "message": "Failed to create billing record."
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+
 class vendor_billing(APIView):
     permission_classes = [IsAuthenticated]
     serializer_class = billing_serializer
@@ -591,6 +667,10 @@ class vendor_billing(APIView):
                 },
                 'data': None
             }, status=status.HTTP_400_BAD_REQUEST)
+
+        
+
+            
         serializer = self.serializer_class(data=request.data, context={'request': request, 'branch_id': branch_name})
 
         if serializer.is_valid():
@@ -2554,6 +2634,7 @@ class GetCustomerBillAppDetails(APIView):
     def get(self, request):
         mobile_no = request.query_params.get('mobile_no')
         branch_name = request.query_params.get('branch_name')
+        
 
         if not mobile_no:
             return Response({
@@ -2566,7 +2647,10 @@ class GetCustomerBillAppDetails(APIView):
                 "message": "Branch_name is required."
             }, status=400)
 
+       
         appointments_all = VendorAppointment.objects.filter(mobile_no=mobile_no, vendor_name=request.user, vendor_branch_id=branch_name)
+        
+        
         invoice_all = VendorInvoice.objects.filter(
             mobile_no=mobile_no, vendor_name=request.user, vendor_branch_id=branch_name
         ).select_related(
@@ -2611,6 +2695,88 @@ class GetCustomerBillAppDetails(APIView):
             "customer_doa": customer_doa,
             "total_billing_amount": total_billing_amount,
         })
+
+class GetCustomerBillAppDetails_copy_details(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        mobile_no = request.query_params.get('mobile_no')
+        branch_name = request.query_params.get('branch_name')
+        type = request.query_params.get('type')
+        value = request.query_params.get('paging_start')
+        value_end = request.query_params.get('paging_end')
+
+        if not mobile_no:
+            return Response({
+                "status": False,
+                "message": "Mobile number is required."
+            }, status=400)
+        if not branch_name:
+            return Response({
+                "status": False,
+                "message": "Branch_name is required."
+            }, status=400)
+
+        if type == "appointment":
+            range_ = int(value_end) + 1
+            appointments_all = VendorAppointment.objects.filter(mobile_no=mobile_no, vendor_name=request.user, vendor_branch_id=branch_name)
+            if len(appointments_all) >= range_:
+                appointment_all = appointment_all[int(value):range_]
+                appointment_data = appointment_serializer(appointments_all, many=True).data
+                return Response({
+                    "status": True,
+                    
+                    "previous_appointments": appointment_data,
+                })
+
+            appointment_all = appointment_all
+            appointment_data = appointment_serializer(appointments_all, many=True).data
+            return Response({
+                "status": True,
+                
+                "previous_appointments": appointment_data,
+            })
+        if type == "invoice":
+            range_ = int(value_end) + 1
+            invoice_all = VendorInvoice.objects.filter(
+                mobile_no=mobile_no, vendor_name=request.user, vendor_branch_id=branch_name
+            ).select_related(
+                'vendor_customers_profile__loyality_profile'
+            )
+            if len(invoice_all) >= range_:
+                invoice_all = invoice_all[int(value):range_]
+                invoice_data = billing_serializer_get(invoice_all, many=True).data
+                for idx, invoice in enumerate(invoice_data):
+                    slno = invoice.get('slno')
+                    if slno:  
+                        invoice_filename = f"Invoice-{slno}.pdf"
+                        invoice_path = os.path.join('media/pdf', invoice_filename)
+                        invoice_data[idx]['pdf_path'] = invoice_path
+                    else:
+                        invoice_data[idx]['pdf_path'] = None  
+    
+                return Response({
+                            "status": True,
+                            "previous_invoices": invoice_data,
+                            
+                 })
+            
+            invoice_all = invoice_all
+            invoice_data = billing_serializer_get(invoice_all, many=True).data
+            for idx, invoice in enumerate(invoice_data):
+                slno = invoice.get('slno')
+                if slno: 
+                    invoice_filename = f"Invoice-{slno}.pdf"
+                    invoice_path = os.path.join('media/pdf', invoice_filename)
+                    invoice_data[idx]['pdf_path'] = invoice_path
+                else:
+                    invoice_data[idx]['pdf_path'] = None 
+            return Response({
+                            "status": True,
+                            "previous_invoices": invoice_data,
+                            
+            })
+           
 
 
 class abc_123(APIView):
