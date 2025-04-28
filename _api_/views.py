@@ -720,7 +720,7 @@ class vendor_billing(APIView):
 
         return Response({
             "status": True,
-            "table_data": invoice_data
+            "table_data": invoice_data,
             "message": "Billing records retrieved successfully."
         }, status=status.HTTP_200_OK)
 
