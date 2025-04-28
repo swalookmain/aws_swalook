@@ -1212,7 +1212,7 @@ class RenderInvoicePreviewDataSerializer(serializers.ModelSerializer):
         current_year = current_date.year
 
         
-        user_profile = SwalookUserProfile.objects.get(mobile_no=str(self.context.get('user'))
+        user_profile = SwalookUserProfile.objects.get(mobile_no=str(self.context.get('user')))
 
         user_profile.invoice_generated += 1
         user_profile.save()
