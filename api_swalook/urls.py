@@ -37,6 +37,7 @@ urlpatterns = [
     path('api/swalook/staff/login/', staff_login.as_view(), name='staff_login'),
     path('api/swalook/admin/login/', admin_login.as_view(), name='admin_login'),
     path('api/swalook/billing/', vendor_billing.as_view(), name='vendor_billing'),
+    path('api/swalook/billing/new', vendor_billing_copy.as_view(), name='vendor_billing_copy'),
     path('api/swalook/save-pdf/', vendor_billing_pdf.as_view(), name='save_pdf'),
     path('api/swalook/appointment/', VendorAppointments.as_view(), name='appointment'),
     
@@ -97,6 +98,7 @@ urlpatterns = [
     path('api/swalook/business-analysis/headers/', busniess_headers.as_view(), name='business_analysis_headers'),
     path('api/swalook/get-customer-bill-app-data/', GetCustomerBillAppDetails.as_view(), name='get_customer_bill_app_data'),
     path('api/swalook/get-customer-bill-app-data/2/', GetCustomerBillAppDetails_copy.as_view(), name='get_customer_bill_app_data_copy'),
+    path('api/swalook/get-customer-bill-app-data/3/', GetCustomerBillAppDetails_copy_details.as_view(), name='get_customer_bill_app_details_data_copy'),
     path('api/swalook/expense_management/', expense_management.as_view(), name='expense_management'),
     path('api/swalook/expense_category/', expense_category.as_view(), name='expense_category'),
     path('api/swalook/service_category/', service_category.as_view(), name='service_category'),
