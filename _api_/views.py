@@ -4452,29 +4452,6 @@ class InstagramUpload(APIView):
 
 
 
-class RenderInvoicePreviewDataAPIView(APIView):
-    def post(self, request, *args, **kwargs):
-        data = request.data.copy()
-        branch_name = request.query_params.get('branch_name')
-
-        serializer = RenderInvoicePreviewDataSerializer(data=data,context={'request': request, 'branch_id': branch_name})
-        if serializer.is_valid():
-            instance = serializer.save()
-            response_serializer = RenderInvoicePreviewDataSerializer(instance)
-            return Response(response_serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-    def patch(self, request, pk, *args, **kwargs):
-        instance = get_object_or_404(RenderInvoicePreviewData, pk=pk)
-
-        serializer = RenderInvoicePreviewDataSerializer(instance, data=request.data, partial=True)
-        if serializer.is_valid():
-            instance = serializer.save()
-            response_serializer = RenderInvoicePreviewDataSerializer(instance)
-            return Response(response_serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 
 
