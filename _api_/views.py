@@ -651,6 +651,27 @@ class vendor_billing(APIView):
         }, status=status.HTTP_200_OK)
 
 
+    def put(self, request):
+        ids = request.query_params.get('id')
+        branch_name = request.query_params.get('branch_name')
+    
+        try:
+            instance = VendorInvoice.objects.get(id=ids)
+        except VendorInvoice.DoesNotExist:
+            return Response({"status": False, "message": "Invoice not found"}, status=404)
+    
+        serializer = self.serializer_class(
+            instance, data=request.data, partial=True, 
+            context={'request': request, 'id': ids, 'branch_id': branch_name}
+        )
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"status": True})
+        else:
+            return Response({"status": False, "errors": serializer.errors}, status=400)
+
+
 class vendor_billing_pdf(CreateAPIView):
     permission_classes = [IsAuthenticated]
 
