@@ -276,95 +276,12 @@ class billing_serializer(serializers.ModelSerializer):
         staff_obj.business_of_the_current_month = float(staff_obj.business_of_the_current_month) + (float(grand_total) - float(total_tax))
         staff_obj.save()
 
-class billing_serializer_copy(serializers.ModelSerializer):
-    json_data = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
-    new_mode = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
-    class Meta:
-        model = VendorInvoice
-        fields = ["customer_name", "mobile_no", "email", "address", "services", "mode_of_payment", "pdf_url", "new_mode","service_by", "json_data", "loyalty_points_deducted", "total_prise", "total_quantity", "total_tax", "total_discount", "grand_total", "total_cgst", "total_sgst", "gst_number", "comment", "slno","coupon_points_used"]
-        extra_kwargs = {'id': {'read_only': True}}
 
-    def create(self, validated_data):
-        date = dt.date.today()
-        validated_data['vendor_name'] = self.context.get('request').user
-        validated_data['date'] = date
-        validated_data['vendor_branch_id'] = self.context.get('branch_id')
-        self.update_inventory(validated_data['json_data'])
-        # self.handle_loyalty_points(validated_data)
-        # self.update_staff_business_to_month(validated_data['service_by'],validated_data['grand_total'],validated_data['total_tax'])
-        super().create(validated_data)
-        return validated_data['slno']
+   
+           
+ 
 
-    def handle_loyalty_points(self, validated_data):
-        if int(validated_data['grand_total']) > 100:
-            try:
-                customer = VendorCustomers.objects.select_related('membership_type').select_for_update().get(
-                    mobile_no=validated_data['mobile_no'],
-                    vendor_branch_id=self.context.get('branch_id'),
-                    user=self.context.get('request').user
-                )
-                clp_object = VendorCustomerLoyalityPoints.objects.select_for_update().get(
-                    user=self.context.get('request').user,
-                    vendor_branch_id=self.context.get('branch_id'),
-                    customer_id=customer.mobile_no
-                )
-                validated_data['vendor_customers_profile'] = customer
-                if int(customer.membership_type.points_hold) != 0:
-                    if float(validated_data['loyalty_points_deducted']) > float(clp_object.current_customer_points):
-                        raise serializers.ValidationError("Loyalty points deducted cannot exceed current customer points.")
-                    validated_data['loyalty_points'] = float(validated_data['grand_total']) / float(customer.membership_type.points_hold)
-                    clp_object.current_customer_points = float(clp_object.current_customer_points) - float(validated_data['loyalty_points_deducted'])
-                    clp_object.current_customer_points = float(clp_object.current_customer_points) + float(validated_data['loyalty_points'])
-                    clp_object.save()
-                    clp_object.refresh_from_db()
-                    self.create_ledger_entry(validated_data, clp_object)
-
-                else:
-                    validated_data['loyalty_points'] = 0
-                if int(customer.coupon.coupon_name.coupon_points_hold) != 0:
-                    if float(validated_data['coupon_points_used']) > float(customer.coupon.coupon_name.coupon_points_hold):
-                        raise serializers.ValidationError("Coupon points deducted cannot exceed current customer points.")
-                    customer.coupon.coupon_name.coupon_points_hold = float(customer.coupon.coupon_name.coupon_points_hold) - float(validated_data['coupon_points_used'])
-                    customer.save()
-                    customer.refresh_from_db()
-
-            except VendorCustomers.DoesNotExist:
-                pass
-
-    def create_ledger_entry(self, validated_data, clp_object):
-        date = dt.date.today()
-        ledger_object = VendorCustomerLoyalityLedger(
-            vendor_branch_id=validated_data['vendor_branch_id'],
-            user=self.context.get('request').user,
-            customer=clp_object,
-            point_spend=validated_data['loyalty_points_deducted'],
-            point_gain=validated_data['loyalty_points'],
-            point_available=clp_object.current_customer_points,
-            inventory_invoice_obj=validated_data['slno'],
-            date=dt.date.today(),
-
-        )
-        ledger_object.save()
-
-    def update_inventory(self, json_data):
-        products_to_update = []
-        for item in json_data:
-         
-            try:
-                product = VendorInventoryProduct.objects.get(id=item.get('id'))
-                product.stocks_in_hand -= int(item.get('quantity'))
-                products_to_update.append(product)
-            except VendorInventoryProduct.DoesNotExist:
-                pass
-
-        if products_to_update:
-            VendorInventoryProduct.objects.bulk_update(products_to_update, ['stocks_in_hand'])
-
-    def update_staff_business_to_month(self, staff, grand_total, total_tax):
-        staff_obj = VendorStaff.objects.get(staff_name=staff, vendor_name=self.context.get('request').user)
-        staff_obj.business_of_the_current_month = float(staff_obj.business_of_the_current_month) + (float(grand_total) - float(total_tax))
-        staff_obj.save()
-
+     
 
 
 class app_serailizer_get(serializers.ModelSerializer):
