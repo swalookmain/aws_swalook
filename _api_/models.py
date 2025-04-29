@@ -640,22 +640,7 @@ class IG_FB_shared_picture(models.Model):
 
 
 
-class RenderInvoicePreviewData(models.Model):
-    id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, db_index=True) # request.user
-    vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True) # request.query_params.get('branch_ame')
-    mobile_no = models.CharField(max_length=15)
-    slno = models.CharField(max_length=100)
-    email_id = models.CharField(max_length=200,blank=True,null=True)
-    name = models.CharField(max_length=200)
-    dob = models.CharField(max_length=200,blank=True,null=True)
-    doa = models.CharField(max_length=200,blank=True,null=True)
-    comments = models.CharField(max_length=200,blank=True,null=True)
-    membership_coupon = models.JSONField(default=list, blank=True) # [{"description":"membership","type":"gold","points_used":20},....]
-    services = models.JSONField(default=list) # [{"description":"haircut","price":100,"quantity":2,"staff":["abd","abc"],"total_amount":"200",....}
-    products = models.JSONField(default=list) # [{"description":"haircut","price":100,"quantity":2,"staff":["abd","abc"],"total_amount":"200",....}
-    
-    
+
     
 
     
