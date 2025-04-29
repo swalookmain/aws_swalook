@@ -567,118 +567,6 @@ class get_slno(APIView):
 
 
 
-from rest_framework import status
-from django.db import transaction
-
-class vendor_billing_copy(APIView):
-    permission_classes = [IsAuthenticated]
-    serializer_class = billing_serializer_copy
-
-    def __init__(self, **kwargs):
-        self.cache_key = None
-        super().__init__(**kwargs)
-
-    def dispatch(self, request, *args, **kwargs):
-        self.cache_key = f"VendorBilling/{request.user.id}"
-        return super().dispatch(request, *args, **kwargs)
-
-    @transaction.atomic
-    def post(self, request):
-        branch_name = request.query_params.get('branch_name')
-        if not branch_name:
-            return Response({
-                'success': False,
-                'status_code': status.HTTP_400_BAD_REQUEST,
-                'error': {
-                    'code': 'Bad Request',
-                    'message': 'branch_name parameter is missing!'
-                },
-                'data': None
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        slno = request.data.get('slno')
-        if not slno:
-            return Response({
-                "status": False,
-                "message": "slno is required in the request data."
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            obj = VendorInvoice.objects.get(slno=slno)
-      
-            serializer = self.serializer_class(obj, data=request.data, partial=True, context={'request': request, 'branch_id': branch_name})
-            
-            if serializer.is_valid():
-                serializer.save()
-                return Response({
-                    "status": True,
-                    "slno": obj.slno,
-                    "message": "Billing record updated successfully."
-                }, status=status.HTTP_200_OK)
-            
-            return Response({
-                "status": False,
-                "errors": serializer.errors,
-                "message": "Failed to update billing record."
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        except VendorInvoice.DoesNotExist:
-       
-            serializer = self.serializer_class(data=request.data, context={'request': request, 'branch_id': branch_name})
-            
-            if serializer.is_valid():
-                saved_obj = serializer.save()
-                return Response({
-                    "status": True,
-                    "slno": saved_obj.slno,
-                    "message": "Billing record created successfully."
-                }, status=status.HTTP_201_CREATED)
-
-            return Response({
-                "status": False,
-                "errors": serializer.errors,
-                "message": "Failed to create billing record."
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-
-    def get(self, request):
-        branch_name = request.query_params.get('branch_name')
-        date = request.query_params.get('date')
-        if not branch_name:
-            return Response({
-                'success': False,
-                'status_code': status.HTTP_400_BAD_REQUEST,
-                'error': {
-                    'code': 'Bad Request',
-                    'message': 'branch_name parameter is missing!'
-                },
-                'data': None
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        queryset = VendorInvoice.objects.filter(
-            vendor_name=request.user,
-            vendor_branch_id = branch_name,
-            date=date
-        ).order_by('-date')
-       
-        invoice_data = billing_serializer_get(queryset, many=True).data
-        for idx, invoice in enumerate(invoice_data):
-                    slno = invoice.get('slno')
-                    if slno:  
-                        invoice_filename = f"Invoice-{slno}.pdf"
-                        invoice_path = os.path.join('media/pdf', invoice_filename)
-                        invoice_data[idx]['pdf_path'] = invoice_path
-                    else:
-                        invoice_data[idx]['pdf_path'] = None  
-
-
-        return Response({
-            "status": True,
-            "table_data": invoice_data,
-            "message": "Billing records retrieved successfully."
-        }, status=status.HTTP_200_OK)  
-
-
 
 class vendor_billing(APIView):
     permission_classes = [IsAuthenticated]
@@ -746,14 +634,14 @@ class vendor_billing(APIView):
         ).order_by('-date')
        
         invoice_data = billing_serializer_get(queryset, many=True).data
-        # for idx, invoice in enumerate(invoice_data):
-        #             slno = invoice.get('slno')
-        #             if slno:  
-        #                 invoice_filename = f"Invoice-{slno}.pdf"
-        #                 invoice_path = os.path.join('media/pdf', invoice_filename)
-        #                 invoice_data[idx]['pdf_path'] = invoice_path
-        #             else:
-        #                 invoice_data[idx]['pdf_path'] = None  
+        for idx, invoice in enumerate(invoice_data):
+                    slno = invoice.get('slno')
+                    if slno:  
+                        invoice_filename = f"Invoice-{slno}.pdf"
+                        invoice_path = os.path.join('media/pdf', invoice_filename)
+                        invoice_data[idx]['pdf_path'] = invoice_path
+                    else:
+                        invoice_data[idx]['pdf_path'] = None 
 
 
         return Response({
