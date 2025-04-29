@@ -4332,8 +4332,8 @@ class InstagramUpload(APIView):
     # throttle_scope = 'upload_instagram'
     def post(self, request):
         instagram_id = request.data.get('instagram_id')
-        image_object = IG_FB_shared_picture.objects.last(user_request.user,vendor_branch_id=request.query_params.get('branch_name')).values('image')
-        image_url = image_objects[0].url
+        image_object = IG_FB_shared_picture.objects.last(user = request.user,vendor_branch_id=request.query_params.get('branch_name')).values('image')
+        image_url = image_object[0].url
         caption = request.data.get('caption')
         access_token = request.data.get('access_token')
 
