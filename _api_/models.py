@@ -653,6 +653,7 @@ class RenderInvoicePreviewData(models.Model):
     comments = models.CharField(max_length=200,blank=True,null=True)
     membership_coupon = models.JSONField(default=list, blank=True) # [{"description":"membership","type":"gold","points_used":20},....]
     services = models.JSONField(default=list) # [{"description":"haircut","price":100,"quantity":2,"staff":["abd","abc"],"total_amount":"200",....}
+    products = models.JSONField(default=list) # [{"description":"haircut","price":100,"quantity":2,"staff":["abd","abc"],"total_amount":"200",....}
     
     
     
