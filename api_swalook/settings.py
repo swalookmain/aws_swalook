@@ -29,7 +29,7 @@ SECRET_KEY = "django-insecure-b4+v(klybt0y9aghbnn=4qc+qr!#&)w3j)z_%7xbu)$mgx*z&3
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["44.201.100.13","www.api.swalookcrm.in","api.swalookcrm.in","127.0.0.1","localhost"]
+ALLOWED_HOSTS = ["44.201.100.13","www.api.swalookcrm.in","api.swalookcrm.in","127.0.0.1","localhost","app.swalookcrm.in","www.app.swalookcrm.in"]
 
 # Application definition
 
@@ -81,7 +81,10 @@ ROOT_URLCONF = 'api_swalook.urls'
 # SECURE_HSTS_SECONDS = 31536000
 # SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 # SECURE_HSTS_PRELOAD = True
+# from rest_framework.throttling import UserRateThrottle
 
+# class InstagramUploadRateThrottle(UserRateThrottle):
+#         scope = 'upload_instagram'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework.authentication.TokenAuthentication',
@@ -89,6 +92,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
+    
 }
 
 TEMPLATES = [
@@ -170,7 +174,7 @@ ADMINS = [
 
 STATIC_URL_PREFIX = "swalook_22"
 MEDIA_URL_PREFIX = "swalook_22"
-
+DATA_UPLOAD_MAX_MEMORY_SIZE = 5242880
 STATIC_URL = '/static/'
 MEDIA_URL = '/media/'
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'statics')]
@@ -204,3 +208,7 @@ LOGGING = {
 }
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+IG_FB_APP_ID = "997037709237077"
+IG_FB_APP_SECRET = "d4ad4c62d6db36b9be6ff964af32b2b1"
+

@@ -3,6 +3,7 @@ from .models import *
 # Register your models here.
 admin.site.register(VendorService)
 admin.site.register(VendorServiceCategory)
+admin.site.register(VendorCoupon)
 admin.site.register(VendorPdf)
 admin.site.register(VendorAppointment)
 admin.site.register(VendorInvoice)

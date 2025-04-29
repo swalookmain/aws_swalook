@@ -171,11 +171,13 @@ class UpdateProfileSerializer(serializers.Serializer):
     profile_pic = serializers.ImageField(required=False)
     s_gst_percent = serializers.CharField()
     c_gst_percent = serializers.CharField()
+    user_ip = serializers.CharField()
 
     def update(self, instance, validated_data):
         instance.gst_number = validated_data.get('gst_number', instance.gst_number)
         instance.s_gst_percent = validated_data.get('s_gst_percent', instance.s_gst_percent)
         instance.c_gst_percent = validated_data.get('c_gst_percent', instance.c_gst_percent)
+        instance.user_ip = validated_data.get('user_ip', instance.user_ip)
 
         profile_pic = self.context.get('request').FILES.get('profile_pic')
         if profile_pic:
@@ -190,7 +192,7 @@ class billing_serializer(serializers.ModelSerializer):
     new_mode = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
     class Meta:
         model = VendorInvoice
-        fields = ["customer_name", "mobile_no", "email", "address", "services", "mode_of_payment", "new_mode","service_by", "json_data", "loyalty_points_deducted", "total_prise", "total_quantity", "total_tax", "total_discount", "grand_total", "total_cgst", "total_sgst", "gst_number", "comment", "slno",]
+        fields = ["customer_name", "mobile_no", "email", "address", "services", "mode_of_payment", "new_mode","service_by", "json_data", "loyalty_points_deducted", "total_prise", "total_quantity", "total_tax", "total_discount", "grand_total", "total_cgst", "total_sgst", "gst_number", "comment", "slno","coupon_points_used"]
         extra_kwargs = {'id': {'read_only': True}}
 
     def create(self, validated_data):
@@ -230,12 +232,12 @@ class billing_serializer(serializers.ModelSerializer):
 
                 else:
                     validated_data['loyalty_points'] = 0
-                # if int(customer.coupon.coupon_points_hold) != 0:
-                #     if float(validated_data['coupon_points_used']) > float(customer.coupon.coupon_points_hold):
-                #         raise serializers.ValidationError("Coupon points deducted cannot exceed current customer points.")
-                #     customer.coupon.coupon_points_hold = float(customer.coupon.coupon_points_hold) - float(validated_data['coupon_points_used'])
-                #     customer.save()
-                #     customer.refresh_from_db()
+                if int(customer.coupon.coupon_name.coupon_points_hold) != 0:
+                    if float(validated_data['coupon_points_used']) > float(customer.coupon.coupon_name.coupon_points_hold):
+                        raise serializers.ValidationError("Coupon points deducted cannot exceed current customer points.")
+                    customer.coupon.coupon_name.coupon_points_hold = float(customer.coupon.coupon_name.coupon_points_hold) - float(validated_data['coupon_points_used'])
+                    customer.save()
+                    customer.refresh_from_db()
 
             except VendorCustomers.DoesNotExist:
                 pass
@@ -258,6 +260,7 @@ class billing_serializer(serializers.ModelSerializer):
     def update_inventory(self, json_data):
         products_to_update = []
         for item in json_data:
+         
             try:
                 product = VendorInventoryProduct.objects.get(id=item.get('id'))
                 product.stocks_in_hand -= int(item.get('quantity'))
@@ -273,6 +276,14 @@ class billing_serializer(serializers.ModelSerializer):
         staff_obj.business_of_the_current_month = float(staff_obj.business_of_the_current_month) + (float(grand_total) - float(total_tax))
         staff_obj.save()
 
+
+   
+           
+ 
+
+     
+
+
 class app_serailizer_get(serializers.ModelSerializer):
     class Meta:
         model = VendorAppointment
@@ -282,7 +293,7 @@ class app_serailizer_get(serializers.ModelSerializer):
 class appointment_serializer(serializers.ModelSerializer):
     class Meta:
         model = VendorAppointment
-        fields = ["id", "customer_name", "mobile_no", "email", "services", "booking_date", "booking_time", "comment"]
+        fields = ["id", "customer_name", "mobile_no", "email", "services", "service_by","booking_date", "booking_time", "comment","d_o_a","d_o_b"]
         extra_kwargs = {'id': {'read_only': True},}
 
     def create(self, validated_data):
@@ -477,7 +488,7 @@ class staff_serializer(serializers.ModelSerializer):
 
 class staff_attendance_serializer(serializers.Serializer):
     json_data = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
-
+    
     def create(self, validated_data):
         for objects in validated_data['json_data']:
             attendance_staff_object = VendorStaffAttendance()
@@ -488,10 +499,24 @@ class staff_attendance_serializer(serializers.Serializer):
             attendance_staff_object.attend = objects.get('attend')
             attendance_staff_object.staff_id = self.context.get('request').query_params.get('staff_id')
             attendance_staff_object.date = objects.get('date')
+            
+            attendance_staff_object.in_time = objects.get('in_time')
+            attendance_staff_object.out_time = ""
             attendance_staff_object.save()
 
         return "ok"
 
+    
+    def update(self, instance, validated_data):
+        
+       
+        validated_data['out_time'] = validated_data.pop('json_data')[0].get('out_time')
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        
+        instance.save()
+        return instance
 
 class staff_setting_serializer(serializers.ModelSerializer):
     class Meta:
@@ -512,6 +537,13 @@ class staff_salary_serializer(ModelSerializer):
         model = StaffSalary
         fields = "__all__"
 
+class staff_setting_serializer_get(ModelSerializer):
+    
+
+    class Meta:
+        model = StaffSetting
+        fields = "__all__"
+
 # class TemplateSerializer(ModelSerializer):
 
 
@@ -528,11 +560,12 @@ class staff_salary_serializer(ModelSerializer):
 
 class staff_update_earning_deduction_serializer(ModelSerializer):
     json_data = serializers.DictField(child=serializers.CharField())
-    slab_data = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
+    in_time = serializers.CharField()
+    out_time = serializers.CharField()
 
     class Meta:
         model = StaffSetting
-        fields = ["slab_data", "json_data"]
+        fields = ["json_data","in_time","out_time"]
 
     def create(self, validated_data):
         staff_settings = []
@@ -542,22 +575,19 @@ class staff_update_earning_deduction_serializer(ModelSerializer):
                 vendor_name=self.context.get('request').user,
                 month=i,
                 number_of_working_days=validated_data['json_data'].get(str(i)),
+                vendor_branch_id = self.context.get('branch_id')
             )
             staff_settings.append(s)
-
-        staff_slabs = []
-        slab_data = validated_data['slab_data']
-        for i in validated_data['slab_data']:
-            s = StaffSettingSlab(
-                vendor_name=self.context.get('request').user,
-                staff_slab=i.get("staff_slab"),
-                staff_target_business=i.get("staff_target_business"),
-                staff_commision_cap=i.get("staff_commision_cap"),
-            )
-            staff_slabs.append(s)
+        StaffAttendanceTime.objects.create(
+            vendor_name=self.context.get('request').user,
+            vendor_branch_id = self.context.get('branch_id'),
+            in_time=validated_data.get('in_time'),
+            out_time=validated_data.get('out_time')
+        )
+        
 
         StaffSetting.objects.bulk_create(staff_settings)
-        StaffSettingSlab.objects.bulk_create(staff_slabs)
+        # StaffSettingSlab.objects.bulk_create(staff_slabs)
 
         return validated_data
 
@@ -601,11 +631,25 @@ class HelpDesk_Serializer(serializers.ModelSerializer):
         validated_data['user'] = self.context.get('request').user
         return super().create(validated_data)
 
+class VendorProductCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VendorProductCategory
+        fields = ['id', 'product_category']
+        extra_kwargs = {'id': {'read_only': True}}
+
+    def create(self, validated_data):
+        validated_data['user'] = self.context.get('request').user
+        validated_data['vendor_branch_id'] = self.context.get('branch_id')
+        return super().create(validated_data)
+
 
 class Inventory_Product_Serializer(serializers.ModelSerializer):
+    category = serializers.UUIDField(write_only=True, format='hex_verbose')
+    category_details =  VendorProductCategorySerializer(read_only=True, source='category')
+
     class Meta:
         model = VendorInventoryProduct
-        fields = ["id", "product_name", "product_price", "product_description", "product_id", "stocks_in_hand", "unit"]
+        fields = ["id", "product_name", "product_price", "product_description", "product_id", "stocks_in_hand", "unit","category","category_details","expiry_date"]
         extra_kwargs = {'id': {'read_only': True}}
 
     def create(self, validated_data):
@@ -626,7 +670,8 @@ class Inventory_Product_Serializer(serializers.ModelSerializer):
         validated_data['year'] = date.year
         validated_data['user'] = self.context.get('request').user
         validated_data['vendor_branch_id'] = self.context.get('branch_id')
-
+        category_uuid = validated_data.pop('category')
+        validated_data['category'] = VendorProductCategory.objects.get(id=category_uuid)
         return super().create(validated_data)
 
 
@@ -637,7 +682,7 @@ class update_inventory_product_serializer(serializers.Serializer):
     product_price = serializers.CharField()
     stocks_in_hand = serializers.CharField()
     unit = serializers.CharField()
-
+    category = serializers.UUIDField()
     def update(self, instance, validated_data):
         instance.product_id = validated_data.get('product_id', instance.product_id)
         instance.product_name = validated_data.get('product_name', instance.product_name)
@@ -645,6 +690,7 @@ class update_inventory_product_serializer(serializers.Serializer):
         instance.product_price = validated_data.get('product_price', instance.product_price)
         instance.stocks_in_hand = validated_data.get('stocks_in_hand', instance.stocks_in_hand)
         instance.unit = validated_data.get('unit', instance.unit)
+        instance.category_id = validated_data.get('category')
         instance.save()
         return instance
 
@@ -717,37 +763,38 @@ class LoyalityPointsSerializer(serializers.ModelSerializer):
         model = VendorCustomerLoyalityPoints
         fields = "__all__"
         extra_kwargs = {'id': {'read_only': True}}
+        
 
 
-# class CouponSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = VendorCoupon
-#         fields = "__all__"
-#         extra_kwargs = {'id': {'read_only': True}}
+class CouponSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VendorCoupon
+        fields = "__all__"
+        extra_kwargs = {'id': {'read_only': True}}
 
 
-#     def create(self,arg):
-#         arg['user'] = self.context.get('request').user
-#         arg['vendor_branch_id'] = self.context.get('branch_id')
+    def create(self,arg):
+        arg['user'] = self.context.get('request').user
+        arg['vendor_branch_id'] = self.context.get('branch_id')
 
-#         return super().create(arg)
+        return super().create(arg)
 
 
-#     def update(self, instance, validated_data):
-#         for attr, value in validated_data.items():
-#             setattr(instance, attr, value)
+    def update(self, instance, validated_data):
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
 
-#         instance.save()
-#         return instance
+        instance.save()
+        return instance
 
 class VendorCustomerLoyalityProfileSerializer_get(serializers.ModelSerializer):
-    loyality_profile = LoyalityPointsSerializer(read_only=True)
-    # coupon = CouponSerializer(read_only=True)
+    
 
     class Meta:
         model = VendorCustomers
         fields = "__all__"
         extra_kwargs = {'id': {'read_only': True}}
+        depth = 2
 
 
 class billing_serializer_get(serializers.ModelSerializer):
@@ -758,38 +805,89 @@ class billing_serializer_get(serializers.ModelSerializer):
         fields = "__all__"
 
 
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
+import datetime as dt
+
 class VendorCustomerLoyalityProfileSerializer(serializers.ModelSerializer):
+    coupon = serializers.ListField(
+        child=serializers.DictField(child=serializers.UUIDField()),
+        required=False  
+    )
+    membership = serializers.ListField(
+        child=serializers.DictField(child=serializers.UUIDField()),
+        required=False  
+    )
+
     class Meta:
         model = VendorCustomers
-        fields = ["id", "name", "mobile_no", "email", "membership", "d_o_a", "d_o_b",]
+        fields = ["id", "name", "mobile_no", "email", "membership", "d_o_a", "d_o_b", "coupon"]
         extra_kwargs = {'id': {'read_only': True}}
 
+
+
     def create(self, validated_data):
-        validated_data['user'] = self.context.get('request').user
-        validated_data['vendor_branch_id'] = self.context.get('branch_id')
-        validated_data['membership_type'] = VendorLoyalityProgramTypes.objects.get(program_type=validated_data['membership'], vendor_branch_id=self.context.get('branch_id'), user=self.context.get('request').user)
+       
+        from datetime import date, timedelta
+        coupon_data_list = validated_data.pop('coupon', [])
+        membership_data_list = validated_data.pop('membership', [])
+        
+   
+        coupon_ids = [item.get('coupon_name') for item in coupon_data_list if item.get('coupon_name')]
+        membership_ids = [item.get('membership_name') for item in membership_data_list if item.get('membership_name')]
+        
+       
+        user = self.context['request'].user  
+        branch_id = self.context['request'].query_params.get('branch_name')
+        
+        today = date.today()
+        expiry_date = today + timedelta(days=30)  
+        loyalty_profile_obj = None  
+        
+        
+        vendor_customer_obj = VendorCustomer.objects.create(
+            branch_id=branch_id,
+            customer_mobile=validated_data.get('mobile_no'),
+            customer_name=validated_data.get('name'),
+            email=validated_data.get('email', ''),
+            user=user,
+           
+        )
 
-        obj_loyality = VendorCustomerLoyalityPoints()
-        clp_object = VendorLoyalityProgramTypes.objects.get(program_type=validated_data['membership'], vendor_branch_id=self.context.get('branch_id'), user=self.context.get('request').user)
-        obj_loyality.current_customer_points = 0
-
-        def get_date_after_six_months(input_date_str, month):
-            input_date = datetime.strptime(input_date_str, '%Y-%m-%d')
-            date_after_six_months = input_date + relativedelta(months=month)
-            return date_after_six_months.strftime('%Y-%m-%d')
-
-        date = dt.date.today()
-        result = get_date_after_six_months(str(date), int(clp_object.expiry_duration) + 1)
-        obj_loyality.issue_date = dt.date.today()
-        obj_loyality.expire_date = result
-        obj_loyality.user = self.context.get('request').user
-        obj_loyality.vendor_branch_id = self.context.get('branch_id')
-        obj_loyality.customer_id = validated_data['mobile_no']
-        obj_loyality.save()
-        validated_data['loyality_profile'] = obj_loyality
-
-        return super().create(validated_data)
-
+        customer_coupons_to_create = []
+    
+        if coupon_ids:
+            for coupon_id in coupon_ids:
+                customer_coupons_to_create.append(CustomerCoupon(
+                    user=user,
+                    vendor_branch_id=branch_id,
+                    customer_id=str(validated_data['mobile_no']),
+                    coupon_name_id=coupon_id,
+                    issue_date=today,
+                    expiry_date=expiry_date if loyalty_profile_obj else None
+                ))
+        
+        if customer_coupons_to_create:
+            CustomerCoupon.objects.bulk_create(customer_coupons_to_create)
+    
+    
+        customer_memberships_to_create = []
+    
+        if membership_ids:
+            for membership_id in membership_ids:
+                customer_memberships_to_create.append(CustomerMembership(
+                    user=user,
+                    vendor_branch_id=branch_id,
+                    customer_id=str(validated_data['mobile_no']),
+                    membership_name_id=membership_id,
+                    issue_date=today,
+                    expiry_date=expiry_date
+                ))
+    
+        if customer_memberships_to_create:
+            CustomerMembership.objects.bulk_create(customer_memberships_to_create)
+    
+        return vendor_customer_obj
 
 class VendorLoyalityTypeSerializer_get(serializers.ModelSerializer):
     class Meta:
@@ -876,17 +974,53 @@ class Vendor_Type_Loyality_Update_Serializer(serializers.Serializer):
 
 
 class loyality_customer_update_serializer(serializers.Serializer):
-    name = serializers.CharField()
-    mobile_no = serializers.CharField()
-    email = serializers.CharField()
+    name = serializers.CharField(required=False)
+    mobile_no = serializers.CharField(required=False)
+    email = serializers.CharField(required=False)
+    d_o_a = serializers.CharField(required=False)
+    d_o_b = serializers.CharField(required=False)
+    membership = serializers.UUIDField(required=False)
+    coupon = serializers.ListField(
+        child=serializers.DictField(child=serializers.UUIDField()), 
+        required=False
+    )
+    expiry_date = serializers.DateField(required=False)
 
-    def create(self, validated_data):
-        clp_obj = VendorCustomers.objects.get(id=self.context.get('id'))
-        clp_obj.name = validated_data['name']
-        clp_obj.mobile_no = validated_data['mobile_no']
-        clp_obj.email = validated_data['email']
-        clp_obj.save()
-        return "ok"
+    def update(self, instance, validated_data):
+   
+     
+        instance.name = validated_data.get('name', instance.name)
+        instance.mobile_no = validated_data.get('mobile_no', instance.mobile_no)
+        instance.email = validated_data.get('email', instance.email)
+        instance.d_o_a = validated_data.get('d_o_a', instance.d_o_a)
+        instance.d_o_b = validated_data.get('d_o_b', instance.d_o_b)
+        instance.membership_id = validated_data.get('membership', instance.membership_id)
+
+        coupon_data_list = validated_data.get('coupon', None)
+        expiry_date = validated_data.get('expiry_date', None)
+
+        if coupon_data_list:  
+            customer_coupon_ids = []
+            user_id = self.context.get('user_id')  
+            vendor_branch_id = self.context.get('vendor_branch_id')
+
+            for coupon_data in coupon_data_list:
+                coupon_name_id = coupon_data.get('coupon_name')
+
+                customer_coupon = CustomerCoupon.objects.create(
+                    user_id=user_id,
+                    vendor_branch_id=vendor_branch_id,
+                    customer_id=str(instance.id),
+                    coupon_name_id=coupon_name_id,
+                    expiry_date=expiry_date or instance.d_o_b  
+                )
+                customer_coupon_ids.append(customer_coupon.id)
+
+            instance.coupon.set(customer_coupon_ids)
+
+        instance.save()
+        return instance
+
 
 
 class update_minuimum_amount_serializer(serializers.Serializer):
@@ -923,13 +1057,34 @@ class VendorServiceCategorySerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
+class VendorEnquerySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VendorEnquery
+        fields = ['id', 'customer_name','mobile_no','query_for','comment']
+        extra_kwargs = {'id': {'read_only': True}}
+
+    def create(self, validated_data):
+        validated_data['user'] = self.context.get('request').user
+        validated_data['vendor_branch_id'] = self.context.get('branch_id')
+        return super().create(validated_data)
+        
+    
+    
+    
+    def update(self, instance, validated_data):
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save()
+        return instance
+
 class VendorExpenseSerializer(serializers.ModelSerializer):
     expense_category = VendorExpenseCategorySerializer(many=True, read_only=True)
     inventory_item = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
 
     class Meta:
         model = VendorExpense
-        fields = ['id', 'expense_type', 'inventory_item', 'expense_account', 'expense_category', 'expense_amount', 'invoice_id', "date", "comment"]
+        fields = ['id', 'expense_type', 'inventory_item', 'expense_account', 'expense_category','amount_paid','due_date','completed_date', 'expense_amount', 'invoice_id', "date", "comment"]
         extra_kwargs = {'id': {'read_only': True}}
 
     def get_week_number(self, day):
@@ -949,6 +1104,18 @@ class VendorExpenseSerializer(serializers.ModelSerializer):
         validated_data['month'] = date.month
         validated_data['week'] = self.get_week_number(date.day)
         validated_data['year'] = date.year
+        try:
+            validated_data['due_amount'] = int(validated_data.get('expense_amount')) - int(validated_data.get('amount_paid'))
+        except Exception:
+            validated_data['due_amount'] = 0
+        for i in validated_data.get('inventory_item'):
+            product  = VendorInventoryProduct.objects.get(id=i.get('item'))
+            product.stocks_in_hand+=int(i.get('quantity'))
+            product.save()
+            
+        
+            
+            
         return super().create(validated_data)
 
 
@@ -958,5 +1125,68 @@ class VendorExpenseSerializer_get(serializers.ModelSerializer):
     class Meta:
         model = VendorExpense
         fields = "__all__"
+
+
+class VendorEnquerySerializer_get(serializers.ModelSerializer):
+   
+
+    class Meta:
+        model = VendorEnquery
+        fields = "__all__"
+
+from rest_framework import serializers
+from .models import SalesTargetSetting
+
+class SalesTargetSettingSerializer(serializers.ModelSerializer):
+    staff_targets = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
+
+
+    class Meta:
+        model = SalesTargetSetting
+        fields = '__all__'
+        read_only_fields = ['id','vendor_name','vendor_branch','created_at','updated_at']
+
+    def create(self, validated_data):
+        validated_data['vendor_name'] = self.context.get('request').user
+        validated_data['vendor_branch_id'] = self.context.get('branch_id')
+        validated_data['created_at'] = ""
+        validated_data['updated_at'] = ""
+        return super().create(validated_data)
+        
+    
+    
+    
+    def update(self, instance, validated_data):
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save()
+        return instance
+
+
+
+class PictureSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Picture
+        fields = ['image_name', 'image', 'uploaded_at']
+
+    def create(self, validated_data):
+        request = self.context.get('request')  
+        validated_data['image'] = request.FILES.get('image')  
+
+      
+           
+        validated_data['vendor_branch_id'] = self.context.get('branch_id')
+        validated_data['user']  = request.user
+        
+        return super().create(validated_data)
+
+
+
+class ImageMergeSerializer(serializers.Serializer):
+    image1 = serializers.ImageField()
+    image2 = serializers.ImageField()
+
+
 
 

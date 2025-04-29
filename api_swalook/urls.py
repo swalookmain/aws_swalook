@@ -37,8 +37,16 @@ urlpatterns = [
     path('api/swalook/staff/login/', staff_login.as_view(), name='staff_login'),
     path('api/swalook/admin/login/', admin_login.as_view(), name='admin_login'),
     path('api/swalook/billing/', vendor_billing.as_view(), name='vendor_billing'),
+
     path('api/swalook/save-pdf/', vendor_billing_pdf.as_view(), name='save_pdf'),
     path('api/swalook/appointment/', VendorAppointments.as_view(), name='appointment'),
+    
+    path('api/swalook/appointment/daily/', DailyAppointmentsView.as_view(), name='appointment-daily'),
+    path('api/swalook/appointment/current-week/', WeeklyAppointmentsView.as_view(), name='appointment-week'),
+    path('api/swalook/appointment/previous-week/', PreviousWeekAppointmentsView.as_view(), name='appointment-previous-week'),
+    path('api/swalook/appointment/staff/', AppointmentsBystaffView.as_view(), name='appointment-staff-week'),
+
+    
     path('api/swalook/view-appointment/', VendorAppointments.as_view(), name='view_appointment'),
     path('api/swalook/edit/appointment/', edit_appointment.as_view(), name='edit_appointment'),
     path('api/swalook/delete/appointment/', delete_appointment.as_view(), name='delete_appointment'),
@@ -89,15 +97,33 @@ urlpatterns = [
     path('api/swalook/business-analysis/service/', service_analysis.as_view(), name='business_analysis_service'),
     path('api/swalook/business-analysis/headers/', busniess_headers.as_view(), name='business_analysis_headers'),
     path('api/swalook/get-customer-bill-app-data/', GetCustomerBillAppDetails.as_view(), name='get_customer_bill_app_data'),
+    path('api/swalook/get-customer-bill-app-data/2/', GetCustomerBillAppDetails_copy.as_view(), name='get_customer_bill_app_data_copy'),
+    path('api/swalook/get-customer-bill-app-data/3/', GetCustomerBillAppDetails_copy_details.as_view(), name='get_customer_bill_app_details_data_copy'),
     path('api/swalook/expense_management/', expense_management.as_view(), name='expense_management'),
     path('api/swalook/expense_category/', expense_category.as_view(), name='expense_category'),
     path('api/swalook/service_category/', service_category.as_view(), name='service_category'),
-    # path('api/swalook/coupon/', CouponView.as_view(), name='coupon'),
+    path('api/swalook/product_category/', product_category.as_view(), name='product_category'),
+    path('api/swalook/coupon/', CouponView.as_view(), name='coupon'),
+    path('api/swalook/enquery/', enquery.as_view(), name='enquery'),
+    path('api/swalook/staff-analysis/', StaffRevenueAPI.as_view(), name='staff_revenue'),
+    path('api/swalook/mode-of-payment-analysis/', ModeOfPaymentAPI.as_view(), name='mode_of_payment_revenue'),
+    path('api/swalook/revenue-analysis/', RevenueSummaryAPI.as_view(), name='daily_previous_revenue'),
     # path('api/swalook/loyality/template/', LoyalityTemplate.as_view(), name='templates'),
     path('api/swalook/staff-header-mode-of-payment/', top5_header_staff_revenue.as_view(), name='staff_header_mode_of_payment'),
+    path('api/swalook/vendor-customers/stats/', VendorCustomerStatsAPIView.as_view(), name='vendor-customer-stats'),
+    path('api/swalook/inventory/expiring-products/', ExpiringProductsAPIView.as_view(), name='expiring-products'),
     path('api/swalook/test-error/', Table_servicess.as_view(), name='test_error'),
-    re_path(r'^media/{}/(?P<path>.*)$'.format(settings.MEDIA_URL_PREFIX), serve, {'document_root': settings.MEDIA_ROOT}, name='media'),
-    re_path(r'^static/{}/(?P<path>.*)$'.format(settings.STATIC_URL_PREFIX), serve, {'document_root': settings.STATIC_URL}, name='static'),
+    path('api/swalook/sales-targets/', SalesTargetSettingListCreateView.as_view(), name='sales-target-list-create'),
+    path('api/swalook/sales-targets/<uuid:pk>/', SalesTargetSettingDetailView.as_view(), name='sales-target-detail'),
+    path('api/swalook/upload/image/', PictureUploadView.as_view(), name='upload-picture'),
+    path('merge-images/', MergeImagesAPIView.as_view(), name='merge-images'),
+    path('api/swalook/fb/exchange-token/', FacebookTokenExchange.as_view(),name='authentication-instagram'),
+    path('api/swalook/fb/pages/', FacebookPages.as_view(),name='pages-instagram'),
+    path('api/swalook/fb/instagram-id/', InstagramBusinessID.as_view(),name='getting-id-for-page-instagram'),
+    path('api/swalook/fb/upload-instagram/', InstagramUpload.as_view(),name='image-upload-instagram'),
+   
+    re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}, name='media'),
+    re_path(r'^static/(?P<path>.*)$', serve, {'document_root': settings.STATIC_URL}, name='static'),
 ]
 
 

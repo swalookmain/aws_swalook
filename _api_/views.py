@@ -1,8 +1,15 @@
 from collections import defaultdict
 from datetime import date, datetime, timedelta
+from django.utils.timezone import now
 import io
+from django.http import FileResponse
+from PIL import Image, ImageDraw, ImageFont
 import json
 import os
+import requests
+from rest_framework.throttling import ScopedRateThrottle
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 from django.contrib import auth
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
@@ -20,9 +27,20 @@ from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import *
+from rest_framework.parsers import MultiPartParser, FormParser
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
 from .serializer import *
 from api_swalook import settings
 import subprocess
+import datetime as dt
+from django.utils.timezone import now
+from django.utils import timezone
+from datetime import timedelta
+FB_APP_ID = settings.IG_FB_APP_ID
+FB_APP_SECRET = settings.IG_FB_APP_SECRET
+
+
 
 class VendorSignin(CreateAPIView):
     permission_classes = [AllowAny]
@@ -548,6 +566,8 @@ class get_slno(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+
+
 class vendor_billing(APIView):
     permission_classes = [IsAuthenticated]
     serializer_class = billing_serializer
@@ -573,6 +593,10 @@ class vendor_billing(APIView):
                 },
                 'data': None
             }, status=status.HTTP_400_BAD_REQUEST)
+
+        
+
+            
         serializer = self.serializer_class(data=request.data, context={'request': request, 'branch_id': branch_name})
 
         if serializer.is_valid():
@@ -605,16 +629,47 @@ class vendor_billing(APIView):
 
         queryset = VendorInvoice.objects.filter(
             vendor_name=request.user,
+            vendor_branch_id = branch_name,
             date=date
         ).order_by('-date')
+       
+        invoice_data = billing_serializer_get(queryset, many=True).data
+        for idx, invoice in enumerate(invoice_data):
+                    slno = invoice.get('slno')
+                    if slno:  
+                        invoice_filename = f"Invoice-{slno}.pdf"
+                        invoice_path = os.path.join('media/pdf', invoice_filename)
+                        invoice_data[idx]['pdf_path'] = invoice_path
+                    else:
+                        invoice_data[idx]['pdf_path'] = None 
 
-        serializer = billing_serializer_get(queryset, many=True)
 
         return Response({
             "status": True,
-            "table_data": serializer.data,
+            "table_data": invoice_data,
             "message": "Billing records retrieved successfully."
         }, status=status.HTTP_200_OK)
+
+
+    def put(self, request):
+        ids = request.query_params.get('id')
+        branch_name = request.query_params.get('branch_name')
+    
+        try:
+            instance = VendorInvoice.objects.get(id=ids)
+        except VendorInvoice.DoesNotExist:
+            return Response({"status": False, "message": "Invoice not found"}, status=404)
+    
+        serializer = self.serializer_class(
+            instance, data=request.data, partial=True, 
+            context={'request': request, 'id': ids, 'branch_id': branch_name}
+        )
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"status": True})
+        else:
+            return Response({"status": False, "errors": serializer.errors}, status=400)
 
 
 class vendor_billing_pdf(CreateAPIView):
@@ -1336,7 +1391,7 @@ class Vendor_loyality_customer_profile(CreateAPIView, ListAPIView, UpdateAPIView
         if "%20" in branch_name:
             branch_name = branch_name.replace("%20", " ")
 
-        data_object = VendorCustomers.objects.select_related('loyality_profile').filter(user=request.user)[::-1]
+        data_object = VendorCustomers.objects.filter(user=request.user)[::-1]
         serializer_obj = VendorCustomerLoyalityProfileSerializer_get(data_object, many=True)
 
         return Response({
@@ -1345,25 +1400,36 @@ class Vendor_loyality_customer_profile(CreateAPIView, ListAPIView, UpdateAPIView
         })
 
     def put(self, request):
-        id = request.query_params.get('id')
+        ids = request.query_params.get('id')
         branch_name = request.query_params.get('branch_name')
-        serializer_objects = loyality_customer_update_serializer(request.data)
-        json_data = JSONRenderer().render(serializer_objects.data)
-        stream_data_over_network = io.BytesIO(json_data)
-        accept_json_stream = JSONParser().parse(stream_data_over_network)
-        serializer = loyality_customer_update_serializer(data=accept_json_stream, context={'request': request, 'id': id, 'branch_id': branch_name})
+    
+        try:
+            instance = VendorCustomers.objects.get(id=ids)
+        except VendorCustomers.DoesNotExist:
+            return Response({"status": False, "message": "Customer not found"}, status=404)
+    
+        serializer = loyality_customer_update_serializer(
+            instance, data=request.data, partial=True, 
+            context={'request': request, 'id': ids, 'branch_id': branch_name}
+        )
+
         if serializer.is_valid():
             serializer.save()
-            return Response({
-                "status": True,
-            })
+            return Response({"status": True})
+        else:
+            return Response({"status": False, "errors": serializer.errors}, status=400)
+
 
     def delete(self, request):
-        id = request.query_params.get('id')
-        obj = VendorCustomers.objects.get(id=id)
-        clp = VendorCustomerLoyalityPoints.objects.get(id=obj.loyality_profile.id)
+        ids = request.query_params.get('id')
+        obj = VendorCustomers.objects.get(id=ids)
+        try:
+            clp = VendorCustomerLoyalityPoints.objects.get(id=obj.loyality_profile.id)
+            clp.delete()
+        except Exception:
+            pass
         obj.delete()
-        clp.delete()
+       
 
         return Response({
             "status": True,
@@ -1663,12 +1729,17 @@ class vendor_staff_setting_slabs(APIView):
                 },
                 'data': None
             }, status=status.HTTP_400_BAD_REQUEST)
-        s_s = StaffSetting.objects.filter(vendor_name=request.user)
-        s_s_s = StaffSettingSlab.objects.filter(vendor_name=request.user)
+        s_s = StaffSetting.objects.filter(vendor_name=request.user,vendor_branch_id=branch_name)
+   
         if len(s_s) != 0:
-            if len(s_s_s) != 0:
-                s_s.delete()
-                s_s_s.delete()
+            
+            s_s.delete()
+       
+        time_object = StaffAttendanceTime.objects.filter(vendor_name=request.user,vendor_branch_id=branch_name)
+        if len(time_object) != 0:
+            time_object.delete()
+        
+              
         serializer = self.serializer_class(data=request.data, context={'request': request, 'branch_id': branch_name})
 
         if serializer.is_valid():
@@ -1685,6 +1756,32 @@ class vendor_staff_setting_slabs(APIView):
             "errors": serializer.errors,
             "message": "Failed to add staff."
         }, status=status.HTTP_400_BAD_REQUEST)
+
+    def get(self, request):
+        branch_name = request.query_params.get('branch_name')
+        if not branch_name:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'error': {
+                    'code': 'Bad Request',
+                    'message': 'branch_name parameter is missing!'
+                },
+                'data': None
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        queryset = StaffSetting.objects.filter(
+            vendor_name=request.user,
+            vendor_branch_id=branch_name
+        ).order_by('-id')
+
+        serializer = staff_setting_serializer_get(queryset, many=True)
+
+        return Response({
+            "status": True,
+            "table_data": serializer.data,
+            "message": "Staff Setting records retrieved successfully."
+        }, status=status.HTTP_200_OK)
 
 
 class vendor_staff_attendance(APIView):
@@ -1722,13 +1819,25 @@ class vendor_staff_attendance(APIView):
         serializer = self.serializer_class(data=request.data, context={'request': request, 'branch_id': branch_name})
 
         serializer.create(validated_data=request.data)
+        prefered_in_time = StaffAttendanceTime.objects.get(vendor_name=request.user,vendor_branch_id=branch_name)
+        # calculation remaining. 
         return Response({
             "status": True,
-            "message": "staff attendance added successfully."
+            "message": "staff attendance added successfully.",
+            "in_time":request.data.get('json_data')[0].get('in_time'),
+            "late_time":""
+            
         }, status=status.HTTP_201_CREATED)
-
+   
+    
+    
+    
+    
     def get(self, request):
         branch_name = request.query_params.get('branch_name')
+        month = request.query_params.get('month')
+        staff_id = request.query_params.get('staff_id')
+
         if not branch_name:
             return Response({
                 'success': False,
@@ -1740,116 +1849,286 @@ class vendor_staff_attendance(APIView):
                 'data': None
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        staff = VendorStaff.objects.filter(vendor_name=request.user)
         current_date = dt.date.today()
+
+        
+        if staff_id:
+            staff = VendorStaff.objects.filter(id=staff_id, vendor_name=request.user, vendor_branch_id=branch_name)
+            if not staff.exists():
+                return Response({
+                    'success': False,
+                    'status_code': status.HTTP_404_NOT_FOUND,
+                    'error': {
+                        'code': 'Not Found',
+                        'message': 'Staff with the provided ID does not exist in this branch.'
+                    },
+                    'data': None
+                }, status=status.HTTP_404_NOT_FOUND)
+        else:
+            staff = VendorStaff.objects.filter(vendor_name=request.user, vendor_branch_id=branch_name)
 
         attendance_queryset = VendorStaffAttendance.objects.filter(
             vendor_name=request.user,
             vendor_branch_id=branch_name,
-            of_month=current_date.month,
+            of_month=month,
             year=current_date.year,
-        ).values(
-            "staff_id",
-            "attend",
-            "leave",
-            "date"
+            staff_id__in=staff
         )
 
         attendance_data = {}
         for record in attendance_queryset:
-            staff_id = record["staff_id"]
-            if staff_id not in attendance_data:
-                attendance_data[staff_id] = {
+            sid = record.staff.id
+            if sid not in attendance_data:
+                attendance_data[sid] = {
                     "present_dates": [],
+                    "in_time": [],
+                    "out_time": [],
                     "leave_dates": [],
                     "number_of_days_present": 0,
                     "no_of_days_absent": 0,
                 }
-            if record["attend"]:
-                attendance_data[staff_id]["present_dates"].append(record["date"])
-                attendance_data[staff_id]["number_of_days_present"] += 1
-            if record["leave"]:
-                attendance_data[staff_id]["leave_dates"].append(record["date"])
-                attendance_data[staff_id]["no_of_days_absent"] += 1
 
+            if record.attend:
+                attendance_data[sid]["present_dates"].append(record.date)
+                attendance_data[sid]["in_time"].append(record.in_time)
+                attendance_data[sid]["out_time"].append(record.out_time)
+                attendance_data[sid]["number_of_days_present"] += 1
+            if record.leave:
+                attendance_data[sid]["leave_dates"].append(record.date)
+                attendance_data[sid]["no_of_days_absent"] += 1
+
+        
         all_staff_attendance = {}
         for staff_member in staff:
-            staff_id = staff_member.id
-            data = attendance_data.get(staff_id, {
+            sid = staff_member.id
+            data = attendance_data.get(sid, {
                 "present_dates": [],
+                "in_time": [],
+                "out_time": [],
                 "leave_dates": [],
                 "number_of_days_present": 0,
                 "no_of_days_absent": 0,
             })
             all_staff_attendance[staff_member.mobile_no] = {
-                "id": staff_id,
-                "month": current_date.month,
+                "id": sid,
+                "month": month,
                 **data
             }
 
+      
         staff_settings_obj = StaffSetting.objects.filter(
             vendor_name=request.user,
-            month=current_date.month
+            vendor_branch_id=branch_name,
+            month=month,
+        ).first()
+
+        time_obj = StaffAttendanceTime.objects.filter(
+            vendor_name=request.user,
+            vendor_branch_id=branch_name
         ).first()
 
         return Response({
             "status": True,
             "table_data": all_staff_attendance,
             "current_month_days": staff_settings_obj.number_of_working_days if staff_settings_obj else 0,
+            "in_time": time_obj.in_time if time_obj else None,
+            "out_time": time_obj.out_time if time_obj else None,
             "message": "Attendance records retrieved successfully."
         }, status=status.HTTP_200_OK)
 
     def put(self, request):
-        pass
+        
+        id = request.query_params.get('staff_id')
+        branch_name = request.query_params.get('branch_name')
+        type = request.query_params.get('type')
+       
+        if not id or not branch_name:
+            return Response({"status": False, "text": "ID and branch name are required."}, status=status.HTTP_400_BAD_REQUEST)
+        if type == "admin":
+            for i in request.data.get('json_data'):
+                try:
+                    instance = VendorStaffAttendance.objects.get(staff_id=id, date=i.get('date'))
+                    instance.in_time = i.get('in_time')
+                    instance.out_time = i.get('out_time')
+                    instance.attend = i.get('attend')
+                    instance.leave = i.get('leave')
+                    instance.of_month = i.get('of_month')
+                    instance.year = i.get('year')
+                    instance.save()
+                except VendorStaffAttendance.DoesNotExist:
+         
+                    instance = VendorStaffAttendance(
+                        staff_id=id,
+                        vendor_name=request.user,
+                        vendor_branch_id=request.query_params.get('branch_name'),
+                        date=i.get('date'),  
+                        in_time=i.get('in_time'),
+                        out_time=i.get('out_time'),
+                        attend=i.get('attend'),
+                        leave=i.get('leave'),
+                        of_month=i.get('of_month'),
+                        year=i.get('year'),
+                    )
+                    instance.save()
+                except Exception as e:
+                    return Response({"status": False, "error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+            
+            
+            
+            return Response({"status": True})
+        else:
+    
+            try:
+                instance = VendorStaffAttendance.objects.get(staff_id=id,date=dt.date.today())
+            except ObjectDoesNotExist:
+                return Response({"status": False, "text": "Attendance not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = staff_attendance_serializer(instance, data=request.data, context={'request': request, 'branch_id': branch_name})
+        if serializer.is_valid():
+            serializer.save()
+            out_time = request.data.get('json_data')[0].get('out_time')
+            prefered_out_time = StaffAttendanceTime.objects.get(vendor_name=request.user,vendor_branch_id=branch_name)
+            # calculation remaining. 
+            return Response({"status": True, "out_time":request.data.get('json_data')[0].get('out_time'),"late_time":"" }, status=status.HTTP_200_OK)
+        return Response({"status": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request):
         pass
 
 
+# class salary_disburse(APIView):
+#     permission_classes = [IsAuthenticated]
+#     serializer_class = staff_salary_serializer
+
+#     def __init__(self, **kwargs):
+#         self.cache_key = None
+
+#     def get(self, request):
+#         id = request.query_params.get('id')
+#         staff_attendance = VendorStaffAttendance.objects.filter(staff_id=id, of_month=dt.date.today().month)
+#         staff_setting = StaffSetting.objects.select_related('vendor_name').get(vendor_name=request.user, month=dt.date.today().month)
+#         staff_slab = StaffSettingSlab.objects.select_related('vendor_name').filter(vendor_name=request.user).values_list('staff_target_business', 'staff_slab').order_by('-staff_target_business')
+
+#         def calculate_commission(business_amount, slabs):
+#             commission = 0
+#             for threshold, percentage in slabs:
+#                 if business_amount > int(threshold):
+#                     extra_amount = int(business_amount) - int(threshold)
+#                     commission += (extra_amount * float(percentage)) / 100
+#             return commission
+
+#         commission = calculate_commission(int(staff_attendance[0].staff.business_of_the_current_month), staff_slab)
+#         staff_salary = StaffSalary()
+
+#         staff_salary.of_month = dt.date.today().month
+#         staff_salary.salary_payble_amount = (int(staff_attendance[0].staff.staff_salary_monthly) / staff_setting.number_of_working_days) * int(staff_attendance.count())
+#         staff_salary.salary_payble_amount = staff_salary.salary_payble_amount + commission
+#         staff_salary.staff_id = id
+#         staff_salary.year = dt.date.today().year
+#         staff_salary.save()
+
+#         serializer = staff_salary_serializer(staff_salary)
+
+#         if commission == 0:
+#             commission = int(staff_salary.salary_payble_amount)
+
+#         return Response({
+#             "status": True,
+#             "id": id,
+#             "net_payble_amount": int(staff_salary.salary_payble_amount),
+#             "no_of_working_days": staff_attendance.count(),
+#             "earning": commission,
+#             "message": "staff salary records retrieved successfully."
+#         }, status=status.HTTP_200_OK)
+
+
+from datetime import datetime
+
 class salary_disburse(APIView):
     permission_classes = [IsAuthenticated]
     serializer_class = staff_salary_serializer
 
-    def __init__(self, **kwargs):
-        self.cache_key = None
-
     def get(self, request):
         id = request.query_params.get('id')
-        staff_attendance = VendorStaffAttendance.objects.filter(staff_id=id, of_month=dt.date.today().month)
-        staff_setting = StaffSetting.objects.select_related('vendor_name').get(vendor_name=request.user, month=dt.date.today().month)
-        staff_slab = StaffSettingSlab.objects.select_related('vendor_name').filter(vendor_name=request.user).values_list('staff_target_business', 'staff_slab').order_by('-staff_target_business')
+        branch_name = request.query_params.get('branch_name')
+        if not id:
+            return Response({"status": False, "message": "Staff ID is required."}, status=status.HTTP_400_BAD_REQUEST)
 
+        today = dt.date.today()
+        month = today.month
+        year = today.year
+
+        staff_attendance = VendorStaffAttendance.objects.filter(staff_id=id, of_month=month)
+        if not staff_attendance.exists():
+            return Response({"status": False, "message": "No attendance found for this staff."}, status=status.HTTP_404_NOT_FOUND)
+
+        staff_setting = StaffSetting.objects.get(vendor_name=request.user, month=month)
+        staff_slab = StaffSettingSlab.objects.filter(vendor_name=request.user,vendor_branch_id=branch_name).values_list('staff_target_business', 'staff_slab').order_by('-staff_target_business')
+        working_days = staff_attendance.count()
+
+       
+        business_amount = int(staff_attendance[0].staff.business_of_the_current_month)
         def calculate_commission(business_amount, slabs):
             commission = 0
             for threshold, percentage in slabs:
                 if business_amount > int(threshold):
-                    extra_amount = int(business_amount) - int(threshold)
+                    extra_amount = business_amount - int(threshold)
                     commission += (extra_amount * float(percentage)) / 100
             return commission
 
-        commission = calculate_commission(int(staff_attendance[0].staff.business_of_the_current_month), staff_slab)
-        staff_salary = StaffSalary()
+        commission = calculate_commission(business_amount, staff_slab)
 
-        staff_salary.of_month = dt.date.today().month
-        staff_salary.salary_payble_amount = (int(staff_attendance[0].staff.staff_salary_monthly) / staff_setting.number_of_working_days) * int(staff_attendance.count())
-        staff_salary.salary_payble_amount = staff_salary.salary_payble_amount + commission
-        staff_salary.staff_id = id
-        staff_salary.year = dt.date.today().year
-        staff_salary.save()
+   
+        try:
+            attendance_time = StaffAttendanceTime.objects.get(vendor_name=request.user, vendor_branch_id=branch_name)
+            required_in_time = datetime.strptime(attendance_time.in_time, "%H:%M")
+        except StaffAttendanceTime.DoesNotExist:
+            return Response({"status": False, "message": "Attendance time not set for this branch."}, status=status.HTTP_400_BAD_REQUEST)
+
+        working_hours_per_day = (datetime.strptime(attendance_time.out_time, "%H:%M") - required_in_time).seconds / 3600
+        total_required_minutes = int(working_hours_per_day * working_days * 60)
+
+        
+        late_minutes_total = 0
+        for entry in staff_attendance:
+            try:
+                if entry.in_time:
+                    actual_in = datetime.strptime(entry.in_time, "%H:%M")
+                    late_diff = (actual_in - required_in_time).total_seconds() / 60
+                    if late_diff > 0:
+                        late_minutes_total += int(late_diff)
+            except Exception:
+                pass  
+     
+        base_salary = int(staff_attendance[0].staff.staff_salary_monthly)
+        salary_per_minute = base_salary / total_required_minutes
+        late_fine = late_minutes_total * salary_per_minute
+        payable_salary = ((base_salary / staff_setting.number_of_working_days) * working_days) + commission - late_fine
+
+        
+        staff_salary = StaffSalary.objects.create(
+            of_month=month,
+            year=year,
+            staff_id=id,
+            salary_payble_amount=payable_salary
+        )
 
         serializer = staff_salary_serializer(staff_salary)
-
-        if commission == 0:
-            commission = int(staff_salary.salary_payble_amount)
 
         return Response({
             "status": True,
             "id": id,
-            "net_payble_amount": int(staff_salary.salary_payble_amount),
-            "no_of_working_days": staff_attendance.count(),
-            "earning": commission,
-            "message": "staff salary records retrieved successfully."
+            "net_payble_amount": round(payable_salary, 2),
+            "no_of_working_days": working_days,
+            "total_required_minutes": total_required_minutes,
+            "late_minutes": late_minutes_total,
+            "salary_per_minute": round(salary_per_minute, 2),
+            "late_fine": round(late_fine, 2),
+            "commission": round(commission, 2),
+            "message": "Staff salary calculated successfully."
         }, status=status.HTTP_200_OK)
+
 
 class Sales_Per_Customer(APIView):
     permission_classes = [IsAuthenticated]
@@ -1960,19 +2239,32 @@ class Sales_in_a_week(APIView):
         branch_name = request.query_params.get('branch_name')
         today = date.today()
         current_week = today.isocalendar()[1]
-
-        sales_by_day = VendorInvoice.objects.filter(
-            vendor_name=request.user,
-            vendor_branch_id=branch_name,
-            date__week=current_week,
-            date__lte=today
-        ).annotate(
-            day_of_week=ExtractWeekDay('date')
-        ).values(
-            'day_of_week'
-        ).annotate(
-            total_sales=Sum('grand_total')
-        ).order_by('day_of_week')
+        if request.query_params.get('start_date') and request.query_params.get('end_date'):
+              sales_by_day = VendorInvoice.objects.filter(
+                    vendor_name=request.user,
+                    vendor_branch_id=branch_name,
+                    date__range = [request.query_params.get('start_date'),request.query_params.get('end_date')]
+              ).annotate(
+                    day_of_week=ExtractWeekDay('date')
+              ).values(
+                    'day_of_week'
+              ).annotate(
+                    total_sales=Sum('grand_total')
+              ).order_by('day_of_week')
+        else:
+            
+            sales_by_day = VendorInvoice.objects.filter(
+                vendor_name=request.user,
+                vendor_branch_id=branch_name,
+                date__week=current_week,
+                date__lte=today
+            ).annotate(
+                day_of_week=ExtractWeekDay('date')
+            ).values(
+                'day_of_week'
+            ).annotate(
+                total_sales=Sum('grand_total')
+            ).order_by('day_of_week')
 
         return Response({
             "data": sales_by_day,
@@ -2225,8 +2517,7 @@ class top5_header_staff_revenue(APIView):
             "mode_of_payment": response_data,
             "today_no_of_app": appointmet_today_count,
         })
-
-class GetCustomerBillAppDetails(APIView):
+class GetCustomerBillAppDetails_copy(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -2247,10 +2538,74 @@ class GetCustomerBillAppDetails(APIView):
         appointments_all = VendorAppointment.objects.filter(mobile_no=mobile_no, vendor_name=request.user, vendor_branch_id=branch_name)
         invoice_all = VendorInvoice.objects.filter(
             mobile_no=mobile_no, vendor_name=request.user, vendor_branch_id=branch_name
-        ).select_related(
-            'vendor_customers_profile__loyality_profile'
         )
 
+
+        # if invoice_all.exists():
+        #     customer_name = invoice_all[0].customer_name
+        #     customer_email = invoice_all[0].email
+        #     try:
+        #         customer_dob = invoice_all[0].vendor_customers_profile.d_o_b
+        #         customer_doa = invoice_all[0].vendor_customers_profile.d_o_a
+        #     except Exception:
+        #         customer_dob = ""
+        #         customer_doa = ""
+        # else:
+        #     return Response({
+        #         "status": False,
+        #         "message": "No invoices found for this customer."
+        #     }, status=404)
+
+        count_1 = appointments_all.count()
+        count_2 = invoice_all.count()
+        total_billing_amount = invoice_all.aggregate(total=Sum('grand_total'))['total']
+
+        # appointment_data = appointment_serializer(appointments_all, many=True).data
+        # invoice_data = billing_serializer_get(invoice_all, many=True).data
+        data_object = VendorCustomers.objects.filter(user=request.user, vendor_branch_id=branch_name, mobile_no=mobile_no)
+        serializer_obj = VendorCustomerLoyalityProfileSerializer_get(data_object, many=True)
+
+        
+        return Response({
+            "status": True,
+            "total_appointment": count_1,
+            "total_invoices": count_2,
+            # "previous_appointments": appointment_data,
+            # "previous_invoices": invoice_data,
+            "data": serializer_obj.data,
+            # "customer_name": customer_name,
+            # "customer_mobile_no": mobile_no,
+            # "customer_email": customer_email,
+            # "customer_dob": customer_dob,
+            # "customer_doa": customer_doa,
+            "total_billing_amount": total_billing_amount,})
+
+class GetCustomerBillAppDetails(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        mobile_no = request.query_params.get('mobile_no')
+        branch_name = request.query_params.get('branch_name')
+        
+
+        if not mobile_no:
+            return Response({
+                "status": False,
+                "message": "Mobile number is required."
+            }, status=400)
+        if not branch_name:
+            return Response({
+                "status": False,
+                "message": "Branch_name is required."
+            }, status=400)
+
+       
+        appointments_all = VendorAppointment.objects.filter(mobile_no=mobile_no, vendor_name=request.user, vendor_branch_id=branch_name)
+        
+        
+        invoice_all = VendorInvoice.objects.filter(
+            mobile_no=mobile_no, vendor_name=request.user, vendor_branch_id=branch_name
+        )
         if invoice_all.exists():
             customer_name = invoice_all[0].customer_name
             customer_email = invoice_all[0].email
@@ -2272,13 +2627,16 @@ class GetCustomerBillAppDetails(APIView):
 
         appointment_data = appointment_serializer(appointments_all, many=True).data
         invoice_data = billing_serializer_get(invoice_all, many=True).data
+        
 
+     
         return Response({
             "status": True,
             "total_appointment": count_1,
             "total_invoices": count_2,
             "previous_appointments": appointment_data,
             "previous_invoices": invoice_data,
+            # "customer_data": serializer_obj.data
             "customer_name": customer_name,
             "customer_mobile_no": mobile_no,
             "customer_email": customer_email,
@@ -2286,6 +2644,57 @@ class GetCustomerBillAppDetails(APIView):
             "customer_doa": customer_doa,
             "total_billing_amount": total_billing_amount,
         })
+
+class GetCustomerBillAppDetails_copy_details(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        mobile_no = request.query_params.get('mobile_no')
+        branch_name = request.query_params.get('branch_name')
+        type = request.query_params.get('type')
+       
+
+        if not mobile_no:
+            return Response({
+                "status": False,
+                "message": "Mobile number is required."
+            }, status=400)
+        if not branch_name:
+            return Response({
+                "status": False,
+                "message": "Branch_name is required."
+            }, status=400)
+
+        if type == "appointment":
+           
+            appointments_all = VendorAppointment.objects.filter(mobile_no=mobile_no, vendor_name=request.user, vendor_branch_id=branch_name)
+           
+            appointment_data = appointment_serializer(appointments_all, many=True).data
+            return Response({
+                "status": True,
+                
+                "previous_appointments": appointment_data,
+            })
+
+           
+        if type == "invoice":
+            
+            invoice_all = VendorInvoice.objects.filter(
+                mobile_no=mobile_no, vendor_name=request.user, vendor_branch_id=branch_name
+            )
+            
+       
+            invoice_data = billing_serializer_get(invoice_all, many=True).data
+                
+    
+            return Response({
+                        "status": True,
+                        "previous_invoices": invoice_data,
+                        
+             })
+            
+            
+           
 
 
 class abc_123(APIView):
@@ -2405,6 +2814,8 @@ class expense_management(APIView):
 
     def delete(self, request):
         pass
+
+
 
 
 class busniess_headers(APIView):
@@ -2640,6 +3051,151 @@ class service_category(APIView):
                 'data': None
             }, status=status.HTTP_404_NOT_FOUND)
 
+class product_category(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = VendorProductCategorySerializer
+
+    def __init__(self, **kwargs):
+        self.cache_key = None
+        super().__init__(**kwargs)
+
+    @transaction.atomic
+    def post(self, request):
+        branch_name = request.query_params.get('branch_name')
+
+        if not branch_name:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'error': {
+                    'code': 'Bad Request',
+                    'message': 'branch_name parameter is missing!'
+                },
+                'data': None
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = self.serializer_class(data=request.data, context={'request': request, 'branch_id': branch_name,})
+
+        serializer.create(validated_data=request.data)
+        return Response({
+            "status": True,
+            "message": "Vendor Product category Added Succesfully"
+        }, status=status.HTTP_201_CREATED)
+
+    def get(self, request):
+        branch_name = request.query_params.get('branch_name')
+        if not branch_name:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'error': {
+                    'code': 'Bad Request',
+                    'message': 'branch_name parameter is missing!'
+                },
+                'data': None
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        data = VendorProductCategory.objects.filter(user=request.user,)
+        serializer = self.serializer_class(data, many=True)
+
+        return Response({
+            "status": True,
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)
+
+    def put(self, request):
+        id = request.query_params.get('id')
+        branch_name = request.query_params.get('branch_name')
+
+        service_obj = VendorProductCategory.objects.filter(user=request.user, vendor_branch_id=branch_name, service_category=request.data.get('category')).exclude(id=id)
+        if service_obj.exists():
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_200_OK,
+                'error': {
+                    'code': 'The request was successful',
+                    'message': 'Service with the same name already exists on this branch!'
+                },
+                'data': None
+            }, status=status.HTTP_200_OK)
+
+        try:
+            service_instance = VendorProductCategory.objects.get(id=id, user=request.user, vendor_branch_id=branch_name)
+        except VendorProductCategory.DoesNotExist:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_404_NOT_FOUND,
+                'error': {
+                    'code': 'Not Found',
+                    'message': 'product not found!'
+                },
+                'data': None
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = self.serializer_class(instance=service_instance, data=request.data, context={'request': request, 'branch_id': branch_name})
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'success': True,
+                'status_code': status.HTTP_200_OK,
+                'error': {
+                    'code': 'The request was successful',
+                    'message': 'Service updated on this branch!'
+                },
+                'data': None
+            }, status=status.HTTP_200_OK)
+
+        return Response({
+            'success': False,
+            'status_code': status.HTTP_400_BAD_REQUEST,
+            'error': {
+                'code': 'Validation Error',
+                'message': 'Serializer data is invalid!'
+            },
+            'data': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request):
+        id = request.query_params.get('id')
+
+        if not id:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'error': {
+                    'code': 'Bad Request',
+                    'message': 'ID parameter is missing!'
+                },
+                'data': None
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            queryset = VendorProductCategory.objects.get(id=id, user=request.user)
+            queryset.delete()
+
+            return Response({
+                'success': True,
+                'status_code': status.HTTP_200_OK,
+                'error': {
+                    'code': 'The request was successful',
+                    'message': 'Product Category deleted successfully!'
+                },
+                'data': None
+            }, status=status.HTTP_200_OK)
+
+        except VendorProductCategory.DoesNotExist:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_404_NOT_FOUND,
+                'error': {
+                    'code': 'Not Found',
+                    'message': 'Service not found!'
+                },
+                'data': None
+            }, status=status.HTTP_404_NOT_FOUND)
+
+
 
 class Table_servicess(APIView):
     permission_classes = [IsAuthenticated]
@@ -2679,158 +3235,158 @@ class Table_servicess(APIView):
         })
 
 
-# class CouponView(APIView):
+class CouponView(APIView):
 
-#     serializer_class = CouponSerializer
+    serializer_class = CouponSerializer
 
-#     def __init__(self, **kwargs):
-#         self.cache_key = None
-#         super().__init__(**kwargs)
+    def __init__(self, **kwargs):
+        self.cache_key = None
+        super().__init__(**kwargs)
 
-#     @transaction.atomic
-#     def post(self, request):
-#         branch_name = request.query_params.get('branch_name')
+    @transaction.atomic
+    def post(self, request):
+        branch_name = request.query_params.get('branch_name')
 
-#         if not branch_name:
-#             return Response({
-#                 'success': False,
-#                 'status_code': status.HTTP_400_BAD_REQUEST,
-#                 'error': {
-#                     'code': 'Bad Request',
-#                     'message': 'branch_name parameter is missing!'
-#                 },
-#                 'data': None
-#             }, status=status.HTTP_400_BAD_REQUEST)
+        if not branch_name:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'error': {
+                    'code': 'Bad Request',
+                    'message': 'branch_name parameter is missing!'
+                },
+                'data': None
+            }, status=status.HTTP_400_BAD_REQUEST)
 
-#         serializer = self.serializer_class(data=request.data, context={'request': request, 'branch_id': branch_name})
+        serializer = self.serializer_class(data=request.data, context={'request': request, 'branch_id': branch_name})
 
-#         if serializer.is_valid():
-#             serializer.save()
-#             return Response({
-#                 "status": True,
-#                 "message": "Coupon added successfully."
-#             }, status=status.HTTP_201_CREATED)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "status": True,
+                "message": "Coupon added successfully."
+            }, status=status.HTTP_201_CREATED)
 
-#         return Response({
-#             "status": False,
-#             "errors": serializer.errors,
-#             "message": "Failed to add coupon."
-#         }, status=status.HTTP_400_BAD_REQUEST)
+        return Response({
+            "status": False,
+            "errors": serializer.errors,
+            "message": "Failed to add coupon."
+        }, status=status.HTTP_400_BAD_REQUEST)
 
-#     def get(self, request):
-#         branch_name = request.query_params.get('branch_name')
-#         if not branch_name:
-#             return Response({
-#                 'success': False,
-#                 'status_code': status.HTTP_400_BAD_REQUEST,
-#                 'error': {
-#                     'code': 'Bad Request',
-#                     'message': 'branch_name parameter is missing!'
-#                 },
-#                 'data': None
-#             }, status=status.HTTP_400_BAD_REQUEST)
+    def get(self, request):
+        branch_name = request.query_params.get('branch_name')
+        if not branch_name:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'error': {
+                    'code': 'Bad Request',
+                    'message': 'branch_name parameter is missing!'
+                },
+                'data': None
+            }, status=status.HTTP_400_BAD_REQUEST)
 
-#         data = VendorCoupon.objects.filter(user=request.user, vendor_branch_id=branch_name)
-#         serializer = self.serializer_class(data, many=True)
+        data = VendorCoupon.objects.filter(user=request.user, vendor_branch_id=branch_name)
+        serializer = self.serializer_class(data, many=True)
 
-#         return Response({
-#             "status": True,
-#             "data": serializer.data
-#         }, status=status.HTTP_200_OK)
+        return Response({
+            "status": True,
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)
 
 
 
-#     def put(self, request):
-#         id = request.query_params.get('id')
-#         branch_name = request.query_params.get('branch_name')
+    def put(self, request):
+        id = request.query_params.get('id')
+        branch_name = request.query_params.get('branch_name')
 
-#         service_obj = VendorCoupon.filter(user=request.user, vendor_branch_id=branch_name, coupon_name=request.data.get('coupon_name')).exclude(id=id)
-#         if service_obj.exists():
-#             return Response({
-#                 'success': False,
-#                 'status_code': status.HTTP_200_OK,
-#                 'error': {
-#                     'code': 'The request was successful',
-#                     'message': 'Service with the same name already exists on this branch!'
-#                 },
-#                 'data': None
-#             }, status=status.HTTP_200_OK)
+        service_obj = VendorCoupon.filter(user=request.user, vendor_branch_id=branch_name, coupon_name=request.data.get('coupon_name')).exclude(id=id)
+        if service_obj.exists():
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_200_OK,
+                'error': {
+                    'code': 'The request was successful',
+                    'message': 'Service with the same name already exists on this branch!'
+                },
+                'data': None
+            }, status=status.HTTP_200_OK)
 
-#         try:
-#             service_instance = VendorCoupon.objects.get(id=id, user=request.user, vendor_branch_id=branch_name)
-#         except VendorService.DoesNotExist:
-#             return Response({
-#                 'success': False,
-#                 'status_code': status.HTTP_404_NOT_FOUND,
-#                 'error': {
-#                     'code': 'Not Found',
-#                     'message': 'Couopon not found!'
-#                 },
-#                 'data': None
-#             }, status=status.HTTP_404_NOT_FOUND)
+        try:
+            service_instance = VendorCoupon.objects.get(id=id, user=request.user, vendor_branch_id=branch_name)
+        except VendorService.DoesNotExist:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_404_NOT_FOUND,
+                'error': {
+                    'code': 'Not Found',
+                    'message': 'Couopon not found!'
+                },
+                'data': None
+            }, status=status.HTTP_404_NOT_FOUND)
 
-#         serializer = self.serializer_class(instance=service_instance, data=request.data, context={'request': request, 'branch_id': branch_name})
+        serializer = self.serializer_class(instance=service_instance, data=request.data, context={'request': request, 'branch_id': branch_name})
 
-#         if serializer.is_valid():
-#             serializer.save()
-#             return Response({
-#                 'success': True,
-#                 'status_code': status.HTTP_200_OK,
-#                 'error': {
-#                     'code': 'The request was successful',
-#                     'message': 'Coupon updated on this branch!'
-#                 },
-#                 'data': None
-#             }, status=status.HTTP_200_OK)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'success': True,
+                'status_code': status.HTTP_200_OK,
+                'error': {
+                    'code': 'The request was successful',
+                    'message': 'Coupon updated on this branch!'
+                },
+                'data': None
+            }, status=status.HTTP_200_OK)
 
-#         return Response({
-#             'success': False,
-#             'status_code': status.HTTP_400_BAD_REQUEST,
-#             'error': {
-#                 'code': 'Validation Error',
-#                 'message': 'Serializer data is invalid!'
-#             },
-#             'data': serializer.errors
-#         }, status=status.HTTP_400_BAD_REQUEST)
+        return Response({
+            'success': False,
+            'status_code': status.HTTP_400_BAD_REQUEST,
+            'error': {
+                'code': 'Validation Error',
+                'message': 'Serializer data is invalid!'
+            },
+            'data': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
 
-#     def delete(self, request):
-#         id = request.query_params.get('id')
+    def delete(self, request):
+        id = request.query_params.get('id')
 
-#         if not id:
-#             return Response({
-#                 'success': False,
-#                 'status_code': status.HTTP_400_BAD_REQUEST,
-#                 'error': {
-#                     'code': 'Bad Request',
-#                     'message': 'ID parameter is missing!'
-#                 },
-#                 'data': None
-#             }, status=status.HTTP_400_BAD_REQUEST)
+        if not id:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'error': {
+                    'code': 'Bad Request',
+                    'message': 'ID parameter is missing!'
+                },
+                'data': None
+            }, status=status.HTTP_400_BAD_REQUEST)
 
-#         try:
-#             queryset = VendorCoupon.objects.get(id=id, user=request.user)
-#             queryset.delete()
+        try:
+            queryset = VendorCoupon.objects.get(id=id, user=request.user)
+            queryset.delete()
 
-#             return Response({
-#                 'success': True,
-#                 'status_code': status.HTTP_200_OK,
-#                 'error': {
-#                     'code': 'The request was successful',
-#                     'message': 'Coupon deleted successfully!'
-#                 },
-#                 'data': None
-#             }, status=status.HTTP_200_OK)
+            return Response({
+                'success': True,
+                'status_code': status.HTTP_200_OK,
+                'error': {
+                    'code': 'The request was successful',
+                    'message': 'Coupon deleted successfully!'
+                },
+                'data': None
+            }, status=status.HTTP_200_OK)
 
-#         except VendorCoupon.DoesNotExist:
-#             return Response({
-#                 'success': False,
-#                 'status_code': status.HTTP_404_NOT_FOUND,
-#                 'error': {
-#                     'code': 'Not Found',
-#                     'message': 'Coupon not found!'
-#                 },
-#                 'data': None
-#             }, status=status.HTTP_404_NOT_FOUND)
+        except VendorCoupon.DoesNotExist:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_404_NOT_FOUND,
+                'error': {
+                    'code': 'Not Found',
+                    'message': 'Coupon not found!'
+                },
+                'data': None
+            }, status=status.HTTP_404_NOT_FOUND)
 
 
 
@@ -2889,3 +3445,922 @@ class Table_servicess(APIView):
 #             "errors": serializer.errors,
 #             "message": "Failed to send messages."
 #         }, status=status.HTTP_400_BAD_REQUEST)
+
+class DailyAppointmentsView(APIView):
+   
+    def get(self, request):
+        today = now().date()
+        appointments = VendorAppointment.objects.filter(vendor_name=request.user,vendor_branch_id=request.query_params.get('branch_name'),date=today).order_by('booking_time')
+        serializer = app_serailizer_get(appointments, many=True)
+        return Response(serializer.data)
+
+class WeeklyAppointmentsView(APIView):
+  
+    def get(self, request):
+        today = now().date()
+        start_of_week = today - timedelta(days=today.weekday())
+        end_of_week = start_of_week + timedelta(days=6)
+
+        appointments = VendorAppointment.objects.filter(vendor_name=request.user,vendor_branch_id=request.query_params.get('branch_name'),
+            date__range=[start_of_week,end_of_week]
+        ).order_by('date', 'booking_time')
+
+        serializer = app_serailizer_get(appointments, many=True)
+        return Response(serializer.data)
+
+class PreviousWeekAppointmentsView(APIView):
+    
+    def get(self, request):
+        
+        today = now().date()
+        start_of_previous_week = today - timedelta(days=today.weekday() + 7)
+        end_of_previous_week = start_of_previous_week + timedelta(days=6)
+
+        appointments = VendorAppointment.objects.filter(vendor_name=request.user,vendor_branch_id=request.query_params.get('branch_name'),
+            date__range=[start_of_previous_week, end_of_previous_week]
+        ).order_by('date', 'booking_time')
+
+        serializer = app_serailizer_get(appointments, many=True)
+        return Response(serializer.data)
+
+
+class AppointmentsBystaffView(APIView):
+    def get(self,request):
+        today = now().date()
+        start_of_previous_week = today - timedelta(days=today.weekday() + 7)
+        end_of_previous_week = start_of_previous_week + timedelta(days=6)
+        staff_name = request.query_params.get('staff_name')
+        appointments_previous_week = VendorAppointment.objects.filter(vendor_name=request.user,vendor_branch_id=request.query_params.get('branch_name'),
+            date__range=[start_of_previous_week, end_of_previous_week],service_by=staff_name
+        ).order_by('date', 'booking_time')
+
+
+        today = now().date()
+        start_of_week = today - timedelta(days=today.weekday())
+        end_of_week = start_of_week + timedelta(days=6)
+
+        appointments_weekly = VendorAppointment.objects.filter(vendor_name=request.user,vendor_branch_id=request.query_params.get('branch_name'),
+            date__range=[start_of_week, end_of_week],service_by=staff_name
+        ).order_by('date', 'booking_time')
+
+
+        today = now().date()
+        appointments = VendorAppointment.objects.filter(vendor_name=request.user,vendor_branch_id=request.query_params.get('branch_name'),date=today,service_by=staff_name).order_by('booking_time')
+        serializer1 = app_serailizer_get(appointments_previous_week, many=True)
+        serializer2 = app_serailizer_get(appointments_weekly, many=True)
+        serializer3 = app_serailizer_get(appointments, many=True)
+        return Response(
+            {"previous_week":serializer1.data,
+            "current_week":serializer2.data,
+            "daily":serializer3.data
+            }
+        )
+
+
+class enquery(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = VendorEnquerySerializer
+
+    def __init__(self, **kwargs):
+        self.cache_key = None
+        super().__init__(**kwargs)
+
+    @transaction.atomic
+    def post(self, request):
+        branch_name = request.query_params.get('branch_name')
+
+        if not branch_name:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'error': {
+                    'code': 'Bad Request',
+                    'message': 'branch_name parameter is missing!'
+                },
+                'data': None
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = self.serializer_class(data=request.data, context={'request': request, 'branch_id': branch_name,})
+
+        serializer.create(validated_data=request.data)
+        return Response({
+            "status": True,
+            "message": "Vendor Enquery Added Succesfully"
+        }, status=status.HTTP_201_CREATED)
+
+    def get(self, request):
+        branch_name = request.query_params.get('branch_name')
+        if not branch_name:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'error': {
+                    'code': 'Bad Request',
+                    'message': 'branch_name parameter is missing!'
+                },
+                'data': None
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        data = VendorEnquery.objects.filter(user=request.user, vendor_branch_id=branch_name)
+        serializer = VendorEnquerySerializer_get(data, many=True)
+
+        return Response({
+            "status": True,
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)
+
+    def put(self, request):
+        id = request.query_params.get('id')
+        branch_name = request.query_params.get('branch_name')
+
+        
+
+        try:
+            service_instance = VendorEnquery.objects.get(id=id, user=request.user, vendor_branch_id=branch_name)
+        except VendorEnquery.DoesNotExist:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_404_NOT_FOUND,
+                'error': {
+                    'code': 'Not Found',
+                    'message': 'Enquery not found!'
+                },
+                'data': None
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = self.serializer_class(instance=service_instance, data=request.data, context={'request': request, 'branch_id': branch_name})
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'success': True,
+                'status_code': status.HTTP_200_OK,
+                'error': {
+                    'code': 'The request was successful',
+                    'message': 'Enquery updated on this branch!'
+                },
+                'data': None
+            }, status=status.HTTP_200_OK)
+
+        return Response({
+            'success': False,
+            'status_code': status.HTTP_400_BAD_REQUEST,
+            'error': {
+                'code': 'Validation Error',
+                'message': 'Serializer data is invalid!'
+            },
+            'data': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request):
+        id = request.query_params.get('id')
+
+        if not id:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'error': {
+                    'code': 'Bad Request',
+                    'message': 'ID parameter is missing!'
+                },
+                'data': None
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            queryset = VendorEnquery.objects.get(id=id, user=request.user)
+            queryset.delete()
+
+            return Response({
+                'success': True,
+                'status_code': status.HTTP_200_OK,
+                'error': {
+                    'code': 'The request was successful',
+                    'message': 'Enquery deleted successfully!'
+                },
+                'data': None
+            }, status=status.HTTP_200_OK)
+
+        except VendorEnquery.DoesNotExist:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_404_NOT_FOUND,
+                'error': {
+                    'code': 'Not Found',
+                    'message': 'Enquery not found!'
+                },
+                'data': None
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        
+        
+
+
+
+
+
+class StaffRevenueAPI(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        branch_name = request.query_params.get('branch_name')
+        filter_type = request.query_params.get('filter')
+        date_value = request.query_params.get('date')
+
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+        month_value = request.query_params.get('month')
+        year_value = request.query_params.get('year')
+        
+        invoices = VendorInvoice.objects.filter(vendor_name=request.user, vendor_branch_id=branch_name)
+        
+        if filter_type == 'day' and date_value:
+            invoices = invoices.filter(date=date_value)
+        elif filter_type == 'week':
+            # today = dt.date.today()
+            # current_date = dt.date.today()
+            # current_week = today.isocalendar()[1]
+            # current_month = today.month
+            # current_year = today.year
+            # start_of_week = today - timedelta(days=today.weekday())
+            # end_of_week = start_of_week + timedelta(days=6)
+            invoices = invoices.filter(date__range=[start_date,end_date])
+        elif filter_type == 'month' and month_value and year_value:
+            invoices = invoices.filter(date__month=month_value, date__year=year_value)
+        elif filter_type == 'year' and year_value:
+            invoices = invoices.filter(date__year=year_value)
+        else:
+            return Response({"error": "Invalid filter parameters."}, status=400)
+        
+        grouped_data = defaultdict(lambda: {
+            "staff_data": defaultdict(lambda: {
+                "total_invoices": 0,
+                "total_sales": 0,
+                "services": defaultdict(lambda: {"total_sales": 0, "total_services": 0})
+            })
+        })
+        
+        for invoice in invoices:
+            services = json.loads(invoice.services) if isinstance(invoice.services, str) else invoice.services
+            for service in services:
+                staff_name = service.get('Staff')
+                service_name = service.get('Description')
+                price = float(service.get('Price', 0))
+                
+                if staff_name and service_name:
+                    staff_data = grouped_data[filter_type]["staff_data"][staff_name]
+                    staff_data["total_invoices"] += 1
+                    staff_data["total_sales"] += price
+                    staff_data["services"][service_name]["total_sales"] += price
+                    staff_data["services"][service_name]["total_services"] += 1
+                    
+        response_data = [
+            {
+                "filter_type": filter_type,
+                "staff_data": [
+                    {
+                        "staff_name": staff_name,
+                        "total_invoices": staff_data["total_invoices"],
+                        "total_sales": staff_data["total_sales"],
+                        "services": [
+                            {
+                                "service_name": service_name,
+                                "total_sales": service_data["total_sales"],
+                                "total_services": service_data["total_services"]
+                            }
+                            for service_name, service_data in staff_data["services"].items()
+                        ]
+                    }
+                    for staff_name, staff_data in grouped_data[filter_type]["staff_data"].items()
+                ]
+            }
+        ]
+        
+        return Response(response_data)
+
+# class ModeOfPaymentAPI(APIView):
+#     permission_classes = [IsAuthenticated]
+    
+#     def get(self, request):
+#         branch_name = request.query_params.get('branch_name')
+#         filter_type = request.query_params.get('filter')
+#         date_value = request.query_params.get('date')
+#         start_date = request.query_params.get('start_date')
+#         end_date = request.query_params.get('end_date')
+#         month_value = request.query_params.get('month')
+#         year_value = request.query_params.get('year')
+        
+#         invoices = VendorInvoice.objects.filter(vendor_name=request.user, vendor_branch_id=branch_name)
+        
+#         if filter_type == 'day' and date_value:
+#             invoices = invoices.filter(date=date_value)
+#         elif filter_type == 'week':
+#             # today = dt.date.today()
+#             # current_date = dt.date.today()
+#             # current_week = today.isocalendar()[1]
+#             # current_month = today.month
+#             # current_year = today.year
+#             # start_of_week = today - timedelta(days=today.weekday())
+#             # end_of_week = start_of_week + timedelta(days=6)
+#             invoices = invoices.filter(date__range=[start_date,end_date])
+           
+#         elif filter_type == 'month' and month_value and year_value:
+#             invoices = invoices.filter(date__month=month_value, date__year=year_value)
+#         elif filter_type == 'year' and year_value:
+#             invoices = invoices.filter(date__year=year_value)
+#         else:
+#             return Response({"error": "Invalid filter parameters."}, status=400)
+        
+#         bills_by_payment = invoices.values('mode_of_payment').annotate(total_revenue=Sum('grand_total'))
+#         bills_by_payment_2 = invoices.values('new_mode').annotate(total_revenue=Sum('grand_total'))
+#         response_data = [
+#             {
+#                 "payment_mode": item['mode_of_payment'],
+#                 "total_revenue": item['total_revenue'],
+#             }
+#             for item in bills_by_payment
+#         ]
+#         response_data_1 = [
+#             {
+#                 "payment_mode": item['new_mode'],
+#                 "total_revenue": item['total_revenue'],
+#             }
+#             for item in bills_by_payment_2
+#         ]
+        
+        
+#         return Response({"data_of_mode_of_payment":response_data,
+#                         "data_of_new_mode":response_data_1})
+
+
+
+
+
+class ModeOfPaymentAPI(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        branch_name = request.query_params.get('branch_name')
+        filter_type = request.query_params.get('filter')
+        date_value = request.query_params.get('date')
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+        month_value = request.query_params.get('month')
+        year_value = request.query_params.get('year')
+
+        invoices = VendorInvoice.objects.filter(vendor_name=request.user, vendor_branch_id=branch_name)
+
+        if filter_type == 'day' and date_value:
+            invoices = invoices.filter(date=date_value)
+        elif filter_type == 'week' and start_date and end_date:
+            invoices = invoices.filter(date__range=[start_date, end_date])
+        elif filter_type == 'month' and month_value and year_value:
+            invoices = invoices.filter(date__month=month_value, date__year=year_value)
+        elif filter_type == 'year' and year_value:
+            invoices = invoices.filter(date__year=year_value)
+        else:
+            return Response({"error": "Invalid filter parameters."}, status=400)
+
+        mode_totals = defaultdict(float)
+        new_mode_totals = defaultdict(float)
+
+        for invoice in invoices:
+          
+            mode = invoice.mode_of_payment
+            if mode and isinstance(mode, str):
+                mode_clean = mode.strip().lower()
+                mode_totals[mode_clean] += float(invoice.grand_total)
+
+            if isinstance(invoice.new_mode, list):
+                for item in invoice.new_mode:
+                    if isinstance(item, dict):
+                        new_mode = item.get("mode", "").strip().lower()
+                        amount = item.get("amount", 0)
+                        new_mode_totals[new_mode] += float(amount)
+
+        response_data = [{"mode": mode, "amount": round(amount, 2)} for mode, amount in mode_totals.items()]
+        response_data_1 = [{"mode": mode, "amount": round(amount, 2)} for mode, amount in new_mode_totals.items()]
+
+        return Response({
+            "data_of_mode_of_payment": response_data,
+            "data_of_new_mode": response_data_1
+        })
+
+
+
+class RevenueSummaryAPI(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        branch_name = request.query_params.get('branch_name')
+        current_date = now().date()
+        previous_day = current_date - timedelta(days=1)
+        
+        invoices_today_count = VendorInvoice.objects.filter(
+            date=current_date,
+            vendor_name=request.user,
+            vendor_branch_id=branch_name
+        ).count()
+        
+        revenue_today = VendorInvoice.objects.filter(
+            vendor_name=request.user,
+            date=current_date,
+            vendor_branch_id=branch_name
+        ).aggregate(
+            total_revenue=Sum('grand_total')
+        )['total_revenue'] or 0
+        
+        previous_day_revenue = VendorInvoice.objects.filter(
+            vendor_name=request.user,
+            vendor_branch_id=branch_name,
+            date=previous_day
+        ).aggregate(
+            total_revenue=Sum('grand_total')
+        )['total_revenue'] or 0
+        
+        appointmet_today_count = VendorAppointment.objects.filter(
+            vendor_name=request.user,
+            vendor_branch_id=branch_name,
+            date=current_date
+        ).count()
+        
+        return Response({
+            "today_no_of_invoices": invoices_today_count,
+            "today_revenue": revenue_today,
+            "previous_day_rev": previous_day_revenue,
+            "today_no_of_app": appointmet_today_count,
+        })
+
+
+
+
+
+class VendorCustomerStatsAPIView(APIView):
+    def get(self, request):
+        today = now().strftime("%Y-%m-%d")  # Get today's date in YYYY-MM-DD format
+
+        # New Customers (Last 30 Days)
+        recent_customers = VendorCustomers.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),user=request.user,created_at__gte=now() - timedelta(days=30)).count()
+
+        # Active Memberships
+        active_memberships = VendorCustomers.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),user=request.user,membership__isnull=False).count()
+
+        # Active Coupons (Customers with at least one coupon)
+        active_coupons = VendorCustomers.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),user=request.user,coupon__isnull=False).distinct()
+
+        # Birthdays Today
+        birthdays = VendorCustomers.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),user=request.user,d_o_b=today)
+
+        # Anniversaries Today
+        anniversaries = VendorCustomers.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),user=request.user,d_o_a=today)
+
+        data = {
+            "new_customers": recent_customers,
+            "active_memberships": active_memberships,
+            "active_coupons": active_coupons.count(),
+            "birthdays": VendorCustomerLoyalityProfileSerializer_get(birthdays,many=True).data,
+            "anniversaries": VendorCustomerLoyalityProfileSerializer_get(anniversaries,many=True).data,
+            "birthday_count": birthdays.count(),
+            "anniversaries_count": anniversaries.count()
+        }
+
+        return Response(data)
+
+
+
+class ExpiringProductsAPIView(APIView):
+    def get(self, request):
+        today = now().date()
+        next_month = today + timedelta(days=30)  # Get the date one month from today
+        
+
+        expiring_products = VendorInventoryProduct.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),user=request.user,expiry_date__lte=next_month, expiry_date__gte=today).values('product_name','expiry_date')
+        import datetime as dt
+
+        expiring_expenses = VendorExpense.objects.filter(
+            vendor_branch_id=request.query_params.get('branch_name'),
+            user=request.user,
+            date__month=dt.date.today().month
+        ).values('due_amount', 'due_date', 'expense_type')
+        data = {
+            "expiring_products": list(expiring_products),
+            "due_amount": list(expiring_expenses)
+        }
+
+        return Response(data)
+
+
+
+class SalesTargetSettingListCreateView(APIView):
+    def get(self, request):
+        month = request.query_params.get("month")
+        year = request.query_params.get("year")
+        report_type = request.query_params.get("type")
+        branch_id = request.query_params.get("branch_name")
+
+        try:
+            current_month = int(month)
+            current_year = int(year)
+            month_name = datetime(current_year, current_month, 1).strftime('%B')
+        except (TypeError, ValueError):
+            return Response({"error": "Invalid or missing 'month' or 'year' in query parameters."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        if report_type == "admin":
+           
+            sales_targets = (
+                SalesTargetSetting.objects
+                .filter(vendor_name=request.user,month=current_month,year=current_year)
+                .values('vendor_branch__branch_name')
+                .annotate(
+                    total_service_target=Sum('service_target'),
+                    total_product_target=Sum('product_target'),
+                    total_membership_coupon_target=Sum('membership_coupon_target'),
+                    total_overall_target=Sum('overall_target')
+                )
+                .order_by('vendor_branch__branch_name')
+            )
+
+            # Staff Targets (raw)
+            staff_targets = SalesTargetSetting.objects.filter(
+                vendor_name=request.user,month=current_month,year=current_year
+            ).values('vendor_branch__branch_name', 'staff_targets')
+
+            # Monthly Branch Revenue
+            branch_revenue_qs = VendorInvoice.objects.filter(
+                vendor_name=request.user,
+                date__year=current_year,
+                date__month=current_month
+            ).values('vendor_branch__branch_name').annotate(
+                monthly_total=Sum('grand_total')
+            )
+
+            branch_revenue = [
+                {
+                    "branch_name": item['vendor_branch__branch_name'],
+                    "monthly_total": item['monthly_total']
+                }
+                for item in branch_revenue_qs
+            ]
+
+            
+            invoices = VendorInvoice.objects.filter(
+                vendor_name=request.user,
+                date__year=current_year,
+                date__month=current_month
+            )
+
+            grouped_data = defaultdict(lambda: {
+                "staff_data": defaultdict(lambda: {
+                    "total_invoices": 0,
+                    "total_sales": 0,
+                    "services": defaultdict(lambda: {
+                        "total_sales": 0,
+                        "total_services": 0
+                    })
+                })
+            })
+
+            for invoice in invoices:
+                branch_name = invoice.vendor_branch.branch_name if invoice.vendor_branch else "Unknown Branch"
+                try:
+                    services = json.loads(invoice.services) if isinstance(invoice.services, str) else invoice.services
+                except json.JSONDecodeError:
+                    services = []
+
+                for service in services:
+                    staff_name = service.get('Staff')
+                    service_name = service.get('Description')
+                    price = float(service.get('Price', 0))
+
+                    if staff_name and service_name:
+                        staff_data = grouped_data[branch_name]["staff_data"][staff_name]
+                        staff_data["total_invoices"] += 1
+                        staff_data["total_sales"] += price
+                        staff_data["services"][service_name]["total_sales"] += price
+                        staff_data["services"][service_name]["total_services"] += 1
+
+            staff_revenue = {
+                "month": month_name,
+                "year": current_year,
+                "branches": [
+                    {
+                        "branch_name": branch_name,
+                        "staff_data": [
+                            {
+                                "staff_name": staff_name,
+                                "total_invoices": staff_data["total_invoices"],
+                                "total_sales": staff_data["total_sales"],
+                                "services": [
+                                    {
+                                        "service_name": service_name,
+                                        "total_sales": service_data["total_sales"],
+                                        "total_services": service_data["total_services"]
+                                    }
+                                    for service_name, service_data in staff_data["services"].items()
+                                ]
+                            }
+                            for staff_name, staff_data in branch_data["staff_data"].items()
+                        ]
+                    }
+                    for branch_name, branch_data in grouped_data.items()
+                ]
+            }
+
+            return Response({
+                "list": list(sales_targets),
+                "staff_targets_by_branch": list(staff_targets),
+                "month": month_name,
+                "year": current_year,
+                "branch_revenue": branch_revenue,
+                "staff_revenue": staff_revenue
+            }, status=status.HTTP_200_OK)
+    
+   
+        sales_targets = SalesTargetSetting.objects.filter(
+            vendor_branch_id=branch_id,
+            vendor_name=request.user,
+            month=current_month,
+            year=current_year
+        ).values()
+        branch_revenue_qs = VendorInvoice.objects.filter(
+                vendor_name=request.user,
+                vendor_branch_id=branch_id,
+                date__year=current_year,
+                date__month=current_month
+            ).values('vendor_branch__branch_name').annotate(
+                monthly_total=Sum('grand_total')
+            )
+
+        branch_revenue = [
+            {
+            "branch_name": item['vendor_branch__branch_name'],
+            "monthly_total": item['monthly_total']
+            }
+            for item in branch_revenue_qs
+        ]
+
+            
+        invoices = VendorInvoice.objects.filter(
+                vendor_name=request.user,
+                date__year=current_year,
+                vendor_branch_id=branch_id,
+                date__month=current_month
+        )
+
+        grouped_data = defaultdict(lambda: {
+                "staff_data": defaultdict(lambda: {
+                "total_invoices": 0,
+                "total_sales": 0,
+                "services": defaultdict(lambda: {
+                "total_sales": 0,
+                "total_services": 0
+                })
+            })
+        })
+
+        for invoice in invoices:
+            branch_name = invoice.vendor_branch.branch_name if invoice.vendor_branch else "Unknown Branch"
+            try:
+                services = json.loads(invoice.services) if isinstance(invoice.services, str) else invoice.services
+            except json.JSONDecodeError:
+                services = []
+
+            for service in services:
+                staff_name = service.get('Staff')
+                service_name = service.get('Description')
+                price = float(service.get('Price', 0))
+
+                if staff_name and service_name:
+                    staff_data = grouped_data[branch_name]["staff_data"][staff_name]
+                    staff_data["total_invoices"] += 1
+                    staff_data["total_sales"] += price
+                    staff_data["services"][service_name]["total_sales"] += price
+                    staff_data["services"][service_name]["total_services"] += 1
+
+        staff_revenue = {
+            "month": month_name,
+            "year": current_year,
+            "branches": [
+                {
+                    "branch_name": branch_name,
+                    "staff_data": [
+                        {
+                            "staff_name": staff_name,
+                            "total_invoices": staff_data["total_invoices"],
+                            "total_sales": staff_data["total_sales"],
+                            "services": [
+                                {
+                                    "service_name": service_name,
+                                    "total_sales": service_data["total_sales"],
+                                    "total_services": service_data["total_services"]
+                                }
+                                for service_name, service_data in staff_data["services"].items()
+                            ]
+                        }
+                        for staff_name, staff_data in branch_data["staff_data"].items()
+                    ]
+                }
+                for branch_name, branch_data in grouped_data.items()
+            ]
+        }
+
+        return Response({
+                "list": list(sales_targets),
+               
+                "month": month_name,
+                "year": current_year,
+                "branch_revenue": branch_revenue,
+                "staff_revenue": staff_revenue
+            }, status=status.HTTP_200_OK)
+    def post(self, request):
+        branch_name = request.query_params.get('branch_name')
+        obj = SalesTargetSetting.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),vendor_name=request.user)
+        if len(obj) != 0:
+            obj.delete()
+            
+        serializer = SalesTargetSettingSerializer(data=request.data,context={'request': request, 'branch_id': branch_name})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class SalesTargetSettingDetailView(APIView):
+    def get(self, request, pk):
+        
+        sales_target = get_object_or_404(SalesTargetSetting, pk=pk)
+        serializer = SalesTargetSettingSerializer(sales_target)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def put(self, request, pk):
+        sales_target = get_object_or_404(SalesTargetSetting, pk=pk)
+        serializer = SalesTargetSettingSerializer(sales_target, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        sales_target = get_object_or_404(SalesTargetSetting, pk=pk)
+        sales_target.delete()
+        return Response({"message": "Sales target deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+
+
+
+
+
+class PictureUploadView(APIView):
+  
+
+    def get(self, request, *args, **kwargs):
+        branch_name  = request.query_params.get('branch_name')
+        pictures = Picture.objects.filter(user=request.user,vendor_branch_id=branch_name)
+        serializer = PictureSerializer(pictures, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def post(self, request, *args, **kwargs):
+        branch_name  = request.query_params.get('branch_name')
+        serializer = PictureSerializer(data=request.data, context={'request': request,'branch_id':branch_name})
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+
+class MergeImagesAPIView(APIView):
+   
+
+    def add_footer_box(self,original_image_file, logo_image_file, salon_name, mobile_number, text,address):
+    
+        original_img = Image.open(original_image_file).convert("RGB")
+        width, original_height = original_img.size
+
+    
+        logo_img = Image.open(logo_image_file).convert("RGBA")
+        logo_img.thumbnail((50, 50))  
+        footer_height = 75
+        footer = Image.new("RGB", (width, footer_height), color="white")
+        logo_y = (footer_height - logo_img.height) // 2
+        footer.paste(logo_img, (20, 16), logo_img)
+        draw = ImageDraw.Draw(footer)
+        # font = ImageFont.truetype("arial.ttf", 20)
+        
+        font = ImageFont.load_default()
+        
+        text_x = 119
+        
+        draw.text((135, 4), text, fill="black", font=font)
+        draw.text((text_x, 17), salon_name, fill="black", font=font)
+        draw.text((text_x, 31), f"Mobile: {mobile_number}", fill="black", font=font)
+        draw.text((text_x, 45), address, fill="black", font=font)
+        combined_img = Image.new("RGB", (width, original_height + footer_height), color="white")
+        combined_img.paste(original_img, (0, 0))
+        combined_img.paste(footer, (0, original_height))
+        
+        
+        output = io.BytesIO()
+        combined_img.save(output, format='JPEG')
+        output.seek(0)
+        output
+
+        return output
+
+   
+    def post(self, request, *args, **kwargs):
+        
+        image = request.FILES.get('image')
+        logo = request.FILES.get('logo')
+    
+    
+        salon_name = request.data.get('salon_name')
+        mobile_number = request.data.get('mobile_no')
+        address = request.data.get('address')
+    
+
+        final_image = self.add_footer_box(image, logo, salon_name, mobile_number, request.data.get('text'),address)
+        IG_FB_shared_picture.objects.create(user=request.user,vendor_branch_id=request.query_params.get('branch_name'),image=final_image)
+    
+        return FileResponse(final_image, content_type='image/jpeg')
+           
+       
+class FacebookTokenExchange(APIView):
+    # throttle_classes = [ScopedRateThrottle]
+    # throttle_scope = 'upload_instagram'
+    def post(self, request):
+        short_token = request.data.get('access_token')
+        url = 'https://graph.facebook.com/v19.0/oauth/access_token'
+        params = {
+            'grant_type': 'fb_exchange_token',
+            'client_id': FB_APP_ID,
+            'client_secret': FB_APP_SECRET,
+            'fb_exchange_token': short_token
+        }
+        response = requests.get(url, params=params)
+        return Response(response.json(), status=response.status_code)
+
+
+class FacebookPages(APIView):
+    # throttle_classes = [ScopedRateThrottle]
+    # throttle_scope = 'upload_instagram'
+    def post(self, request):
+        access_token = request.data.get('access_token')
+        url = 'https://graph.facebook.com/v19.0/me/accounts'
+        response = requests.get(url, params={'access_token': access_token})
+        return Response(response.json(), status=response.status_code)
+
+
+class InstagramBusinessID(APIView):
+    # throttle_classes = [ScopedRateThrottle]
+    # throttle_scope = 'upload_instagram'
+    def post(self, request):
+        page_id = request.data.get('page_id')
+        access_token = request.data.get('access_token')
+        url = f'https://graph.facebook.com/v19.0/{page_id}'
+        params = {
+            'fields': 'instagram_business_account',
+            'access_token': access_token
+        }
+        response = requests.get(url, params=params)
+        return Response(response.json(), status=response.status_code)
+
+
+
+class InstagramUpload(APIView):
+    # throttle_classes = [ScopedRateThrottle]
+    # throttle_scope = 'upload_instagram'
+    def post(self, request):
+        instagram_id = request.data.get('instagram_id')
+        image_object = IG_FB_shared_picture.objects.last(user_request.user,vendor_branch_id=request.query_params.get('branch_name')).values('image')
+        image_url = image_objects[0].url
+        caption = request.data.get('caption')
+        access_token = request.data.get('access_token')
+
+       
+        create_url = f'https://graph.facebook.com/v19.0/{instagram_id}/media'
+        create_data = {
+            'image_url': image_url,
+            'caption': caption,
+            'access_token': access_token
+        }
+        create_res = requests.post(create_url, data=create_data).json()
+        creation_id = create_res.get("id")
+
+        if not creation_id:
+            return Response({'error': 'Failed to create media'}, status=400)
+
+        
+        publish_url = f'https://graph.facebook.com/v19.0/{instagram_id}/media_publish'
+        publish_data = {
+            'creation_id': creation_id,
+            'access_token': access_token
+        }
+        publish_res = requests.post(publish_url, data=publish_data).json()
+        return Response(publish_res)
+
+
+
+
+
+

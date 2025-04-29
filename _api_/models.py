@@ -10,8 +10,8 @@ class SalonBranch(models.Model):
     vendor_name = models.ForeignKey(User, on_delete=models.CASCADE, null=True, db_index=True)
     staff_name = models.CharField(max_length=255)
     branch_name = models.CharField(max_length=255)
-    password = models.CharField(max_length=11, blank=True)
-    admin_password = models.CharField(max_length=11, blank=True)
+    password = models.CharField(max_length=20, blank=True)
+    admin_password = models.CharField(max_length=20, blank=True)
     staff_url = models.CharField(max_length=255)
     admin_url = models.CharField(max_length=255)
     minimum_purchase_loyality = models.IntegerField(default=40, null=True)
@@ -103,51 +103,52 @@ class VendorCustomerLoyalityPoints(models.Model):
             models.Index(fields=['user', 'vendor_branch', 'customer_id']),
 
         ]
-# class VendorCoupon(models.Model):
-#     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
-#     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, db_index=True)
-#     vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
-#     coupon_name = models.CharField(max_length=10000)
-#     coupon_price = models.IntegerField()
-#     coupon_points_hold = models.IntegerField()
-#     active = models.BooleanField(default=True,blank=True)
-#     class Meta:
-#         ordering = ['coupon_name']
-#         verbose_name = "Vendor Coupons"
-#         indexes = [
-#             models.Index(fields=['user', 'vendor_branch', 'coupon_name']),
-#         ]
+class VendorCoupon(models.Model):
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, db_index=True)
+    vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
+    coupon_name = models.CharField(max_length=160)
+    coupon_price = models.IntegerField()
+    coupon_points_hold = models.IntegerField()
+    active = models.BooleanField(default=True,blank=True)
+    class Meta:
+        ordering = ['coupon_name']
+        verbose_name = "Vendor Coupons"
+        indexes = [
+            models.Index(fields=['user', 'vendor_branch', 'coupon_name']),
+        ]
 
-#     def __str__(self):
-#         return f"coupon {self.coupon_name} from branch {self.vendor_branch}"
+    def __str__(self):
+        return f"coupon {self.coupon_name} from branch {self.vendor_branch}"
 
-# class CustomerCoupon(models.Model):
-#     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
-#     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, db_index=True)
-#     vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
-#     customer_id = models.CharField(max_length=10000)
-#     coupon_name = models.ForeignKey(VendorCoupon, on_delete=models.SET_NULL, null=True, db_index=True)
-#     issue_date = models.DateField(null=True, blank=True)
-#     is_active = models.BooleanField(default=True,blank=True)
-#     coupon_points_hold = models.IntegerField()
-#     expiry_date = models.DateField()
+class CustomerCoupon(models.Model):
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, db_index=True)
+    vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
+    customer_id = models.CharField(max_length=10000)
+    coupon_name = models.ForeignKey(VendorCoupon, on_delete=models.SET_NULL, null=True, db_index=True)
+    issue_date = models.DateField(null=True, blank=True)
+    is_active = models.BooleanField(default=True,blank=True)
+    
+    expiry_date = models.DateField()
 
-#     class Meta:
-#         ordering = ['coupon_name']
-#         verbose_name = "Vendor Coupons"
-#         indexes = [
-#             models.Index(fields=['user', 'vendor_branch', 'coupon_name']),
-#         ]
+    class Meta:
+        ordering = ['coupon_name']
+        verbose_name = "Vendor Coupons"
+        indexes = [
+            models.Index(fields=['user', 'vendor_branch', 'coupon_name']),
+        ]
 
-#     def __str__(self):
-#         return f"coupon {self.coupon_name} from customer {self.vendor_branch}"
+    def __str__(self):
+        return f"coupon {self.coupon_name} from customer {self.vendor_branch}"
 
 
 
 
 class VendorCustomers(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
-    loyality_profile = models.ForeignKey(VendorCustomerLoyalityPoints, on_delete=models.SET_NULL, null=True)
+    loyality_profile = models.ManyToManyField(VendorCustomerLoyalityPoints,blank=True)
+    created_at = models.DateTimeField(auto_now_add=True,blank=True,null=True)
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, db_index=True)
     name = models.CharField(max_length=30, blank=True, null=True)
     mobile_no = models.CharField(max_length=30, blank=True, null=True)
@@ -155,9 +156,9 @@ class VendorCustomers(models.Model):
     d_o_a = models.CharField(max_length=30, blank=True, null=True)
     email = models.CharField(max_length=30, blank=True)
     membership = models.CharField(max_length=30, blank=True, null=True)
-    membership_type = models.ForeignKey(VendorLoyalityProgramTypes, on_delete=models.SET_NULL, null=True)
+    membership_type = models.ManyToManyField(VendorLoyalityProgramTypes,blank=True)
     vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
-    # coupon = models.ForeignKey(CustomerCoupon,on_delete=models.SET_NULL, blank=True, null=True,db_index=True)
+    coupon = models.ManyToManyField(CustomerCoupon,blank=True)
 
     class Meta:
         ordering = ['name']
@@ -237,8 +238,8 @@ class VendorInvoice(models.Model):
     mode_of_payment = models.CharField(max_length=200, blank=True)
     loyalty_points = models.DecimalField(blank=True, null=True, max_digits=6, decimal_places=2)
     loyalty_points_deducted = models.DecimalField(blank=True, null=True, max_digits=6, decimal_places=2)
-    # coupon_points_used = models.DecimalField(blank=True, null=True, max_digits=6, decimal_places=2)
-
+    coupon_points_used = models.DecimalField(blank=True, null=True, max_digits=6, decimal_places=2)
+   
 
     class Meta:
         ordering = ['date']
@@ -280,12 +281,15 @@ class VendorAppointment(models.Model):
     vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
     customer_name = models.CharField(max_length=255)
     services = models.CharField(max_length=255)
+    service_by = models.CharField(max_length=255)
     booking_date = models.CharField(max_length=255)
     date = models.DateField()
     booking_time = models.CharField(max_length=255)
-    email = models.CharField(max_length=50)
+    email = models.CharField(max_length=50,blank=True,null=True)
     mobile_no = models.CharField(max_length=10, blank=True)
     comment = models.CharField(max_length=255, blank=True)
+    d_o_b = models.CharField(max_length=30, blank=True, null=True)
+    d_o_a = models.CharField(max_length=30, blank=True, null=True)
 
     class Meta:
         ordering = ['booking_date']
@@ -324,7 +328,25 @@ class VendorStaff(models.Model):
             models.Index(fields=['vendor_name', 'vendor_branch', 'staff_name']),
         ]
 
+class SalesTargetSetting(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    service_target = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    product_target = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    membership_coupon_target = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    overall_target = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    staff_targets = models.TextField(blank=True,null=True)
+    # staff_target = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    # commission_cap = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    created_at = models.CharField(max_length=200, blank=True,null=True)
+    month = models.CharField(max_length=200, blank=True,null=True)
+    year = models.CharField(max_length=200, blank=True,null=True)
+    updated_at = models.CharField(max_length=200, blank=True,null=True)
+    vendor_name = models.ForeignKey(User, on_delete=models.CASCADE, null=True, db_index=True)
+    vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
+    
 
+    
+    
 class VendorStaffAttendance(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
     vendor_name = models.ForeignKey(User, on_delete=models.CASCADE, null=True, db_index=True)
@@ -335,6 +357,8 @@ class VendorStaffAttendance(models.Model):
     attend = models.BooleanField(default=False, blank=True, null=True)
     leave = models.BooleanField(default=False, blank=True, null=True)
     staff = models.ForeignKey(VendorStaff, on_delete=models.CASCADE, null=True)
+    in_time =  models.CharField(max_length=200, blank=True)
+    out_time =  models.CharField(max_length=200, blank=True)
 
     class Meta:
         indexes = [
@@ -365,12 +389,19 @@ class StaffSetting(models.Model):
     number_of_working_days = models.IntegerField()
     signature = models.FileField(upload_to="staff-sign", blank=True, null=True)
     month = models.IntegerField(blank=True, null=True)
+    
 
     class Meta:
         indexes = [
             models.Index(fields=['vendor_name', 'vendor_branch', 'month']),
         ]
-
+class StaffAttendanceTime(models.Model):
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    vendor_name = models.ForeignKey(User, on_delete=models.CASCADE, null=True, db_index=True)
+    vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
+    in_time = models.CharField(max_length=200)
+    out_time = models.CharField(max_length=200)
+    
 
 class StaffSettingSlab(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
@@ -418,6 +449,21 @@ class HelpDesk(models.Model):
     def __str__(self) -> str:
         return str(self.user)
 
+class VendorProductCategory(models.Model):
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, db_index=True)
+    product_category = models.CharField(max_length=300, db_index=True)
+    vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
+
+    class Meta:
+        ordering = ['product_category']
+        verbose_name = "Vendor Product Category"
+        indexes = [
+            models.Index(fields=['user', 'vendor_branch', 'product_category']),
+        ]
+
+    def __str__(self):
+        return str(self.product_category)
 
 class VendorInventoryProduct(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
@@ -427,9 +473,12 @@ class VendorInventoryProduct(models.Model):
     product_price = models.DecimalField(blank=True, null=True, max_digits=10, decimal_places=2)
     product_description = models.TextField()
     vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
+    category = models.ForeignKey(VendorProductCategory, on_delete=models.SET_NULL, blank=True, null=True, db_index=True)
     stocks_in_hand = models.IntegerField(default=0)
+    
     unit = models.CharField(max_length=400)
     date = models.DateField()
+    expiry_date = models.DateField()
     month = models.CharField(max_length=30, null=True, blank=True)
     week = models.CharField(max_length=30, null=True, blank=True)
     year = models.CharField(max_length=30, null=True, blank=True)
@@ -522,12 +571,16 @@ class VendorExpense(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, db_index=True)
     vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
-    expense_type = models.CharField(max_length=4000, null=True, blank=True)
-    inventory_item = models.CharField(max_length=4000, null=True, blank=True)
-    expense_account = models.CharField(max_length=4000, null=True, blank=True)
+    expense_type = models.CharField(max_length=200, null=True, blank=True)
+    inventory_item = models.CharField(max_length=200, null=True, blank=True)
+    expense_account = models.CharField(max_length=200, null=True, blank=True)
     expense_category = models.ManyToManyField(VendorExpenseCategory, blank=True)
     expense_amount = models.DecimalField(default=0, max_digits=10, decimal_places=2, null=True, blank=True)
-    invoice_id = models.CharField(max_length=4000, null=True, blank=True)
+    due_amount = models.DecimalField(default=0, max_digits=10, decimal_places=2, null=True, blank=True)
+    invoice_id = models.TextField(null=True, blank=True)  
+    amount_paid = models.TextField(null=True, blank=True)  
+    completed_date = models.DateField(null=True, blank=True)
+    due_date = models.DateField(null=True, blank=True)
     date = models.DateField()
     month = models.CharField(max_length=30, null=True, blank=True)
     week = models.CharField(max_length=30, null=True, blank=True)
@@ -553,6 +606,45 @@ class VendorExpense(models.Model):
 
 
 
+class VendorEnquery(models.Model):
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, db_index=True)
+    vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
+    query_for = models.CharField(max_length=200, null=True, blank=True)
+    customer_name = models.CharField(max_length=200, null=True, blank=True)
+    mobile_no = models.CharField(max_length=200, null=True, blank=True)
+    comment = models.CharField(max_length=200, null=True, blank=True)
 
 
 
+
+class Picture(models.Model):
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, db_index=True)
+    vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
+    image_name = models.CharField(max_length=255)
+    image = models.ImageField(upload_to='clp')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.image_name
+
+
+class IG_FB_shared_picture(models.Model):
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, db_index=True)
+    vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
+    image = models.ImageField(upload_to='clp')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    
+
+
+
+
+    
+
+    
+    
+    
+
+   
