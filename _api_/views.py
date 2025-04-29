@@ -572,7 +572,7 @@ from django.db import transaction
 
 class vendor_billing_copy(APIView):
     permission_classes = [IsAuthenticated]
-    serializer_class = billing_serializer
+    serializer_class = billing_serializer_copy
 
     def __init__(self, **kwargs):
         self.cache_key = None
@@ -639,6 +639,44 @@ class vendor_billing_copy(APIView):
                 "errors": serializer.errors,
                 "message": "Failed to create billing record."
             }, status=status.HTTP_400_BAD_REQUEST)
+
+
+    def get(self, request):
+        branch_name = request.query_params.get('branch_name')
+        date = request.query_params.get('date')
+        if not branch_name:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'error': {
+                    'code': 'Bad Request',
+                    'message': 'branch_name parameter is missing!'
+                },
+                'data': None
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        queryset = VendorInvoice.objects.filter(
+            vendor_name=request.user,
+            vendor_branch_id = branch_name,
+            date=date
+        ).order_by('-date')
+       
+        invoice_data = billing_serializer_get(queryset, many=True).data
+        # for idx, invoice in enumerate(invoice_data):
+        #             slno = invoice.get('slno')
+        #             if slno:  
+        #                 invoice_filename = f"Invoice-{slno}.pdf"
+        #                 invoice_path = os.path.join('media/pdf', invoice_filename)
+        #                 invoice_data[idx]['pdf_path'] = invoice_path
+        #             else:
+        #                 invoice_data[idx]['pdf_path'] = None  
+
+
+        return Response({
+            "status": True,
+            "table_data": invoice_data,
+            "message": "Billing records retrieved successfully."
+        }, status=status.HTTP_200_OK)  
 
 
 
