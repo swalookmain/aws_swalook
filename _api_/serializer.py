@@ -190,15 +190,18 @@ class UpdateProfileSerializer(serializers.Serializer):
 class billing_serializer(serializers.ModelSerializer):
     json_data = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
     new_mode = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
+    
     class Meta:
         model = VendorInvoice
-        fields = ["customer_name", "mobile_no", "email", "address", "services", "mode_of_payment", "new_mode","service_by", "json_data", "loyalty_points_deducted", "total_prise", "total_quantity", "total_tax", "total_discount", "grand_total", "total_cgst", "total_sgst", "gst_number", "comment", "slno","coupon_points_used"]
+        fields = ["customer_name", "mobile_no", "email", "address", "date","services", "mode_of_payment", "new_mode","service_by", "json_data", "loyalty_points_deducted", "total_prise", "total_quantity", "total_tax", "total_discount", "grand_total", "total_cgst", "total_sgst", "gst_number", "comment", "slno","coupon_points_used"]
         extra_kwargs = {'id': {'read_only': True}}
 
     def create(self, validated_data):
         date = dt.date.today()
         validated_data['vendor_name'] = self.context.get('request').user
-        validated_data['date'] = date
+        if validated_data.get('date') != "":
+            validated_data['date'] = date
+        
         validated_data['vendor_branch_id'] = self.context.get('branch_id')
         self.update_inventory(validated_data['json_data'])
         # self.handle_loyalty_points(validated_data)
