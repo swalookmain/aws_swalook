@@ -197,10 +197,9 @@ class billing_serializer(serializers.ModelSerializer):
         extra_kwargs = {'id': {'read_only': True}}
 
     def create(self, validated_data):
-        date = dt.date.today()
+     
         validated_data['vendor_name'] = self.context.get('request').user
-        if validated_data.get('date') != "":
-            validated_data['date'] = date
+
         
         validated_data['vendor_branch_id'] = self.context.get('branch_id')
         self.update_inventory(validated_data['json_data'])
