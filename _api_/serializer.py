@@ -847,7 +847,7 @@ class VendorCustomerLoyalityProfileSerializer(serializers.ModelSerializer):
         loyalty_profile_obj = None  
         
         
-        vendor_customer_obj = VendorCustomer.objects.create(
+        vendor_customer_obj = VendorCustomers.objects.create(
             branch_id=branch_id,
             customer_mobile=validated_data.get('mobile_no'),
             customer_name=validated_data.get('name'),
