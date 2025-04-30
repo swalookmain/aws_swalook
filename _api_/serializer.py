@@ -368,7 +368,7 @@ class Vendor_Pdf_Serializer(serializers.ModelSerializer):
             "customer_name",
             "mobile_no",
             "file",
-            "email",
+         
             "invoice",
         ]
         extra_kwargs = {
