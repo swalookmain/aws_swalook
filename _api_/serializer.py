@@ -205,7 +205,7 @@ class billing_serializer(serializers.ModelSerializer):
         validated_data['vendor_branch_id'] = self.context.get('branch_id')
         self.update_inventory(validated_data['json_data'])
         # self.handle_loyalty_points(validated_data)
-        self.update_staff_business_to_month(validated_data.get('services'))
+        #self.update_staff_business_to_month(validated_data.get('services'))
         super().create(validated_data)
         return validated_data['slno']
 
