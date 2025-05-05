@@ -278,8 +278,8 @@ class billing_serializer(serializers.ModelSerializer):
        
         clean_data = json.loads(staff)
         for i in clean_data:
-
-            staff_obj = VendorStaff.objects.get(staff_name=i.get('Staff'), vendor_name=self.context.get('request').user)
+            staff = i.get('Staff').replace(')', '')
+            staff_obj = VendorStaff.objects.get(staff_name=staff, vendor_name=self.context.get('request').user)
             staff_obj.business_of_the_current_month = float(staff_obj.business_of_the_current_month)  + float(i.get('Total_amount'))
             staff_obj.save()
 
