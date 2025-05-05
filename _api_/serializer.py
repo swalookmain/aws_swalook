@@ -18,6 +18,7 @@ from django.utils.translation import gettext_lazy as _
 import re
 from django.contrib.auth import authenticate
 import uuid
+import json
 
 class signup_serializer(serializers.ModelSerializer):
     class Meta:
@@ -202,7 +203,7 @@ class billing_serializer(serializers.ModelSerializer):
         validated_data['vendor_branch_id'] = self.context.get('branch_id')
         self.update_inventory(validated_data['json_data'])
         # self.handle_loyalty_points(validated_data)
-        # self.update_staff_business_to_month(validated_data['service_by'],validated_data['grand_total'],validated_data['total_tax'])
+        self.update_staff_business_to_month(validated_data.get('services'))
         super().create(validated_data)
         return validated_data['slno']
 
@@ -271,10 +272,14 @@ class billing_serializer(serializers.ModelSerializer):
         if products_to_update:
             VendorInventoryProduct.objects.bulk_update(products_to_update, ['stocks_in_hand'])
 
-    def update_staff_business_to_month(self, staff, grand_total, total_tax):
-        staff_obj = VendorStaff.objects.get(staff_name=staff, vendor_name=self.context.get('request').user)
-        staff_obj.business_of_the_current_month = float(staff_obj.business_of_the_current_month) + (float(grand_total) - float(total_tax))
-        staff_obj.save()
+    def update_staff_business_to_month(self, staff):
+       
+        clean_data = json.loads(staff)
+        for i in clean_data:
+
+            staff_obj = VendorStaff.objects.get(staff_name=i.get('Staff'), vendor_name=self.context.get('request').user)
+            staff_obj.business_of_the_current_month = float(staff_obj.business_of_the_current_month)  + float(i.get('Total_amount'))
+            staff_obj.save()
 
 
    
