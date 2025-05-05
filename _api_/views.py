@@ -682,10 +682,7 @@ class vendor_billing_pdf(CreateAPIView):
                 return Response({"status": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
             serializer.save()
-            if serializer.validated_data.get('email'):
-                if not self.send_invoice_email(serializer.validated_data, request.data):
-                    return Response({"status": False, "error": "Failed to send email"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+           
             return Response({"status": True}, status=status.HTTP_201_CREATED)
 
         except Exception as e:

@@ -191,15 +191,17 @@ class UpdateProfileSerializer(serializers.Serializer):
 class billing_serializer(serializers.ModelSerializer):
     json_data = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
     new_mode = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
+    
     class Meta:
         model = VendorInvoice
-        fields = ["customer_name", "mobile_no", "email", "address", "services", "mode_of_payment", "new_mode","service_by", "json_data", "loyalty_points_deducted", "total_prise", "total_quantity", "total_tax", "total_discount", "grand_total", "total_cgst", "total_sgst", "gst_number", "comment", "slno","coupon_points_used"]
+        fields = ["customer_name", "mobile_no", "email", "address", "date","services", "mode_of_payment", "new_mode","service_by", "json_data", "loyalty_points_deducted", "total_prise", "total_quantity", "total_tax", "total_discount", "grand_total", "total_cgst", "total_sgst", "gst_number", "comment", "slno","coupon_points_used"]
         extra_kwargs = {'id': {'read_only': True}}
 
     def create(self, validated_data):
-        date = dt.date.today()
+     
         validated_data['vendor_name'] = self.context.get('request').user
-        validated_data['date'] = date
+
+        
         validated_data['vendor_branch_id'] = self.context.get('branch_id')
         self.update_inventory(validated_data['json_data'])
         # self.handle_loyalty_points(validated_data)
@@ -373,7 +375,7 @@ class Vendor_Pdf_Serializer(serializers.ModelSerializer):
             "customer_name",
             "mobile_no",
             "file",
-            "email",
+         
             "invoice",
         ]
         extra_kwargs = {
@@ -850,10 +852,10 @@ class VendorCustomerLoyalityProfileSerializer(serializers.ModelSerializer):
         loyalty_profile_obj = None  
         
         
-        vendor_customer_obj = VendorCustomer.objects.create(
-            branch_id=branch_id,
-            customer_mobile=validated_data.get('mobile_no'),
-            customer_name=validated_data.get('name'),
+        vendor_customer_obj = VendorCustomers.objects.create(
+            vendor_branch_id=branch_id,
+            mobile_no=validated_data.get('mobile_no'),
+            name=validated_data.get('name'),
             email=validated_data.get('email', ''),
             user=user,
            
