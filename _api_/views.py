@@ -676,18 +676,16 @@ class vendor_billing_pdf(CreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        try:
-            serializer = self.get_serializer(data=request.data, context={"request": request})
-            if not serializer.is_valid():
-                return Response({"status": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        
+        serializer = self.get_serializer(data=request.data, context={"request": request})
+        if not serializer.is_valid():
+            return Response({"status": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+    
+        serializer.save()
+       
+        return Response({"status": True}, status=status.HTTP_201_CREATED)
 
-            serializer.save()
-           
-            return Response({"status": True}, status=status.HTTP_201_CREATED)
-
-        except Exception as e:
-            return Response({"status": False, "error": "An unexpected error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+       
     def get_serializer(self, *args, **kwargs):
         return Vendor_Pdf_Serializer(*args, **kwargs)
 
