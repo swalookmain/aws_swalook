@@ -205,7 +205,7 @@ class billing_serializer(serializers.ModelSerializer):
         validated_data['vendor_branch_id'] = self.context.get('branch_id')
         self.update_inventory(validated_data['json_data'])
         # self.handle_loyalty_points(validated_data)
-        self.update_staff_business_to_month(validated_data.get('services'))
+        #self.update_staff_business_to_month(validated_data.get('services'))
         super().create(validated_data)
         return validated_data['slno']
 
@@ -986,7 +986,10 @@ class loyality_customer_update_serializer(serializers.Serializer):
     email = serializers.CharField(required=False)
     d_o_a = serializers.CharField(required=False)
     d_o_b = serializers.CharField(required=False)
-    membership = serializers.UUIDField(required=False)
+    membership = serializers.ListField(
+        child=serializers.DictField(child=serializers.UUIDField()), 
+        required=False
+    )
     coupon = serializers.ListField(
         child=serializers.DictField(child=serializers.UUIDField()), 
         required=False
@@ -1001,7 +1004,7 @@ class loyality_customer_update_serializer(serializers.Serializer):
         instance.email = validated_data.get('email', instance.email)
         instance.d_o_a = validated_data.get('d_o_a', instance.d_o_a)
         instance.d_o_b = validated_data.get('d_o_b', instance.d_o_b)
-        instance.membership_id = validated_data.get('membership', instance.membership_id)
+        
 
         coupon_data_list = validated_data.get('coupon', None)
         expiry_date = validated_data.get('expiry_date', None)
