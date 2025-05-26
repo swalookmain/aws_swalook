@@ -4325,18 +4325,62 @@ class InstagramBusinessID(APIView):
 class InstagramUpload(APIView):
     # throttle_classes = [ScopedRateThrottle]
     # throttle_scope = 'upload_instagram'
+    def add_footer_box(self,original_image_file, logo_image_file, salon_name, mobile_number, text,address):
+    
+        original_img = Image.open(original_image_file).convert("RGB")
+        width, original_height = original_img.size
+
+    
+        logo_img = Image.open(logo_image_file).convert("RGBA")
+        logo_img.thumbnail((50, 50))  
+        footer_height = 75
+        footer = Image.new("RGB", (width, footer_height), color="white")
+        logo_y = (footer_height - logo_img.height) // 2
+        footer.paste(logo_img, (20, 16), logo_img)
+        draw = ImageDraw.Draw(footer)
+        # font = ImageFont.truetype("arial.ttf", 20)
+        
+        font = ImageFont.load_default()
+        
+        text_x = 119
+        
+        draw.text((135, 4), text, fill="black", font=font)
+        draw.text((text_x, 17), salon_name, fill="black", font=font)
+        draw.text((text_x, 31), f"Mobile: {mobile_number}", fill="black", font=font)
+        draw.text((text_x, 45), address, fill="black", font=font)
+        combined_img = Image.new("RGB", (width, original_height + footer_height), color="white")
+        combined_img.paste(original_img, (0, 0))
+        combined_img.paste(footer, (0, original_height))
+        
+        
+        output = io.BytesIO()
+        combined_img.save(output, format='JPEG')
+        output.seek(0)
+        output
+
+        return output
     def post(self, request):
         instagram_id = request.data.get('instagram_id')
-        image_object = IG_FB_shared_picture.objects.filter(user = request.user,vendor_branch_id=request.query_params.get('branch_name'))
-        imgge = image_object.last()
-        image_url = imgge.url
+        
+       
         caption = request.data.get('caption')
         access_token = request.data.get('access_token')
+        image = request.FILES.get('image')
+        logo = request.FILES.get('logo')
+    
+    
+        salon_name = request.data.get('salon_name')
+        mobile_number = request.data.get('mobile_no')
+        address = request.data.get('address')
+    
 
-       
+        final_image = self.add_footer_box(image, logo, salon_name, mobile_number, request.data.get('text'),address)
+        
+        obj = IG_FB_shared_picture.objects.create(user=request.user,vendor_branch_id=request.query_params.get('branch_name'),image=final_image)
+    
         create_url = f'https://graph.facebook.com/v19.0/{instagram_id}/media'
         create_data = {
-            'image_url': image_url,
+            'image_url': obj.image.url,
             'caption': caption,
             'access_token': access_token
         }
