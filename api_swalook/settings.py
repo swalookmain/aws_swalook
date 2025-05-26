@@ -16,7 +16,7 @@ import os
 # pymysql.install_as_MySQLdb()
 
 from decouple import config
-from cred import *
+from .cred import *
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
