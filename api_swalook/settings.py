@@ -16,7 +16,7 @@ import os
 # pymysql.install_as_MySQLdb()
 
 from decouple import config
-
+from cred import *
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -156,13 +156,13 @@ USE_I18N = True
 
 USE_TZ = True
 
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'email-smtp.us-east-1.amazonaws.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'AKIAZAI4GV2TXI7KIVIA'
-EMAIL_HOST_PASSWORD = 'BJkW2sLpw30qemS2zi09x+Kqbh8dHyj0ao89oHlRoL9H'
-DEFAULT_FROM_EMAIL = 'info@swalook.in'
+EMAIL_BACKEND = EMAIL_BACKEND
+EMAIL_HOST = EMAIL_HOST
+EMAIL_PORT = EMAIL_PORT
+EMAIL_USE_TLS = EMAIL_USE_TLS
+EMAIL_HOST_USER = EMAIL_HOST_USER
+EMAIL_HOST_PASSWORD = EMAIL_HOST_PASSWORD
+DEFAULT_FROM_EMAIL = DEFAULT_FROM_EMAIL
 
 ADMINS = [
     ('Debashish Sarkar', 'info@swalook.in'),
@@ -208,6 +208,5 @@ LOGGING = {
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-IG_FB_APP_ID = "1084177693728089"
-IG_FB_APP_SECRET = "5e71a95e17d5715aa24b5d98af2352db"
-
+IG_FB_APP_ID = IG_FB_APP_ID
+IG_FB_APP_SECRET = IG_FB_APP_SECRET
