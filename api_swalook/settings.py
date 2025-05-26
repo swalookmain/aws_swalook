@@ -157,12 +157,11 @@ USE_I18N = True
 USE_TZ = True
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'mail.swalook.in'
-EMAIL_PORT = 465
-EMAIL_USE_TLS = False
-EMAIL_USE_SSL = True
-EMAIL_HOST_USER = 'info@swalook.in'
-EMAIL_HOST_PASSWORD = 'rf4TwJbh456#'
+EMAIL_HOST = 'email-smtp.us-east-1.amazonaws.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'AKIAZAI4GV2TXI7KIVIA'
+EMAIL_HOST_PASSWORD = 'BJkW2sLpw30qemS2zi09x+Kqbh8dHyj0ao89oHlRoL9H'
 DEFAULT_FROM_EMAIL = 'info@swalook.in'
 
 ADMINS = [
