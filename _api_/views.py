@@ -4285,7 +4285,7 @@ class FacebookTokenExchange(APIView):
     # throttle_scope = 'upload_instagram'
     def post(self, request):
         short_token = request.data.get('access_token')
-        url = 'https://graph.facebook.com/v19.0/oauth/access_token'
+        url = 'https://graph.facebook.com/v22.0/oauth/access_token'
         params = {
             'grant_type': 'fb_exchange_token',
             'client_id': FB_APP_ID,
@@ -4301,7 +4301,7 @@ class FacebookPages(APIView):
     # throttle_scope = 'upload_instagram'
     def post(self, request):
         access_token = request.data.get('access_token')
-        url = 'https://graph.facebook.com/v19.0/me/accounts'
+        url = 'https://graph.facebook.com/v22.0/me/accounts'
         response = requests.get(url, params={'access_token': access_token})
         return Response(response.json(), status=response.status_code)
 
@@ -4312,7 +4312,7 @@ class InstagramBusinessID(APIView):
     def post(self, request):
         page_id = request.data.get('page_id')
         access_token = request.data.get('access_token')
-        url = f'https://graph.facebook.com/v19.0/{page_id}'
+        url = f'https://graph.facebook.com/v22.0/{page_id}'
         params = {
             'fields': 'instagram_business_account',
             'access_token': access_token
@@ -4397,7 +4397,7 @@ class InstagramUpload(APIView):
             image=in_memory_file
         )
 
-        create_url = f'https://graph.facebook.com/v19.0/{instagram_id}/media'
+        create_url = f'https://graph.facebook.com/v22.0/{instagram_id}/media'
         create_data = {
             'image_url': obj.image.url,
             'caption': caption,
@@ -4410,7 +4410,7 @@ class InstagramUpload(APIView):
             return Response({'error': 'Failed to create media'}, status=400)
 
         
-        publish_url = f'https://graph.facebook.com/v19.0/{instagram_id}/media_publish'
+        publish_url = f'https://graph.facebook.com/v22.0/{instagram_id}/media_publish'
         publish_data = {
             'creation_id': creation_id,
             'access_token': access_token
