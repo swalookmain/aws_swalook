@@ -239,6 +239,8 @@ class VendorInvoice(models.Model):
     loyalty_points = models.DecimalField(blank=True, null=True, max_digits=6, decimal_places=2)
     loyalty_points_deducted = models.DecimalField(blank=True, null=True, max_digits=6, decimal_places=2)
     coupon_points_used = models.DecimalField(blank=True, null=True, max_digits=6, decimal_places=2)
+    pdf_url = models.TextField(blank=True,null=True)
+    
    
 
     class Meta:
