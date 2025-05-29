@@ -367,14 +367,13 @@ class UpdateAppointmentSerializer(serializers.ModelSerializer):
 
 
 class Vendor_Pdf_Serializer(serializers.ModelSerializer):
-    file = serializers.FileField(required=True)
-
+  
     class Meta:
         model = VendorPdf
         fields = [
             "customer_name",
             "mobile_no",
-            "file",
+            "pdf_url",
          
             "invoice",
         ]
@@ -382,31 +381,16 @@ class Vendor_Pdf_Serializer(serializers.ModelSerializer):
             'id': {'read_only': True},
         }
 
-    def validate_email(self, value):
-        from django.core.exceptions import ValidationError
-        from django.core.validators import validate_email
 
-        try:
-            validate_email(value)
-        except ValidationError:
-            raise serializers.ValidationError("Invalid email address.")
-        return value
 
-    def validate_vendor_email(self, value):
-        if not value:
-            raise serializers.ValidationError("Vendor email is required.")
-        return value
+    
 
-    def validate_vendor_password(self, value):
-        if not value:
-            raise serializers.ValidationError("Vendor password is required.")
-        return value
-
+   
     def create(self, validated_data):
         request = self.context.get('request')
         validated_data['vendor_branch_id'] = self.context.get('branch_id')
         validated_data['date'] = dt.date.today()
-        validated_data['file'] = request.FILES.get('file')
+       
 
         return super().create(validated_data)
 
