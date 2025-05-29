@@ -4357,6 +4357,7 @@ class InstagramUpload(APIView):
         combined_img.save(output, format='JPEG')
         output.seek(0)
         output
+        output.name = 'final_instagram_image.jpg'
 
         return output
     def post(self, request):
@@ -4376,8 +4377,26 @@ class InstagramUpload(APIView):
 
         final_image = self.add_footer_box(image, logo, salon_name, mobile_number, request.data.get('text'),address)
         
-        obj = IG_FB_shared_picture.objects.create(user=request.user,vendor_branch_id=request.query_params.get('branch_name'),image=final_image)
-    
+        from django.core.files.uploadedfile import InMemoryUploadedFile
+        import sys
+
+        final_image_file = self.add_footer_box(image, logo, salon_name, mobile_number, request.data.get('text'), address)
+
+        in_memory_file = InMemoryUploadedFile(
+            file=final_image_file,
+            field_name='image',
+            name='final_instagram_image.jpg',
+            content_type='image/jpeg',
+            size=final_image_file.getbuffer().nbytes,
+            charset=None
+        )
+        
+        obj = IG_FB_shared_picture.objects.create(
+            user=request.user,
+            vendor_branch_id=request.query_params.get('branch_name'),
+            image=in_memory_file
+        )
+
         create_url = f'https://graph.facebook.com/v19.0/{instagram_id}/media'
         create_data = {
             'image_url': obj.image.url,
