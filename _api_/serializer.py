@@ -381,6 +381,8 @@ class Vendor_Pdf_Serializer(serializers.ModelSerializer):
             'id': {'read_only': True},
         }
 
+    
+
 
 
     
@@ -390,6 +392,10 @@ class Vendor_Pdf_Serializer(serializers.ModelSerializer):
         request = self.context.get('request')
         validated_data['vendor_branch_id'] = self.context.get('branch_id')
         validated_data['date'] = dt.date.today()
+        inv = VendorInvoice.objects.get(slno=validated_data.get('invoice'))
+        inv.pdf_url = validated_data.get('pdf_url')
+        inv.save()
+        
        
 
         return super().create(validated_data)
