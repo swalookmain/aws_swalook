@@ -4265,8 +4265,8 @@ class MergeImagesAPIView(APIView):
    
     def post(self, request, *args, **kwargs):
         
-        image = request.FILES.get('image')
-        logo = request.FILES.get('logo')
+        image = request.data.get('image')
+        logo = request.data.get('logo')
     
     
         salon_name = request.data.get('salon_name')
@@ -4275,7 +4275,7 @@ class MergeImagesAPIView(APIView):
     
 
         final_image = self.add_footer_box(image, logo, salon_name, mobile_number, request.data.get('text'),address)
-        IG_FB_shared_picture.objects.create(user=request.user,vendor_branch_id=request.query_params.get('branch_name'),image=final_image)
+        
     
         return FileResponse(final_image, content_type='image/jpeg')
            
@@ -4365,8 +4365,8 @@ class InstagramUpload(APIView):
        
         caption = request.data.get('caption')
         access_token = request.data.get('access_token')
-        image = request.FILES.get('image')
-        logo = request.FILES.get('logo')
+        image = request.data.get('image')
+        logo = request.data.get('logo')
     
     
         salon_name = request.data.get('salon_name')
