@@ -265,6 +265,7 @@ class VendorPdf(models.Model):
     date = models.DateField()
     vendor_email = models.CharField(max_length=255)
     vendor_password = models.CharField(max_length=255)
+    pdf_url = models.TextField(blank=True,null=True)
 
     class Meta:
         ordering = ['date']
