@@ -1189,4 +1189,23 @@ class ImageMergeSerializer(serializers.Serializer):
 
 
 
+class VendorExpensePurchase(serializers.ModelSerializer):
+   
+
+
+    class Meta:
+        model =  Vendor_ExpensePurchase
+        fields = '__all__'
+        read_only_fields = ['id','user','vendor_branch']
+
+    def create(self, validated_data):
+        request = self.context.get('request')  
+       
+
+      
+           
+        validated_data['vendor_branch_id'] = self.context.get('branch_id')
+        validated_data['user']  = request.user
+        
+        return super().create(validated_data)
 
