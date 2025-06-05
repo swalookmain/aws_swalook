@@ -639,7 +639,19 @@ class IG_FB_shared_picture(models.Model):
     vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
     image = models.ImageField(upload_to='clp')
     uploaded_at = models.DateTimeField(auto_now_add=True)
-    
+
+
+
+class VendorExpense(models.Model):
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, db_index=True)
+    vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
+    vendor_name = models.CharField(max_length=200, null=True, blank=True)
+    vendor_address = models.CharField(max_length=200, null=True, blank=True)
+    vendor_mobile_no = models.CharField(max_length=200, null=True, blank=True)
+    vendor_email = models.CharField(max_length=200, null=True, blank=True)
+
+
 
 
 
