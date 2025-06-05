@@ -642,7 +642,7 @@ class IG_FB_shared_picture(models.Model):
 
 
 
-class VendorExpense(models.Model):
+class Vendor_ExpensePurchase(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, db_index=True)
     vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
