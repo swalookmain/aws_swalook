@@ -4396,10 +4396,11 @@ class InstagramUpload(APIView):
             vendor_branch_id=request.query_params.get('branch_name'),
             image=in_memory_file
         )
-
+        domain = 'https://app.swalookcrm.in'
+        full_image_url = f"{domain}{obj.image.url}"
         create_url = f'https://graph.facebook.com/v22.0/{instagram_id}/media'
         create_data = {
-            'image_url': obj.image.url,
+            'image_url': full_image_url,
             'caption': caption,
             'access_token': access_token
         }
