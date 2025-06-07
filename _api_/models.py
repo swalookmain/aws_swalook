@@ -649,7 +649,7 @@ class Vendor_ExpensePurchase(models.Model):
     vendor_name = models.CharField(max_length=200, null=True, blank=True)
     vendor_address = models.CharField(max_length=200, null=True, blank=True)
     vendor_mobile_no = models.CharField(max_length=200, null=True, blank=True)
-    # vendor_email = models.CharField(max_length=200, null=True, blank=True)
+    vendor_email = models.CharField(max_length=200, null=True, blank=True)
 
 
 
