@@ -121,6 +121,7 @@ urlpatterns = [
     path('api/swalook/fb/pages/', FacebookPages.as_view(),name='pages-instagram'),
     path('api/swalook/fb/instagram-id/', InstagramBusinessID.as_view(),name='getting-id-for-page-instagram'),
     path('api/swalook/fb/upload-instagram/', InstagramUpload.as_view(),name='image-upload-instagram'),
+    path('api/swalook/vendor/expense-purchase/',  VendorpurchaseView.as_view(),name='vendor-expense-purchase'),
    
     re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}, name='media'),
     re_path(r'^static/(?P<path>.*)$', serve, {'document_root': settings.STATIC_URL}, name='static'),
