@@ -1196,7 +1196,7 @@ class VendorExpensePurchase(serializers.ModelSerializer):
     class Meta:
         model =  Vendor_ExpensePurchase
         fields = '__all__'
-        read_only_fields = ['id','user','vendor_branch']
+        read_only_fields = ['id','user','vendor_branch','uploaded_at']
 
     def create(self, validated_data):
         request = self.context.get('request')  
