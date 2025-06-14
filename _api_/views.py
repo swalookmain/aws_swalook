@@ -4484,7 +4484,7 @@ class VendorpurchaseView(APIView):
 
 
 class UtilizationInventory(APIView):
-     serializer_class = VendorInventoryUtilization
+    serializer_class = VendorInventoryUtilization
 
     def __init__(self, **kwargs):
         self.cache_key = None
