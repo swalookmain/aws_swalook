@@ -1228,8 +1228,8 @@ class VendorInventoryUtilization(serializers.ModelSerializer):
         validated_data['vendor_branch_id'] = self.context.get('branch_id')
         validated_data['user']  = request.user
         product = VendorInventoryProduct.objects.get(id=validated_data.get('product'))
-        if int(validated_data.get('quantity')) >= int(product.stocks_in_hand)
-            product.stocks_in_hand -= int(validated_data.get('quantity'))
+        if int(validated_data.get('product_quantity')) >= int(product.stocks_in_hand)
+            product.stocks_in_hand -= int(validated_data.get('product_quantity'))
             product.save()
 
 
