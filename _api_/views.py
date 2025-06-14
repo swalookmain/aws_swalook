@@ -4484,7 +4484,7 @@ class VendorpurchaseView(APIView):
 
 
 class UtilizationInventory(APIView):
-     serializer_class = VendorExpensePurchase
+     serializer_class = VendorInventoryUtilization
 
     def __init__(self, **kwargs):
         self.cache_key = None
@@ -4533,7 +4533,7 @@ class UtilizationInventory(APIView):
                 'data': None
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        data = Vendor_ExpensePurchase.objects.filter(user=request.user, vendor_branch_id=branch_name)
+        data = Utilization_Inventory.objects.filter(user=request.user, vendor_branch_id=branch_name)
         serializer = self.serializer_class(data, many=True)
 
         return Response({
