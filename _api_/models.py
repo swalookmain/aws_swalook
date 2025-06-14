@@ -495,6 +495,17 @@ class VendorInventoryProduct(models.Model):
         return str(self.product_name)
 
 
+class Utilization_Inventory(models.Model):
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, db_index=True)
+    vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
+    staff = models.CharField(max_length=255)
+    product_quantity = models.IntegerField()
+    created_at = date = models.DateField()
+    product = models.ForeignKey(VendorInventoryProduct, on_delete=models.SET_NULL, null=True)
+    category = models.ForeignKey(VendorProductCategory, on_delete=models.SET_NULL, blank=True, null=True, db_index=True)
+
+
 class VendorInventoryInvoice(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
     slno = models.CharField(max_length=400)
