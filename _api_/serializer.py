@@ -1209,3 +1209,29 @@ class VendorExpensePurchase(serializers.ModelSerializer):
         
         return super().create(validated_data)
 
+class VendorInventoryUtilization(serializers.ModelSerializer):
+   category = serializers.UUIDField()
+   product = serializers.UUIDField()
+
+
+    class Meta:
+        model =  Utilization_Inventory
+        fields = '__all__'
+        read_only_fields = ['id','user','vendor_branch']
+
+    def create(self, validated_data):
+        request = self.context.get('request')  
+        
+
+      
+           
+        validated_data['vendor_branch_id'] = self.context.get('branch_id')
+        validated_data['user']  = request.user
+        product = VendorInventoryProduct.objects.get(id=validated_data.get('product'))
+        if int(validated_data.get('quantity')) >= int(product.stocks_in_hand)
+            product.stocks_in_hand -= int(validated_data.get('quantity'))
+            product.save()
+
+
+        
+        return super().create(validated_data)
