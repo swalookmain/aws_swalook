@@ -4483,3 +4483,32 @@ class VendorpurchaseView(APIView):
 
 
 
+class UtilizationInventory(APIView):
+    @transaction.atomic
+    def post(self, request):
+        branch_name = request.query_params.get('branch_name')
+
+        if not branch_name:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'error': {
+                    'code': 'Bad Request',
+                    'message': 'branch_name parameter is missing!'
+                },
+                'data': None
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        data =  request.data
+
+        
+        return Response({
+            "status": True,
+            "message": "vendor added successfully."
+        }, status=status.HTTP_201_CREATED)
+
+        
+    
+
+
+
