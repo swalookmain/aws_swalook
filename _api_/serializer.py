@@ -1223,7 +1223,8 @@ class VendorInventoryUtilization(serializers.ModelSerializer):
         request = self.context.get('request')  
         
 
-      
+        validated_data['product_id'] = validated_data.get('product')
+        validated_data['category_id'] = validated_data.get('category')
            
         validated_data['vendor_branch_id'] = self.context.get('branch_id')
         validated_data['user']  = request.user
