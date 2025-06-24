@@ -5,6 +5,7 @@ import io
 from django.http import FileResponse
 from PIL import Image, ImageDraw, ImageFont
 import json
+from openpyxl import Workbook
 import os
 import requests
 from rest_framework.throttling import ScopedRateThrottle
@@ -37,6 +38,7 @@ import datetime as dt
 from django.utils.timezone import now
 from django.utils import timezone
 from datetime import timedelta
+from io import BytesIO
 FB_APP_ID = settings.IG_FB_APP_ID
 FB_APP_SECRET = settings.IG_FB_APP_SECRET
 
@@ -4543,6 +4545,75 @@ class UtilizationInventory(APIView):
 
         
     
+
+
+
+class DownloadInvoiceExcelView(APIView):
+    def get(self, request):
+        branch_name = request.query_params.get('branch_name')
+        date = request.query_params.get('date')
+        
+        if not branch_name:
+            return Response({
+                'success': False,
+                'status_code': status.HTTP_400_BAD_REQUEST,
+                'error': {
+                    'code': 'Bad Request',
+                    'message': 'branch_name parameter is missing!'
+                },
+                'data': None
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        queryset = VendorInvoice.objects.filter(
+            vendor_name=request.user,
+            vendor_branch=branch_name,
+            date=date
+        ).order_by('-date')
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Vendor Invoices"
+        ws.append([
+            'Invoice No', 'Customer Name', 'Mobile No', 'Email',
+            'Service Description', 'Category', 'Price', 'Quantity',
+            'Discount', 'Tax Amt', 'Total Amount', 'Payment Mode',
+            'Date', 'Grand Total'
+        ])
+        for invoice in queryset:
+            try:
+                services = json.loads(invoice.services)
+            except (TypeError, json.JSONDecodeError):
+                services = []
+
+            for service in services:
+                ws.append([
+                    invoice.slno,
+                    invoice.customer_name,
+                    invoice.mobile_no,
+                    invoice.email,
+                    service.get('Description', ''),
+                    service.get('category', ''),
+                    service.get('Price', ''),
+                    service.get('Quantity', ''),
+                    service.get('Discount', ''),
+                    service.get('Tax_amt', ''),
+                    service.get('Total_amount', ''),
+                    invoice.new_mode[0]['mode'] if invoice.new_mode else '',
+                    invoice.date.strftime('%Y-%m-%d') if invoice.date else '',
+                    invoice.grand_total
+                ])
+
+     
+        stream = BytesIO()
+        wb.save(stream)
+        stream.seek(0)
+        filename = f"invoices_{date}.xlsx"
+        response = HttpResponse(
+            stream,
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
 
 
 
