@@ -664,7 +664,19 @@ class Vendor_ExpensePurchase(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     
-
+class Purchase_entry(models.Model):
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, db_index=True)
+    vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
+    uploaded_at = models.DateField()
+    completed_date = models.DateField()
+    invoice_id = models.CharField(max_length=200, null=True, blank=True)
+    vendor = models.ForeignKey(Vendor_ExpensePurchase, on_delete=models.SET_NULL, null=True, db_index=True)
+    products = models.JSONField(default=list, blank=True)
+    payment_term = models.CharField(max_length=200, null=True, blank=True)
+    amount_paid = models.CharField(max_length=200, null=True, blank=True)
+    note = models.CharField(max_length=200, null=True, blank=True)
+    
 
 
 
