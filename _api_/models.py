@@ -676,6 +676,8 @@ class Purchase_entry(models.Model):
     payment_term = models.CharField(max_length=200, null=True, blank=True)
     amount_paid = models.CharField(max_length=200, null=True, blank=True)
     note = models.CharField(max_length=200, null=True, blank=True)
+    image_1 = models.ImageField(upload_to='purchase')
+    image_2 = models.ImageField(upload_to='purchase')
     
 
 
