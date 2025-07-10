@@ -1243,7 +1243,7 @@ class VendorInventoryUtilization(serializers.ModelSerializer):
 
 class VendorPurchaseConnect(serializers.ModelSerializer):
      vendor = serializers.UUIDField()
-     image_1 = serializers.ImageField()
+     image_1 = serializers.FileField(required=False)
 
      class Meta:
         model = Purchase_entry
@@ -1257,8 +1257,8 @@ class VendorPurchaseConnect(serializers.ModelSerializer):
         validated_data['user']  = request.user
         if request.FILES.get('image_1') != None:
             validated_data['image_1'] = request.FILES.get('image_1')  
-      
-        validated_data['vendor_id'] = validated_data.get('vendor')
+        v = Vendor_ExpensePurchase.objects.get(id=validated_data.get('vendor'))
+        validated_data['vendor'] = v
          
        
 
