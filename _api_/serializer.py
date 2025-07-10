@@ -1242,13 +1242,14 @@ class VendorInventoryUtilization(serializers.ModelSerializer):
 
 
 class VendorPurchaseConnect(serializers.ModelSerializer):
-     vendor = VendorExpensePurchase(read_only=True)
+     vendor_details = VendorExpensePurchase(read_only=True)
+     vendor= serializers.UUIDField()
      image_1 = serializers.FileField(required=False)
 
      class Meta:
         model = Purchase_entry
         fields = '__all__'
-        read_only_fields = ['id','user','vendor_branch']
+        read_only_fields = ['id','user','vendor_branch','vendor_details']
 
      def create(self, validated_data):
         request = self.context.get('request')  
