@@ -1244,7 +1244,7 @@ class VendorInventoryUtilization(serializers.ModelSerializer):
 class VendorPurchaseConnect(serializers.ModelSerializer):
      vendor_details = VendorExpensePurchase(read_only=True)
      vendor= serializers.UUIDField()
-     image_1 = serializers.FileField(required=False)
+     image_1 = serializers.FileField(required=False,allow_null=True)
 
      class Meta:
         model = Purchase_entry
