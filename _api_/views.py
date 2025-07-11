@@ -4669,7 +4669,7 @@ class VendorPurchaseView_vp(APIView):
             }, status=status.HTTP_400_BAD_REQUEST)
 
         data = Purchase_entry.objects.filter(user=request.user, vendor_branch_id=branch_name)
-        serializer = self.serializer_class(data, many=True)
+        serializer = VendorPurchaseConnect_get(data, many=True)
 
         return Response({
             "status": True,
