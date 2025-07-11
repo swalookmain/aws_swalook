@@ -1266,3 +1266,12 @@ class VendorPurchaseConnect(serializers.ModelSerializer):
 
         
         return super().create(validated_data)
+
+
+class VendorPurchaseConnect_get(serializers.ModelSerializer):
+     vendor = VendorExpensePurchase(read_only=True)
+    
+     class Meta:
+        model = Purchase_entry
+        fields = '__all__'
+       
