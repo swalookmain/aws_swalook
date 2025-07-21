@@ -338,7 +338,7 @@ class StaffAdvanceModel(models.Model):
     vendor_name = models.ForeignKey(User, on_delete=models.CASCADE, null=True, db_index=True)
     vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
     staff = models.ForeignKey(VendorStaff, on_delete=models.SET_NULL, null=True, db_index=True)
-    created_at = models.DtaeField()
+    created_at = models.DateField()
     
 class SalesTargetSetting(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
