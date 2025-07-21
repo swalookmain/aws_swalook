@@ -1651,7 +1651,7 @@ class vendor_staff(APIView):
             vendor_name=request.user,
             vendor_branch_id=branch_name
         ).order_by('-id')
-         queryset_2 = VendorStaff.objects.filter(
+        queryset_2 = StaffAdvanceModel.objects.filter(
             vendor_name=request.user,
             vendor_branch_id=branch_name
         ).values("staff__mobile_no","amount_paid","created_at")
