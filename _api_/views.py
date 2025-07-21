@@ -1651,12 +1651,16 @@ class vendor_staff(APIView):
             vendor_name=request.user,
             vendor_branch_id=branch_name
         ).order_by('-id')
-
+         queryset_2 = VendorStaff.objects.filter(
+            vendor_name=request.user,
+            vendor_branch_id=branch_name
+        ).values("staff__mobile_no","amount_paid","created_at")
         serializer = self.serializer_class(queryset, many=True)
 
         return Response({
             "status": True,
             "table_data": serializer.data,
+            "table_data_advance": queryset_2,
             "message": "Staff records retrieved successfully."
         }, status=status.HTTP_200_OK)
 
