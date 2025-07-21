@@ -112,8 +112,9 @@ class centralized_login_serializer(serializers.Serializer):
             if staff_vendor_obj.password == password:
                 auth.login(self.context.get('request'), user)
                 token, created = Token.objects.get_or_create(user=user)
-                
-                return ["staff-mobile", token, staff_vendor_obj.vendor_branch__branch_name,staff_vendor_obj]
+                branch = SalonBranch.objects.get(id=staff_vendor_obj.vendor_branch.id)
+                user_profile = SwalookUserProfile.objects.get(id=staff_vendor_obj.vendor_branch.id)
+                return ["staff-mobile",token,user_profile.salon_name,branch]
                 
     
                 
@@ -129,7 +130,7 @@ class centralized_login_serializer(serializers.Serializer):
                     token, created = Token.objects.get_or_create(user=user)
                     self.context.get('request').session[f"{user_profile.mobile_no}branch_name_14"] = staff_object.branch_name
                     self.context.get('request').session[f"{user_profile.mobile_no}salon_name_13"] = user_profile.salon_name
-                    return ["staff", token, staff_object.branch_name, staff_object]
+                    return ["staff", token, user_profile.salon_name, staff_object]
                 raise ValidationError("Invalid credentials for staff.")
             raise ValidationError("Staff profile not found.")
 
@@ -145,7 +146,7 @@ class centralized_login_serializer(serializers.Serializer):
                         token, created = Token.objects.get_or_create(user=user)
                         self.context.get('request').session[f"{user_profile.mobile_no}branch_name_14"] = admin_obj.branch_name
                         self.context.get('request').session[f"{user_profile.mobile_no}salon_name_13"] = user_profile.salon_name
-                        return ["admin", token, admin_obj.branch_name, admin_obj]
+                        return ["admin", token, user_profile.salon_name, admin_obj]
                     raise ValidationError("Invalid credentials for admin.")
                 raise ValidationError("Admin profile not found.")
             raise ValidationError("Admin password mismatch.")
