@@ -107,9 +107,17 @@ class centralized_login_serializer(serializers.Serializer):
 
         user = authenticate(username=mobileno, password=password)
         if user:
-            auth.login(self.context.get('request'), user)
-            token, created = Token.objects.get_or_create(user=user)
-            return ["owner", token, "Owner", ""]
+     
+            staff_vendor_obj  = VendorStaff.objects.get(mobile_no=mobile_no)
+            if staff_vendor_obj.password == password:
+                auth.login(self.context.get('request'), user)
+                token, created = Token.objects.get_or_create(user=user)
+                
+                return ["staff-mobile", token, staff_vendor_obj.vendor_branch__branch_name,staff_vendor_obj]
+                
+    
+                
+           
 
         staff_object = SalonBranch.objects.filter(staff_name=mobileno, password=password).select_related('vendor_name').first()
         if staff_object:
@@ -121,7 +129,7 @@ class centralized_login_serializer(serializers.Serializer):
                     token, created = Token.objects.get_or_create(user=user)
                     self.context.get('request').session[f"{user_profile.mobile_no}branch_name_14"] = staff_object.branch_name
                     self.context.get('request').session[f"{user_profile.mobile_no}salon_name_13"] = user_profile.salon_name
-                    return ["staff", token, user_profile.salon_name, staff_object]
+                    return ["staff", token, staff_object.branch_name, staff_object]
                 raise ValidationError("Invalid credentials for staff.")
             raise ValidationError("Staff profile not found.")
 
@@ -137,7 +145,7 @@ class centralized_login_serializer(serializers.Serializer):
                         token, created = Token.objects.get_or_create(user=user)
                         self.context.get('request').session[f"{user_profile.mobile_no}branch_name_14"] = admin_obj.branch_name
                         self.context.get('request').session[f"{user_profile.mobile_no}salon_name_13"] = user_profile.salon_name
-                        return ["admin", token, user_profile.salon_name, admin_obj]
+                        return ["admin", token, admin_obj.branch_name, admin_obj]
                     raise ValidationError("Invalid credentials for admin.")
                 raise ValidationError("Admin profile not found.")
             raise ValidationError("Admin password mismatch.")
@@ -467,7 +475,7 @@ class staff_serializer(serializers.ModelSerializer):
     class Meta:
         model = VendorStaff
         fields = "__all__"
-        extra_kwargs = {'id': {'read_only': True}, 'vendor_name': {'read_only': True}, 'vendor_branch': {'read_only': True}}
+        extra_kwargs = {'id': {'read_only': True}, 'vendor_name': {'read_only': True}, 'vendor_branch': {'read_only': True},'password':{'read_only':True}}
 
     def create(self, validated_data):
         validated_data['vendor_name'] = self.context.get('request').user
