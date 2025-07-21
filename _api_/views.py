@@ -2116,10 +2116,34 @@ class salary_disburse(APIView):
         )
 
         serializer = staff_salary_serializer(staff_salary)
-
+       
+        advance_paid = StaffAdvanceModel.objects.filter(staff_id=id,created_at__month=month)
+        days = []
+        total = 0
+        if len(advance_paid) == 1:
+            if payable_salary > advance_paid:
+                payable_salary -= int(advance_paid[0].advance_amount)
+            else:
+                payable_salary = int(advance_paid[0].advance_amount) - payable_salary
+            total = int(advance_paid[0].advance_amount)
+            days.append(advance_paid[0].created_at)
+        if len(advance_paid) > 1:
+         
+            for i in advance_paid:
+                total += int(i.advance_amount)
+                days.append(i.created_at)
+            if payable_salary > total:
+                payable_salary -= total
+            else:
+                payble_salary = total - payable_salary
+                
+            
+            
         return Response({
             "status": True,
             "id": id,
+            "advance_taken":total,
+            "date_of_advance":days,
             "net_payble_amount": round(payable_salary, 2),
             "no_of_working_days": working_days,
             "total_required_minutes": total_required_minutes,
