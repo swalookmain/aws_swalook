@@ -1121,10 +1121,11 @@ class VendorExpenseSerializer(serializers.ModelSerializer):
             product  = VendorInventoryProduct.objects.get(id=i.get('item'))
             product.stocks_in_hand+=int(i.get('quantity'))
             product.save()
-        stf = VendorStaff.objects.get(vendor_branch_id= self.context.get('branch_id'),staff_name=validated_data.get('expense_account'))
-        StaffAdvanceModel.objects.create(vendor_name=self.context.get('request').user,vendor_branch_id=self.context.get('branch_id'),advance_amount=validated_data.get('expense_amount'),created_at=validated_data.get("date"),staff=stf)
-        
+        if validated_data.get('expense_category').lower() == "advance salary":
+            stf = VendorStaff.objects.get(vendor_branch_id= self.context.get('branch_id'),staff_name=validated_data.get('expense_account'))
+            StaffAdvanceModel.objects.create(vendor_name=self.context.get('request').user,vendor_branch_id=self.context.get('branch_id'),advance_amount=validated_data.get('expense_amount'),created_at=validated_data.get("date"),staff=stf)
             
+                
             
         return super().create(validated_data)
 
