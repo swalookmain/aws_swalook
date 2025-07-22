@@ -1654,7 +1654,7 @@ class vendor_staff(APIView):
         queryset_2 = StaffAdvanceModel.objects.filter(
             vendor_name=request.user,
             vendor_branch_id=branch_name
-        ).values("staff__mobile_no","amount_paid","created_at")
+        ).values("staff__mobile_no","advance_amount","created_at")
         serializer = self.serializer_class(queryset, many=True)
 
         return Response({
