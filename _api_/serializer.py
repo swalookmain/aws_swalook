@@ -108,7 +108,7 @@ class centralized_login_serializer(serializers.Serializer):
         user = authenticate(username=mobileno, password=password)
         if user:
      
-            staff_vendor_obj  = VendorStaff.objects.get(mobile_no=mobile_no)
+            staff_vendor_obj  = VendorStaff.objects.get(mobile_no=mobileno)
             if staff_vendor_obj.password == password:
                 auth.login(self.context.get('request'), user)
                 token, created = Token.objects.get_or_create(user=user)
