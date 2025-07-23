@@ -603,7 +603,7 @@ class VendorExpense(models.Model):
     invoice_id = models.TextField(null=True, blank=True)  
     amount_paid = models.TextField(null=True, blank=True)  
     completed_date = models.DateField(null=True, blank=True)
-    due_date = models.DateField(null=True, blank=True)
+    due_date = models.CharField(max_length=30, null=True, blank=True)
     date = models.DateField()
     month = models.CharField(max_length=30, null=True, blank=True)
     week = models.CharField(max_length=30, null=True, blank=True)
