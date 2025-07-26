@@ -1647,20 +1647,58 @@ class vendor_staff(APIView):
                 'data': None
             }, status=status.HTTP_400_BAD_REQUEST)
 
+        # queryset = VendorStaff.objects.filter(
+        #     vendor_name=request.user,
+        #     vendor_branch_id=branch_name
+        # ).order_by('-id')
+        # queryset_2 = StaffAdvanceModel.objects.filter(
+        #     vendor_name=request.user,
+        #     vendor_branch_id=branch_name
+        # ).values("staff__mobile_no","advance_amount","created_at")
+        # serializer = self.serializer_class(queryset, many=True)
+        from django.db.models import Prefetch
+        from django.utils import timezone
+        
+        current_month = timezone.now().month
+        current_year = timezone.now().year
+        
+        staff_advances = StaffAdvanceModel.objects.filter(
+            vendor_name=request.user,
+            vendor_branch_id=branch_name
+        ).only("staff__mobile_no", "advance_amount", "created_at")
+        
         queryset = VendorStaff.objects.filter(
             vendor_name=request.user,
             vendor_branch_id=branch_name
+        ).prefetch_related(
+            Prefetch('staffadvancemodel_set', queryset=staff_advances, to_attr='advances')
         ).order_by('-id')
-        queryset_2 = StaffAdvanceModel.objects.filter(
-            vendor_name=request.user,
-            vendor_branch_id=branch_name
-        ).values("staff__mobile_no","advance_amount","created_at")
-        serializer = self.serializer_class(queryset, many=True)
+        
+        response = []
+        for staff in queryset:
+            advances_data = [
+                {"advance_amount": adv.advance_amount, "created_at": adv.created_at}
+                for adv in staff.advances
+            ]
+        
+            current_month_total = sum(
+                adv.advance_amount
+                for adv in staff.advances
+                if adv.created_at.month == current_month and adv.created_at.year == current_year
+            )
+        
+            response.append({
+                "staff_name": staff.name,
+                "mobile_no": staff.mobile_no,
+                "current_month_total": current_month_total,
+                "advances": advances_data,
+            })
+
 
         return Response({
             "status": True,
-            "table_data": serializer.data,
-            "table_data_advance": queryset_2,
+            "table_data": response,
+            
             "message": "Staff records retrieved successfully."
         }, status=status.HTTP_200_OK)
 
