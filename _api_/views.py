@@ -1647,10 +1647,10 @@ class vendor_staff(APIView):
                 'data': None
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        # queryset = VendorStaff.objects.filter(
-        #     vendor_name=request.user,
-        #     vendor_branch_id=branch_name
-        # ).order_by('-id')
+        queryseet = VendorStaff.objects.filter(
+             vendor_name=request.user,
+             vendor_branch_id=branch_name
+        ).order_by('-id')
         # queryset_2 = StaffAdvanceModel.objects.filter(
         #     vendor_name=request.user,
         #     vendor_branch_id=branch_name
@@ -1689,6 +1689,7 @@ class vendor_staff(APIView):
         
             response.append({
                 "staff_name": staff.staff_name,
+                "id": staff.id,
                 "mobile_no": staff.mobile_no,
                 "current_month_total": current_month_total,
                 "advances": advances_data,
