@@ -1688,7 +1688,7 @@ class vendor_staff(APIView):
             )
         
             response.append({
-                "staff_name": staff.name,
+                "staff_name": staff.staff_name,
                 "mobile_no": staff.mobile_no,
                 "current_month_total": current_month_total,
                 "advances": advances_data,
