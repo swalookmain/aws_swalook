@@ -125,6 +125,7 @@ urlpatterns = [
     path('api/swalook/inventory/utilizationinventory/', UtilizationInventory.as_view(),name='vendor-inventory-utilization'),
     path('api/swalook/download-invoice-excel/', DownloadInvoiceExcelView.as_view()),
     path('api/swalook/vendor-expense-purchase/', VendorPurchaseView_vp.as_view()),
+    path('api/swalook/single_staff_attendance/', SingleStaffAttendance.as_view()),
     re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}, name='media'),
     re_path(r'^static/(?P<path>.*)$', serve, {'document_root': settings.STATIC_URL}, name='static'),
 ]
