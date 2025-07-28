@@ -1688,9 +1688,7 @@ class vendor_staff(APIView):
             )
         
             response.append({
-                "staff_name": staff.staff_name,
-                "id": staff.id,
-                "mobile_no": staff.mobile_no,
+                "staff_data":self.serializer_class(staff).data,
                 "current_month_total": current_month_total,
                 "advances": advances_data,
             })
