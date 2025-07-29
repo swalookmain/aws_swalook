@@ -114,7 +114,7 @@ class centralized_login_serializer(serializers.Serializer):
                 token, created = Token.objects.get_or_create(user=user)
                 branch = SalonBranch.objects.get(id=staff_vendor_obj.vendor_branch.id)
                 user_profile = SwalookUserProfile.objects.get(mobile_no=staff_vendor_obj.vendor_name.username)
-                return ["staff-mobile",token,user_profile.salon_name,branch]
+                return ["staff-mobile",token,[staff_vendor_obj.staff_name,user_profile.salon_name],branch]
                 
     
                 
