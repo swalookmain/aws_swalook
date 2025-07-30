@@ -3967,7 +3967,7 @@ class VendorCustomerStatsAPIView(APIView):
         recent_customers = VendorCustomers.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),user=request.user,created_at__gte=now() - timedelta(days=30)).count()
 
         # Active Memberships
-        active_memberships = VendorCustomers.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),user=request.user,membership__isnull=False).count()
+        active_memberships = VendorCustomers.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),user=request.user,memberships__isnull=False).count()
 
         # Active Coupons (Customers with at least one coupon)
         active_coupons = VendorCustomers.objects.filter(vendor_branch_id=request.query_params.get('branch_name'),user=request.user,coupon__isnull=False).distinct()
