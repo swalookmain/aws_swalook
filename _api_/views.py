@@ -4767,7 +4767,7 @@ class SingleStaffAttendance(APIView):
 
         
         if staff_id:
-            staff = VendorStaff.objects.filter(id=staff_id, vendor_name=request.user, vendor_branch_id=branch_name)
+            staff = VendorStaff.objects.filter(mobile_no=staff_id, vendor_name=request.user, vendor_branch_id=branch_name)
             if not staff.exists():
                 return Response({
                     'success': False,
