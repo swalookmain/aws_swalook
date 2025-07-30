@@ -284,7 +284,7 @@ class VendorAppointment(models.Model):
     vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
     customer_name = models.CharField(max_length=255)
     services = models.CharField(max_length=255)
-    service_by = models.CharField(max_length=255)
+    
     booking_date = models.CharField(max_length=255)
     date = models.DateField()
     booking_time = models.CharField(max_length=255)
