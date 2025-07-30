@@ -4021,7 +4021,7 @@ class SalesTargetSettingListCreateView(APIView):
         year = request.query_params.get("year")
         report_type = request.query_params.get("type")
         branch_id = request.query_params.get("branch_name")
-        sb = SalonBranch.objects.get(id=id)
+        sb = SalonBranch.objects.get(id=branch_id)
         try:
             current_month = int(month)
             current_year = int(year)
