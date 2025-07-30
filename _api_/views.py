@@ -2161,7 +2161,7 @@ class salary_disburse(APIView):
         days = []
         total = 0
         if len(advance_paid) == 1:
-            if payable_salary > advance_paid:
+            if int(payable_salary) > int(advance_paid[0].advance_amount):
                 payable_salary -= int(advance_paid[0].advance_amount)
             else:
                 payable_salary = int(advance_paid[0].advance_amount) - payable_salary
