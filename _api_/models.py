@@ -156,7 +156,7 @@ class VendorCustomers(models.Model):
     d_o_a = models.CharField(max_length=30, blank=True, null=True)
     email = models.CharField(max_length=30, blank=True)
  
-    # memberships = models.ForeignKey(VendorLoyalityProgramTypes, on_delete=models.SET_NULL,blank=True,null=True)
+    memberships = models.ForeignKey(VendorLoyalityProgramTypes, on_delete=models.SET_NULL,blank=True,null=True)
     vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
     coupon = models.ManyToManyField(CustomerCoupon,blank=True,null=True)
 
