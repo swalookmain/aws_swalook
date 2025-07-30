@@ -4767,7 +4767,7 @@ class SingleStaffAttendance(APIView):
 
         
         if staff_id:
-            staff = VendorStaff.objects.filter(mobile_no=staff_id, vendor_name=request.user, vendor_branch_id=branch_name)
+            staff = VendorStaff.objects.filter(mobile_no=staff_id,vendor_branch_id=branch_name)
             if not staff.exists():
                 return Response({
                     'success': False,
@@ -4780,7 +4780,7 @@ class SingleStaffAttendance(APIView):
                 }, status=status.HTTP_404_NOT_FOUND)
       
         attendance_queryset = VendorStaffAttendance.objects.filter(
-            vendor_name=request.user,
+    
             vendor_branch_id=branch_name,
             of_month=month,
             year=current_date.year,
@@ -4814,13 +4814,13 @@ class SingleStaffAttendance(APIView):
 
       
         staff_settings_obj = StaffSetting.objects.filter(
-            vendor_name=request.user,
+        
             vendor_branch_id=branch_name,
             month=month,
         ).first()
 
         time_obj = StaffAttendanceTime.objects.filter(
-            vendor_name=request.user,
+
             vendor_branch_id=branch_name
         ).first()
 
