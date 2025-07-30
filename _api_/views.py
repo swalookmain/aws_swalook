@@ -4789,7 +4789,7 @@ class SingleStaffAttendance(APIView):
 
         attendance_data = {}
         for record in attendance_queryset:
-            sid = record.staff.id
+            sid = record.staff.staff_name
             if sid not in attendance_data:
                 attendance_data[sid] = {
                     "present_dates": [],
