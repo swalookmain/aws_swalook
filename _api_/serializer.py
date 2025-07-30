@@ -820,10 +820,8 @@ class VendorCustomerLoyalityProfileSerializer(serializers.ModelSerializer):
         child=serializers.DictField(child=serializers.UUIDField()),
         required=False  
     )
-    membership = serializers.ListField(
-        child=serializers.DictField(child=serializers.UUIDField()),
-        required=False  
-    )
+    membership = serializers.UUIDField()
+    
 
     class Meta:
         model = VendorCustomers
@@ -836,11 +834,11 @@ class VendorCustomerLoyalityProfileSerializer(serializers.ModelSerializer):
        
         from datetime import date, timedelta
         coupon_data_list = validated_data.pop('coupon', [])
-        membership_data_list = validated_data.pop('membership', [])
+       
         
    
         coupon_ids = [item.get('coupon_name') for item in coupon_data_list if item.get('coupon_name')]
-        membership_ids = [item.get('membership_name') for item in membership_data_list if item.get('membership_name')]
+        membership_ids = validated_data.get('membership')
         
        
         user = self.context['request'].user  
@@ -879,16 +877,16 @@ class VendorCustomerLoyalityProfileSerializer(serializers.ModelSerializer):
     
         customer_memberships_to_create = []
     
-        if membership_ids:
-            for membership_id in membership_ids:
-                customer_memberships_to_create.append(CustomerMembership(
-                    user=user,
-                    vendor_branch_id=branch_id,
-                    customer_id=str(validated_data['mobile_no']),
-                    membership_name_id=membership_id,
-                    issue_date=today,
-                    expiry_date=expiry_date
-                ))
+        if validated_data.get('membership') != "":
+        
+            customer_memberships_to_create.append(CustomerMembership(
+                user=user,
+                vendor_branch_id=branch_id,
+                customer_id=str(validated_data['mobile_no']),
+                membership_name_id=validated_data.get('membership'),
+                issue_date=today,
+                expiry_date=expiry_date
+            ))
     
         if customer_memberships_to_create:
             CustomerMembership.objects.bulk_create(customer_memberships_to_create)
