@@ -326,6 +326,7 @@ class VendorStaff(models.Model):
     staff_professional_tax = models.DecimalField(blank=True, null=True, max_digits=10, decimal_places=2)
     business_of_the_current_month = models.DecimalField(blank=True, null=True, max_digits=10, decimal_places=2, default=0)
     password =  models.CharField(max_length=200,blank=True,null=True)
+    active = models.BooleanField(default=True,blank=True,null=True)
     class Meta:
         indexes = [
             models.Index(fields=['vendor_name', 'vendor_branch', 'staff_name']),
