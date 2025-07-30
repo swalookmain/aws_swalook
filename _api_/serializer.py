@@ -838,7 +838,8 @@ class VendorCustomerLoyalityProfileSerializer(serializers.ModelSerializer):
         
    
         coupon_ids = [item.get('coupon_name') for item in coupon_data_list if item.get('coupon_name')]
-        membership_ids = validated_data.get('membership')
+        membership_id = validated_data.pop('membership')
+        validated_data['membership_id'] = membership_id
         
        
         user = self.context['request'].user  
@@ -849,14 +850,24 @@ class VendorCustomerLoyalityProfileSerializer(serializers.ModelSerializer):
         loyalty_profile_obj = None  
         
         
-        vendor_customer_obj = VendorCustomers.objects.create(
-            vendor_branch_id=branch_id,
-            mobile_no=validated_data.get('mobile_no'),
-            name=validated_data.get('name'),
-            email=validated_data.get('email', ''),
-            user=user,
-           
-        )
+        
+        validated_data['vendor_branch_id'] = branch_id
+         
+        
+        validated_data['user'] = user
+        if validated_data.get('membership') != "":
+        
+            obj = VendorCustomerLoyalityPoints.objects.create(
+                user=user,
+                vendor_branch_id=branch_id,
+                customer_id=str(validated_data['mobile_no']),
+                membership_name_id=validated_data.get('membership'),
+                issue_date=today,
+                expiry_date=expiry_date
+            )
+            validated_data['loyality_profile'] = obj
+        customer = VendorCustomers.objects.create(**validated_data)
+        
 
         customer_coupons_to_create = []
     
@@ -873,25 +884,17 @@ class VendorCustomerLoyalityProfileSerializer(serializers.ModelSerializer):
         
         if customer_coupons_to_create:
             CustomerCoupon.objects.bulk_create(customer_coupons_to_create)
+            customer.coupon.add(*customer_coupons_to_create)
+            customer.save()
     
     
-        customer_memberships_to_create = []
+
     
-        if validated_data.get('membership') != "":
         
-            customer_memberships_to_create.append(CustomerMembership(
-                user=user,
-                vendor_branch_id=branch_id,
-                customer_id=str(validated_data['mobile_no']),
-                membership_name_id=validated_data.get('membership'),
-                issue_date=today,
-                expiry_date=expiry_date
-            ))
     
-        if customer_memberships_to_create:
-            CustomerMembership.objects.bulk_create(customer_memberships_to_create)
+       
     
-        return vendor_customer_obj
+        return customer
 
 class VendorLoyalityTypeSerializer_get(serializers.ModelSerializer):
     class Meta:
