@@ -1389,11 +1389,11 @@ class Vendor_loyality_customer_profile(CreateAPIView, ListAPIView, UpdateAPIView
             branch_name = branch_name.replace("%20", " ")
 
         data_object = VendorCustomers.objects.filter(user=request.user).values()
-        # serializer_obj = VendorCustomerLoyalityProfileSerializer_get(data_object, many=True)
+        serializer_obj = VendorCustomerLoyalityProfileSerializer_get(data_object, many=True)
 
         return Response({
             "status": True,
-            "data": list(data_object)
+            "data": serializer_obj.data
         })
 
     def put(self, request):
