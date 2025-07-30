@@ -158,7 +158,7 @@ class VendorCustomers(models.Model):
  
     memberships = models.ForeignKey(VendorLoyalityProgramTypes, on_delete=models.SET_NULL, null=True, db_index=True)
     vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
-    coupon = models.ForeignKey(VendorCoupon,on_delete=models.SET_NULL, null=True, db_index=True)
+    coupon = models.ForeignKey(CustomerCoupon,on_delete=models.SET_NULL, null=True, db_index=True)
 
     class Meta:
         ordering = ['name']
