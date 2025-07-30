@@ -4021,7 +4021,7 @@ class SalesTargetSettingListCreateView(APIView):
         year = request.query_params.get("year")
         report_type = request.query_params.get("type")
         branch_id = request.query_params.get("branch_name")
-
+        sb = SalonBranch.objects.get(id=id)
         try:
             current_month = int(month)
             current_year = int(year)
@@ -4034,7 +4034,7 @@ class SalesTargetSettingListCreateView(APIView):
            
             sales_targets = (
                 SalesTargetSetting.objects
-                .filter(vendor_name=request.user,month=current_month,year=current_year)
+                .filter(vendor_name=sb.vendor_name,month=current_month,year=current_year)
                 .values('vendor_branch__branch_name')
                 .annotate(
                     total_service_target=Sum('service_target'),
@@ -4047,12 +4047,12 @@ class SalesTargetSettingListCreateView(APIView):
 
             # Staff Targets (raw)
             staff_targets = SalesTargetSetting.objects.filter(
-                vendor_name=request.user,month=current_month,year=current_year
+                vendor_name=sb.vendor_name,month=current_month,year=current_year
             ).values('vendor_branch__branch_name', 'staff_targets')
 
             # Monthly Branch Revenue
             branch_revenue_qs = VendorInvoice.objects.filter(
-                vendor_name=request.user,
+                vendor_name=sb.vendor_name,
                 date__year=current_year,
                 date__month=current_month
             ).values('vendor_branch__branch_name').annotate(
@@ -4069,7 +4069,7 @@ class SalesTargetSettingListCreateView(APIView):
 
             
             invoices = VendorInvoice.objects.filter(
-                vendor_name=request.user,
+                vendor_name=sb.vendor_name,
                 date__year=current_year,
                 date__month=current_month
             )
@@ -4143,12 +4143,12 @@ class SalesTargetSettingListCreateView(APIView):
    
         sales_targets = SalesTargetSetting.objects.filter(
             vendor_branch_id=branch_id,
-            vendor_name=request.user,
+            vendor_name=sb.vendor_name,
             month=current_month,
             year=current_year
         ).values()
         branch_revenue_qs = VendorInvoice.objects.filter(
-                vendor_name=request.user,
+                vendor_name=sb.vendor_name,
                 vendor_branch_id=branch_id,
                 date__year=current_year,
                 date__month=current_month
@@ -4166,7 +4166,7 @@ class SalesTargetSettingListCreateView(APIView):
 
             
         invoices = VendorInvoice.objects.filter(
-                vendor_name=request.user,
+                vendor_name=sb.vendor_name,
                 date__year=current_year,
                 vendor_branch_id=branch_id,
                 date__month=current_month
