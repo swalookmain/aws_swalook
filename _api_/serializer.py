@@ -820,7 +820,7 @@ class VendorCustomerLoyalityProfileSerializer(serializers.ModelSerializer):
         child=serializers.DictField(child=serializers.UUIDField()),
         required=False  
     )
-    membership = serializers.UUIDField()
+    membership = serializers.UUIDField(required=False)
     
 
     class Meta:
@@ -834,6 +834,8 @@ class VendorCustomerLoyalityProfileSerializer(serializers.ModelSerializer):
        
         from datetime import date, timedelta
         coupon_data_list = validated_data.pop('coupon', [])
+       
+     
        
         
    
@@ -855,17 +857,11 @@ class VendorCustomerLoyalityProfileSerializer(serializers.ModelSerializer):
          
         
         validated_data['user'] = user
-        if validated_data.get('membership') != "":
         
-            obj = VendorCustomerLoyalityPoints.objects.create(
-                user=user,
-                vendor_branch_id=branch_id,
-                customer_id=str(validated_data['mobile_no']),
-                membership_name_id=validated_data.get('memberships'),
-                issue_date=today,
-                expiry_date=expiry_date
-            )
-            validated_data['loyality_profile'] = obj
+        validated_data['memberships_id'] = validated_data.get('memberships')
+    
+        
+            
         customer = VendorCustomers.objects.create(**validated_data)
         
 
