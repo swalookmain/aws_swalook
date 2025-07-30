@@ -155,10 +155,10 @@ class VendorCustomers(models.Model):
     d_o_b = models.CharField(max_length=30, blank=True, null=True)
     d_o_a = models.CharField(max_length=30, blank=True, null=True)
     email = models.CharField(max_length=30, blank=True)
-    membership = models.CharField(max_length=30, blank=True, null=True)
-    membership_type = models.ManyToManyField(VendorLoyalityProgramTypes,blank=True)
+ 
+    membership = models.ForeignKey(VendorLoyalityProgramTypes,blank=True,null=True)
     vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
-    coupon = models.ManyToManyField(CustomerCoupon,blank=True)
+    coupon = models.ManyToManyField(CustomerCoupon,blank=True,null=True)
 
     class Meta:
         ordering = ['name']
