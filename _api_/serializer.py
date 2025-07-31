@@ -851,12 +851,12 @@ class VendorCustomerLoyalityProfileSerializer(serializers.ModelSerializer):
         child=serializers.DictField(child=serializers.UUIDField()),
         required=False  
     )
-    membership = serializers.UUIDField(required=False)
+    memberships = serializers.UUIDField(required=False)
     
 
     class Meta:
         model = VendorCustomers
-        fields = ["id", "name", "mobile_no", "email", "membership", "d_o_a", "d_o_b", "coupon"]
+        fields = ["id", "name", "mobile_no", "email", "memberships", "d_o_a", "d_o_b", "coupon"]
         extra_kwargs = {'id': {'read_only': True}}
 
 
@@ -871,8 +871,8 @@ class VendorCustomerLoyalityProfileSerializer(serializers.ModelSerializer):
         
    
         coupon_ids = [item.get('coupon_name') for item in coupon_data_list if item.get('coupon_name')]
-        membership_id = validated_data.pop('memberships')
-        validated_data['membership_id'] = membership_id
+        # membership_id = validated_data.pop('memberships')
+        # validated_data['membership_id'] = membership_id
         
        
         user = self.context['request'].user  
