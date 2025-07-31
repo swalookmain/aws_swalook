@@ -499,8 +499,18 @@ class staff_attendance_serializer(serializers.Serializer):
     long = serializers.CharField(required=False)
     
     def create(self, validated_data):
+        import json
+        d = 0
         for objects in validated_data['json_data']:
-           
+            try:
+                objects.get('of_month')
+            except exception:
+               data =  json.loads(validated_data.get('json_data'))
+               if len(data) > 1:
+                   objects = data[d]
+                   d = d+1
+               else:
+                   objects = data[0]
             attendance_staff_object = VendorStaffAttendance()
             if len(self.context.get('request').query_params.get('staff_id')) == 10:
                  attendance_staff_object.staff__mobile_no = self.context.get('request').query_params.get('staff_id')
