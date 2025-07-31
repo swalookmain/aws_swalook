@@ -372,9 +372,9 @@ class VendorStaffAttendance(models.Model):
     staff = models.ForeignKey(VendorStaff, on_delete=models.CASCADE, null=True)
     in_time =  models.CharField(max_length=200, blank=True)
     out_time =  models.CharField(max_length=200, blank=True)
-    image = models.ImageField(blank=True, null=True)
-    lat  = models.CharField(max_length=200, blank=True)
-    long = models.CharField(max_length=200, blank=True)
+    image = models.ImageField(upload_to='images/self', default='default_images/default.jpg',blank=True, null=True)
+    lat  = models.CharField(max_length=200, blank=True,null=True)
+    long = models.CharField(max_length=200, blank=True,null=True)
 
     class Meta:
         indexes = [
