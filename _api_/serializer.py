@@ -501,50 +501,78 @@ class staff_attendance_serializer(serializers.Serializer):
     
     def create(self, validated_data):
         import json
-        d = 0
+    
         for objects in validated_data['json_data']:
             try:
                 objects.get('of_month')
-            except Exception:
-               data =  json.loads(validated_data.get('json_data'))
-               if len(data) > 1:
-                   objects = data[d]
-                   d = d+1
-               else:
-                   objects = data[0]
-            attendance_staff_object = VendorStaffAttendance()
-            stf_id = self.context.get('request').query_params.get('staff_id')
-            if len(stf_id) == 10:
-                stf = VendorStaff.objects.get(mobile_no=self.context.get('request').query_params.get('staff_id'))
-                attendance_staff_object.staff = stf
-            else:
-                
-                attendance_staff_object.staff_id = self.context.get('request').query_params.get('staff_id')
+                attendance_staff_object = VendorStaffAttendance()
 
-            
-            s = SalonBranch.objects.get(id=self.context.get('branch_id'))
-            attendance_staff_object.vendor_name = s.vendor_name
-            attendance_staff_object.vendor_branch_id = self.context.get('branch_id')
-            attendance_staff_object.of_month = objects.get('of_month')
-            attendance_staff_object.year = objects.get('year')
-            attendance_staff_object.attend = objects.get('attend')
-            if validated_data['lat']:
-                attendance_staff_object.lat = validated_data.get('lat')
-                attendance_staff_object.long = validated_data.get('long')
-            else:
-                attendance_staff_object.lat = ""
-                attendance_staff_object.long = ""
-            if self.context.get('request').FILES.get('photo'):
-                attendance_staff_object.image = self.context.get('request').FILES.get('photo')
-            
-            
-            
-          
-            attendance_staff_object.date = objects.get('date')
-            
-            attendance_staff_object.in_time = objects.get('in_time')
-            attendance_staff_object.out_time = ""
-            attendance_staff_object.save()
+               
+                attendance_staff_object.staff_id = self.context.get('request').query_params.get('staff_id')
+        
+                
+                s = SalonBranch.objects.get(id=self.context.get('branch_id'))
+                attendance_staff_object.vendor_name = s.vendor_name
+                attendance_staff_object.vendor_branch_id = self.context.get('branch_id')
+                attendance_staff_object.of_month = objects.get('of_month')
+                attendance_staff_object.year = objects.get('year')
+                attendance_staff_object.attend = objects.get('attend')
+                if validated_data['lat']:
+                    attendance_staff_object.lat = validated_data.get('lat')
+                    attendance_staff_object.long = validated_data.get('long')
+                else:
+                    attendance_staff_object.lat = ""
+                    attendance_staff_object.long = ""
+                if self.context.get('request').FILES.get('photo'):
+                    attendance_staff_object.image = self.context.get('request').FILES.get('photo')
+                
+                
+                
+              
+                attendance_staff_object.date = objects.get('date')
+                
+                attendance_staff_object.in_time = objects.get('in_time')
+                attendance_staff_object.out_time = ""
+                attendance_staff_object.save()
+
+            except Exception:
+                break
+        
+        data =  json.loads(validated_data.get('json_data'))
+        objects = data[0]
+             
+        attendance_staff_object = VendorStaffAttendance()
+        stf_id = self.context.get('request').query_params.get('staff_id')
+        
+        stf = VendorStaff.objects.get(mobile_no=self.context.get('request').query_params.get('staff_id'))
+        attendance_staff_object.staff = stf
+       
+        attendance_staff_object.staff_id = self.context.get('request').query_params.get('staff_id')
+
+        
+        s = SalonBranch.objects.get(id=self.context.get('branch_id'))
+        attendance_staff_object.vendor_name = s.vendor_name
+        attendance_staff_object.vendor_branch_id = self.context.get('branch_id')
+        attendance_staff_object.of_month = objects.get('of_month')
+        attendance_staff_object.year = objects.get('year')
+        attendance_staff_object.attend = objects.get('attend')
+        if validated_data['lat']:
+            attendance_staff_object.lat = validated_data.get('lat')
+            attendance_staff_object.long = validated_data.get('long')
+        else:
+            attendance_staff_object.lat = ""
+            attendance_staff_object.long = ""
+        if self.context.get('request').FILES.get('photo'):
+            attendance_staff_object.image = self.context.get('request').FILES.get('photo')
+        
+        
+        
+      
+        attendance_staff_object.date = objects.get('date')
+        
+        attendance_staff_object.in_time = objects.get('in_time')
+        attendance_staff_object.out_time = ""
+        attendance_staff_object.save()
 
         return "ok"
 
