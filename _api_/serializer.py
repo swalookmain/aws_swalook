@@ -865,7 +865,8 @@ class VendorCustomerLoyalityProfileSerializer(serializers.ModelSerializer):
        
         from datetime import date, timedelta
         coupon_data_list = validated_data.pop('coupon', [])
-       
+        if coupon_data_list == []:
+            validated_data['coupon'] =  ""
      
        
         
