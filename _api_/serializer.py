@@ -542,13 +542,11 @@ class staff_attendance_serializer(serializers.Serializer):
         objects = data[0]
              
         attendance_staff_object = VendorStaffAttendance()
-        stf_id = self.context.get('request').query_params.get('staff_id')
         
         stf = VendorStaff.objects.get(mobile_no=self.context.get('request').query_params.get('staff_id'))
         attendance_staff_object.staff = stf
        
-        attendance_staff_object.staff_id = self.context.get('request').query_params.get('staff_id')
-
+     
         
         s = SalonBranch.objects.get(id=self.context.get('branch_id'))
         attendance_staff_object.vendor_name = s.vendor_name
