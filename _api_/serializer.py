@@ -504,7 +504,7 @@ class staff_attendance_serializer(serializers.Serializer):
         for objects in validated_data['json_data']:
             try:
                 objects.get('of_month')
-            except exception:
+            except Exception:
                data =  json.loads(validated_data.get('json_data'))
                if len(data) > 1:
                    objects = data[d]
