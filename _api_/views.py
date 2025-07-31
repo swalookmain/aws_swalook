@@ -2033,11 +2033,13 @@ class vendor_staff_attendance(APIView):
             
             return Response({"status": True})
         else:
-    
-            try:
+            if len(id) == 10:
+              
+                    stf = VendorStaff.objects.get(mobile_no=id)
+                    instance = VendorStaffAttendance.objects.get(staff=stf,date=dt.date.today())
+                
+            else:
                 instance = VendorStaffAttendance.objects.get(staff_id=id,date=dt.date.today())
-            except ObjectDoesNotExist:
-                return Response({"status": False, "text": "Attendance not found."}, status=status.HTTP_404_NOT_FOUND)
 
         serializer = staff_attendance_serializer(instance, data=request.data, context={'request': request, 'branch_id': branch_name})
         if serializer.is_valid():
