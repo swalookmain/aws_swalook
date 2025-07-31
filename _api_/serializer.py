@@ -494,16 +494,30 @@ class staff_serializer(serializers.ModelSerializer):
 
 class staff_attendance_serializer(serializers.Serializer):
     json_data = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
+    photo =  serializers.ImageField()
+    lat = serializers.CharField()
+    long = serializers.CharField()
     
     def create(self, validated_data):
         for objects in validated_data['json_data']:
+           
             attendance_staff_object = VendorStaffAttendance()
+            if len(self.context.get('request').query_params.get('staff_id')) == 10:
+                 attendance_staff_object.staff__mobile_no = self.context.get('request').query_params.get('staff_id')
+            else:
+                 attendance_staff_object.staff_id = self.context.get('request').query_params.get('staff_id')
+                
             attendance_staff_object.vendor_name = self.context.get('request').user
             attendance_staff_object.vendor_branch_id = self.context.get('branch_id')
             attendance_staff_object.of_month = objects.get('of_month')
             attendance_staff_object.year = objects.get('year')
             attendance_staff_object.attend = objects.get('attend')
-            attendance_staff_object.staff_id = self.context.get('request').query_params.get('staff_id')
+            attendance_staff_object.lat = validated_data['lat']
+            attendance_staff_object.long = validated_data['long']
+            attendance_staff_object.image = self.context.get('request').FILES.get('photo')
+            
+            
+          
             attendance_staff_object.date = objects.get('date')
             
             attendance_staff_object.in_time = objects.get('in_time')
