@@ -851,7 +851,7 @@ class VendorCustomerLoyalityProfileSerializer(serializers.ModelSerializer):
         child=serializers.DictField(child=serializers.UUIDField()),
         required=False  
     )
-    memberships = serializers.UUIDField(required=False)
+    # memberships = serializers.UUIDField(required=False)
     
 
     class Meta:
