@@ -31,6 +31,8 @@ class SwalookUserProfile(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
     salon_name = models.CharField(max_length=255)
     owner_name = models.CharField(max_length=255)
+    lat = models.CharField(max_length=255)
+    long = models.CharField(max_length=255)
     profile_pic = models.ImageField(blank=True, null=True)
     mobile_no = models.CharField(max_length=10, db_index=True)
     email = models.EmailField(blank=True, db_index=True)
