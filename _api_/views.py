@@ -1862,13 +1862,27 @@ class vendor_staff_attendance(APIView):
         serializer.create(validated_data=request.data)
         prefered_in_time = StaffAttendanceTime.objects.get(vendor_branch_id=branch_name)
         # calculation remaining. 
-        return Response({
-            "status": True,
-            "message": "staff attendance added successfully.",
-            "in_time":request.data.get('json_data')[0].get('in_time'),
-            "late_time":""
+        try:
             
-        }, status=status.HTTP_201_CREATED)
+            return Response({
+                "status": True,
+                "message": "staff attendance added successfully.",
+
+            
+                "in_time":request.data.get('json_data')[0].get('in_time'),
+                "late_time":""
+            
+            }, status=status.HTTP_201_CREATED)
+        except Exception:
+            return Response({
+                "status": True,
+                "message": "staff attendance added successfully.",
+
+            
+                # "in_time":request.data.get('json_data')[0].get('in_time'),
+                # "late_time":""
+            
+            }, status=status.HTTP_201_CREATED)
    
     
     
