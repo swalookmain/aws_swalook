@@ -513,10 +513,11 @@ class staff_attendance_serializer(serializers.Serializer):
                else:
                    objects = data[0]
             attendance_staff_object = VendorStaffAttendance()
-            if len(self.context.get('request').query_params.get('staff_id')) == 10:
-                 attendance_staff_object.staff__mobile_no = self.context.get('request').query_params.get('staff_id')
-            else:
+            try:
                  attendance_staff_object.staff_id = self.context.get('request').query_params.get('staff_id')
+            except Exception:
+                 stf = VendorStaff.objects.get(mobile_no=self.context.get('request').query_params.get('staff_id'))
+                 attendance_staff_object.staff = stf.id
             s = SalonBranch.objects.get(id=self.context.get('branch_id'))
             attendance_staff_object.vendor_name = s.vendor_name
             attendance_staff_object.vendor_branch_id = self.context.get('branch_id')
