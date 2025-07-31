@@ -516,7 +516,7 @@ class staff_attendance_serializer(serializers.Serializer):
             stf_id = self.context.get('request').query_params.get('staff_id')
             if len(stf_id) == 10:
                 stf = VendorStaff.objects.get(mobile_no=self.context.get('request').query_params.get('staff_id'))
-                attendance_staff_object.staff = stf.id
+                attendance_staff_object.staff = stf
             else:
                 
                 attendance_staff_object.staff_id = self.context.get('request').query_params.get('staff_id')
