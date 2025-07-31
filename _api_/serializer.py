@@ -494,9 +494,9 @@ class staff_serializer(serializers.ModelSerializer):
 
 class staff_attendance_serializer(serializers.Serializer):
     json_data = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
-    photo =  serializers.ImageField()
-    lat = serializers.CharField()
-    long = serializers.CharField()
+    photo =  serializers.ImageField(required=False)
+    lat = serializers.CharField(required=False)
+    long = serializers.CharField(required=False)
     
     def create(self, validated_data):
         for objects in validated_data['json_data']:
@@ -512,9 +512,15 @@ class staff_attendance_serializer(serializers.Serializer):
             attendance_staff_object.of_month = objects.get('of_month')
             attendance_staff_object.year = objects.get('year')
             attendance_staff_object.attend = objects.get('attend')
-            attendance_staff_object.lat = validated_data['lat']
-            attendance_staff_object.long = validated_data['long']
-            attendance_staff_object.image = self.context.get('request').FILES.get('photo')
+            if validated_data['lat']:
+                attendance_staff_object.lat = validated_data.get('lat')
+                attendance_staff_object.long = validated_data.get('long')
+            else:
+                attendance_staff_object.lat = ""
+                attendance_staff_object.long = ""
+            if self.context.get('request').FILES.get('photo'):
+                attendance_staff_object.image = self.context.get('request').FILES.get('photo')
+            
             
             
           
