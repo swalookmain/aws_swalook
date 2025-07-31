@@ -871,7 +871,7 @@ class VendorCustomerLoyalityProfileSerializer(serializers.ModelSerializer):
         
    
         coupon_ids = [item.get('coupon_name') for item in coupon_data_list if item.get('coupon_name')]
-        membership_id = validated_data.pop('membership')
+        membership_id = validated_data.pop('memberships')
         validated_data['membership_id'] = membership_id
         
        
