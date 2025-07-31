@@ -109,12 +109,13 @@ class centralized_login_serializer(serializers.Serializer):
         if user:
      
             staff_vendor_obj  = VendorStaff.objects.get(mobile_no=mobileno)
-            if staff_vendor_obj.password == password:
-                auth.login(self.context.get('request'), user)
-                token, created = Token.objects.get_or_create(user=user)
-                branch = SalonBranch.objects.get(id=staff_vendor_obj.vendor_branch.id)
-                user_profile = SwalookUserProfile.objects.get(mobile_no=staff_vendor_obj.vendor_name.username)
-                return ["staff-mobile",token,[staff_vendor_obj.staff_name,user_profile.salon_name],branch]
+            if staff_vendor_obj.active == True:
+                if staff_vendor_obj.password == password:
+                    auth.login(self.context.get('request'), user)
+                    token, created = Token.objects.get_or_create(user=user)
+                    branch = SalonBranch.objects.get(id=staff_vendor_obj.vendor_branch.id)
+                    user_profile = SwalookUserProfile.objects.get(mobile_no=staff_vendor_obj.vendor_name.username)
+                    return ["staff-mobile",token,[staff_vendor_obj.staff_name,user_profile.salon_name],branch]
                 
     
                 
