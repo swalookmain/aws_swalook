@@ -1860,7 +1860,7 @@ class vendor_staff_attendance(APIView):
         serializer = self.serializer_class(data=request.data, context={'request': request, 'branch_id': branch_name})
 
         serializer.create(validated_data=request.data)
-        prefered_in_time = StaffAttendanceTime.objects.get(vendor_name=request.user,vendor_branch_id=branch_name)
+        prefered_in_time = StaffAttendanceTime.objects.get(vendor_branch_id=branch_name)
         # calculation remaining. 
         return Response({
             "status": True,
