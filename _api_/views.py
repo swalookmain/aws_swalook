@@ -2033,22 +2033,22 @@ class vendor_staff_attendance(APIView):
             
             return Response({"status": True})
         else:
-            if len(id) == 10:
+            # if len(id) == 10:
               
-                    stf = VendorStaff.objects.get(mobile_no=id)
-                    instance = VendorStaffAttendance.objects.get(staff=stf,date=dt.date.today())
+                    # stf = VendorStaff.objects.get(mobile_no=id)
+                    # instance = VendorStaffAttendance.objects.get(staff=stf,date=dt.date.today())
                 
-            else:
-                instance = VendorStaffAttendance.objects.get(staff_id=id,date=dt.date.today())
+            # else:
+            instance = VendorStaffAttendance.objects.get(staff_id=id,date=dt.date.today())
 
-        serializer = staff_attendance_serializer(instance, data=request.data, context={'request': request, 'branch_id': branch_name})
-        if serializer.is_valid():
-            serializer.save()
-            out_time = request.data.get('json_data')[0].get('out_time')
-            prefered_out_time = StaffAttendanceTime.objects.get(vendor_name=request.user,vendor_branch_id=branch_name)
-            # calculation remaining. 
-            return Response({"status": True, "out_time":request.data.get('json_data')[0].get('out_time'),"late_time":"" }, status=status.HTTP_200_OK)
-        return Response({"status": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+            serializer = staff_attendance_serializer(instance, data=request.data, context={'request': request, 'branch_id': branch_name})
+            if serializer.is_valid():
+                serializer.save()
+                out_time = request.data.get('json_data')[0].get('out_time')
+                prefered_out_time = StaffAttendanceTime.objects.get(vendor_name=request.user,vendor_branch_id=branch_name)
+                # calculation remaining. 
+                return Response({"status": True, "out_time":request.data.get('json_data')[0].get('out_time'),"late_time":"" }, status=status.HTTP_200_OK)
+            return Response({"status": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request):
         pass
