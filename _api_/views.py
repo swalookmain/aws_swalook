@@ -4877,7 +4877,7 @@ class singlestaffadvancedata(APIView):
            
             vendor_branch_id=request.query_params.get('branch_name'),
             staff__mobile_no=request.query_params.get('staff_id')
-        ).only("staff__mobile_no","staff__staff_name" "advance_amount", "created_at")
+        ).only("staff__mobile_no","staff__staff_name" ,"advance_amount", "created_at")
         
         queryset = VendorStaff.objects.filter(
 
