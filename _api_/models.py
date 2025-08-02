@@ -375,6 +375,7 @@ class VendorStaffAttendance(models.Model):
     in_time =  models.CharField(max_length=200, blank=True)
     out_time =  models.CharField(max_length=200, blank=True)
     image = models.ImageField(upload_to='images/self', default='default_images/default.jpg',blank=True, null=True)
+    image_1 = models.ImageField(upload_to='images/self-out', default='default_images/default.jpg',blank=True, null=True)
     lat  = models.CharField(max_length=200, blank=True,null=True)
     long = models.CharField(max_length=200, blank=True,null=True)
 
