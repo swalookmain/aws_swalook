@@ -503,7 +503,7 @@ class staff_attendance_serializer(serializers.Serializer):
         import json
     
         for objects in validated_data['json_data']:
-            # try:
+            try:
                 objects.get('of_month')
                 attendance_staff_object = VendorStaffAttendance()
 
@@ -511,9 +511,9 @@ class staff_attendance_serializer(serializers.Serializer):
                 attendance_staff_object.staff_id = self.context.get('request').query_params.get('staff_id')
         
                 
-                s = SalonBranch.objects.get(id=self.context.get('branch_name'))
+                s = SalonBranch.objects.get(id=self.context.get('request').query_params.get('branch_name'))
                 attendance_staff_object.vendor_name = s.vendor_name
-                attendance_staff_object.vendor_branch_id = self.context.get('branch_name')
+                attendance_staff_object.vendor_branch_id = self.context.get('request').query_params.get('branch_name')
                 attendance_staff_object.of_month = objects.get('of_month')
                 attendance_staff_object.year = objects.get('year')
                 attendance_staff_object.attend = objects.get('attend')
@@ -535,8 +535,8 @@ class staff_attendance_serializer(serializers.Serializer):
                 attendance_staff_object.out_time = ""
                 attendance_staff_object.save()
 
-            # except Exception:
-            #     break
+            except Exception:
+                break
         
         data =  json.loads(validated_data.get('json_data'))
         objects = data[0]
@@ -1379,7 +1379,7 @@ class staff_attendance_serializer_update_mobile(serializers.Serializer):
         
         
         
-      
+        objects = validated_data
         attendance_staff_object.date = objects.get('date')
         
    
