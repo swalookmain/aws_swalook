@@ -577,10 +577,8 @@ class staff_attendance_serializer(serializers.Serializer):
     
     def update(self, instance, validated_data):
         import json
-        data = self.context.get('request').query_params.get('staff_id')
-        if len(data) == 10:
-            validated_data['image'] = self.context.get('request').FILES.get('photo')
-            d = json.loads(validated_data.get('json_data'))
+       
+        
         validated_data['out_time'] = d[0].get('out_time')
        
         if len(data) != 10:
