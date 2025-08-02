@@ -517,15 +517,11 @@ class staff_attendance_serializer(serializers.Serializer):
                 attendance_staff_object.of_month = objects.get('of_month')
                 attendance_staff_object.year = objects.get('year')
                 attendance_staff_object.attend = objects.get('attend')
-                if validated_data['lat']:
-                    attendance_staff_object.lat = validated_data.get('lat')
-                    attendance_staff_object.long = validated_data.get('long')
-                else:
-                    attendance_staff_object.lat = ""
-                    attendance_staff_object.long = ""
-                if self.context.get('request').FILES.get('photo'):
-                    attendance_staff_object.image = self.context.get('request').FILES.get('photo')
                 
+               
+                attendance_staff_object.lat = ""
+                attendance_staff_object.long = ""
+               
                 
                 
               
