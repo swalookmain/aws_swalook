@@ -4852,3 +4852,70 @@ class SingleStaffAttendance(APIView):
     
 
 
+class Attendance_mobile_staff(APIView):
+    serializer_class = staff_attendance_serializer_update_mobile
+    def post(self,request):
+        data =  request.data
+        serializer = staff_attendance_serializer_update_mobile(data=request.data,context={'request':request})
+        serializer.create(validated_data=data)
+
+        return Response({
+            "status": True,
+        })
+
+
+
+class singlestaffadvancedata(APIView):
+    def get(self,request):
+        from django.db.models import Prefetch
+        from django.utils import timezone
+        
+        current_month = timezone.now().month
+        current_year = timezone.now().year
+        
+        staff_advances = StaffAdvanceModel.objects.filter(
+           
+            vendor_branch_id=branch_name,
+            staff__mobile_no=request.query_params.get('staff_id')
+        ).only("staff__mobile_no","staff__staff_name" "advance_amount", "created_at")
+        
+        queryset = VendorStaff.objects.filter(
+
+            vendor_branch_id=branch_name,
+            mobile_no=request.query_params.get('staff_id')
+        ).prefetch_related(
+            Prefetch('staffadvancemodel_set', queryset=staff_advances, to_attr='advances')
+        ).order_by('-id')
+        
+        response = []
+        for staff in queryset:
+            advances_data = [
+                {"advance_amount": adv.advance_amount, "created_at": adv.created_at}
+                for adv in staff.advances
+            ]
+        
+            current_month_total = sum(
+                adv.advance_amount
+                for adv in staff.advances
+                if adv.created_at.month == current_month and adv.created_at.year == current_year
+            )
+        
+            response.append({
+                # "staff_data":self.serializer_class(staff).data,
+                "staff_name": staff.staff_name,
+                "id": staff.id,
+                "mobile_no": staff.mobile_no,
+                "current_month_total": current_month_total,
+                "advances": advances_data,
+            })
+
+
+        return Response({
+            "status": True,
+            "table_data": response,
+            
+            "message": "Staff records retrieved successfully."
+        }, status=status.HTTP_200_OK)
+
+
+        
