@@ -1357,7 +1357,7 @@ class staff_attendance_serializer_update_mobile(serializers.Serializer):
     lat = serializers.CharField(required=False)
     long = serializers.CharField(required=False)
     
-    def update(self, validated_data):
+    def create(self, validated_data):
         import json
     
         
