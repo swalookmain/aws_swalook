@@ -1351,7 +1351,7 @@ class VendorPurchaseConnect_get(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class staff_attendance_serializer(serializers.Serializer):
+class staff_attendance_serializer_update_mobile(serializers.Serializer):
     json_data = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
     photo =  serializers.ImageField(required=False)
     lat = serializers.CharField(required=False)
