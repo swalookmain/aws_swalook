@@ -503,7 +503,7 @@ class staff_attendance_serializer(serializers.Serializer):
         import json
     
         for objects in validated_data['json_data']:
-            try:
+            # try:
                 objects.get('of_month')
                 attendance_staff_object = VendorStaffAttendance()
 
@@ -535,8 +535,8 @@ class staff_attendance_serializer(serializers.Serializer):
                 attendance_staff_object.out_time = ""
                 attendance_staff_object.save()
 
-            except Exception:
-                break
+            # except Exception:
+            #     break
         
         data =  json.loads(validated_data.get('json_data'))
         objects = data[0]
