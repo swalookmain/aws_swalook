@@ -1352,7 +1352,7 @@ class VendorPurchaseConnect_get(serializers.ModelSerializer):
 
 
 class staff_attendance_serializer_update_mobile(serializers.Serializer):
-    json_data = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
+   
     photo =  serializers.ImageField(required=False)
     lat = serializers.CharField(required=False)
     long = serializers.CharField(required=False)
@@ -1362,22 +1362,18 @@ class staff_attendance_serializer_update_mobile(serializers.Serializer):
     
         
         
-        data =  json.loads(validated_data.get('json_data'))
-        objects = data[0]
-   
-        attendance_staff_object = VendorStaffAttendance.objects.get(staff__mobile_no=self.context.get('request').query_params.get('staff_id'),date=objects.get('date'))
+      
+        attendance_staff_object = VendorStaffAttendance.objects.get(staff__mobile_no=self.context.get('request').query_params.get('staff_id'),date=validated_data.get('date'))
         
        
        
      
         
      
-        if validated_data['out_lat']:
-            attendance_staff_object.out_lat = validated_data.get('out_lat')
-            attendance_staff_object.out_long = validated_data.get('out_long')
-        else:
-            attendance_staff_object.out_lat = ""
-            attendance_staff_object.out_long = ""
+       
+        attendance_staff_object.out_lat = validated_data.get('out_lat')
+        attendance_staff_object.out_long = validated_data.get('out_long')
+       
         if self.context.get('request').FILES.get('photo'):
             attendance_staff_object.image_1 = self.context.get('request').FILES.get('photo')
         
@@ -1386,8 +1382,8 @@ class staff_attendance_serializer_update_mobile(serializers.Serializer):
       
         attendance_staff_object.date = objects.get('date')
         
-        # attendance_staff_object.in_time = objects.get('in_time')
-        attendance_staff_object.out_time = objects.get('in_time')
+   
+        attendance_staff_object.out_time = objects.get('out_time')
         attendance_staff_object.save()
 
         return "ok"
