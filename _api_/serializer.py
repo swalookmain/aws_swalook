@@ -511,9 +511,9 @@ class staff_attendance_serializer(serializers.Serializer):
                 attendance_staff_object.staff_id = self.context.get('request').query_params.get('staff_id')
         
                 
-                s = SalonBranch.objects.get(id=self.context.get('branch_id'))
+                s = SalonBranch.objects.get(id=self.context.get('branch_name'))
                 attendance_staff_object.vendor_name = s.vendor_name
-                attendance_staff_object.vendor_branch_id = self.context.get('branch_id')
+                attendance_staff_object.vendor_branch_id = self.context.get('branch_name')
                 attendance_staff_object.of_month = objects.get('of_month')
                 attendance_staff_object.year = objects.get('year')
                 attendance_staff_object.attend = objects.get('attend')
