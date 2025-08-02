@@ -4875,13 +4875,13 @@ class singlestaffadvancedata(APIView):
         
         staff_advances = StaffAdvanceModel.objects.filter(
            
-            vendor_branch_id=branch_name,
+            vendor_branch_id=request.query_params.get('branch_name'),
             staff__mobile_no=request.query_params.get('staff_id')
         ).only("staff__mobile_no","staff__staff_name" "advance_amount", "created_at")
         
         queryset = VendorStaff.objects.filter(
 
-            vendor_branch_id=branch_name,
+            vendor_branch_id=request.query_params.get('branch_name'),
             mobile_no=request.query_params.get('staff_id')
         ).prefetch_related(
             Prefetch('staffadvancemodel_set', queryset=staff_advances, to_attr='advances')
