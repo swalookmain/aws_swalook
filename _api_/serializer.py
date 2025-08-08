@@ -596,7 +596,7 @@ class staff_attendance_serializer(serializers.Serializer):
         import json
        
         
-        validated_data['out_time'] = d[0].get('out_time')
+        validated_data['out_time'] = validated_data[0].get('out_time')
        
         if len(data) != 10:
             for attr, value in validated_data.items():
