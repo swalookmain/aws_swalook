@@ -546,12 +546,12 @@ class staff_attendance_serializer(serializers.Serializer):
             c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     
             return R * c  
-            s = SalonBranch.objects.get(id=self.context.get('branch_id'))
-            profile = SwalookUserProfile.objects.get(mobile_no=s.vendor_name.username)
-            distance = haversine(validated_data.get('lat'),validated_data.get('long'),profile.lat,profile.long)
-    
-            if distance <= 0.02:  
-               
+        s = SalonBranch.objects.get(id=self.context.get('branch_id'))
+        profile = SwalookUserProfile.objects.get(mobile_no=s.vendor_name.username)
+        distance = haversine(validated_data.get('lat'),validated_data.get('long'),profile.lat,profile.long)
+
+        if distance <= 0.02:  
+           
     
                 data =  json.loads(validated_data.get('json_data'))
                 objects = data[0]
@@ -588,8 +588,8 @@ class staff_attendance_serializer(serializers.Serializer):
                 attendance_staff_object.save()
         
                 return "ok"
-            else:
-                 return "ERROR - LOCATION RADIUS NOT MATCHED"
+        else:
+            return "ERROR - LOCATION RADIUS NOT MATCHED"
                 
     
     def update(self, instance, validated_data):
@@ -1378,30 +1378,46 @@ class staff_attendance_serializer_update_mobile(serializers.Serializer):
         import json
     
         
-        
-      
-        attendance_staff_object = VendorStaffAttendance.objects.get(staff__mobile_no=self.context.get('request').query_params.get('staff_id'),date=validated_data.get('date'))
-        
-       
-       
-     
-        
-     
-       
-        attendance_staff_object.out_lat = validated_data.get('out_lat')
-        attendance_staff_object.out_long = validated_data.get('out_long')
-       
-        if self.context.get('request').FILES.get('photo'):
-            attendance_staff_object.image_1 = self.context.get('request').FILES.get('photo')
-        
-        
-        
-        objects = validated_data
-        attendance_staff_object.date = objects.get('date')
-        
-   
-        attendance_staff_object.out_time = objects.get('out_time')
-        attendance_staff_object.save()
+        import math
 
-        return "ok"
+        def haversine(lat1, lon1, lat2, lon2):
+            R = 6371  
+    
+            d_lat = math.radians(lat2 - lat1)
+            d_lon = math.radians(lon2 - lon1)
+            
+            a = math.sin(d_lat / 2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(d_lon / 2)**2
+            c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    
+            return R * c  
+        s = SalonBranch.objects.get(id=self.context.get('branch_id'))
+        profile = SwalookUserProfile.objects.get(mobile_no=s.vendor_name.username)
+        distance = haversine(validated_data.get('out_lat'),validated_data.get('out_long'),profile.lat,profile.long)
+    
+        if distance <= 0.02:  
+      
+            attendance_staff_object = VendorStaffAttendance.objects.get(staff__mobile_no=self.context.get('request').query_params.get('staff_id'),date=validated_data.get('date'))
+            
+           
+           
+         
+            
+         
+           
+            attendance_staff_object.out_lat = validated_data.get('out_lat')
+            attendance_staff_object.out_long = validated_data.get('out_long')
+           
+            if self.context.get('request').FILES.get('photo'):
+                attendance_staff_object.image_1 = self.context.get('request').FILES.get('photo')
+            
+            
+            
+            objects = validated_data
+            attendance_staff_object.date = objects.get('date')
+            
+       
+            attendance_staff_object.out_time = objects.get('out_time')
+            attendance_staff_object.save()
+
+            return "ok"
        
