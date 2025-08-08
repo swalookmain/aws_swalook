@@ -501,7 +501,7 @@ class staff_attendance_serializer(serializers.Serializer):
     
     def create(self, validated_data):
         import json
-    
+        
         for objects in validated_data['json_data']:
             try:
                 objects.get('of_month')
@@ -534,43 +534,63 @@ class staff_attendance_serializer(serializers.Serializer):
 
             except Exception:
                 break
-        
-        data =  json.loads(validated_data.get('json_data'))
-        objects = data[0]
-             
-        attendance_staff_object = VendorStaffAttendance()
-        
-        stf = VendorStaff.objects.get(mobile_no=self.context.get('request').query_params.get('staff_id'))
-        attendance_staff_object.staff = stf
-       
-     
-        
-        s = SalonBranch.objects.get(id=self.context.get('branch_id'))
-        attendance_staff_object.vendor_name = s.vendor_name
-        attendance_staff_object.vendor_branch_id = self.context.get('branch_id')
-        attendance_staff_object.of_month = objects.get('of_month')
-        attendance_staff_object.year = objects.get('year')
-        attendance_staff_object.attend = objects.get('attend')
-        if validated_data['lat']:
-            attendance_staff_object.lat = validated_data.get('lat')
-            attendance_staff_object.long = validated_data.get('long')
-        else:
-            attendance_staff_object.lat = ""
-            attendance_staff_object.long = ""
-        if self.context.get('request').FILES.get('photo'):
-            attendance_staff_object.image = self.context.get('request').FILES.get('photo')
-        
-        
-        
-      
-        attendance_staff_object.date = objects.get('date')
-        
-        attendance_staff_object.in_time = objects.get('in_time')
-        attendance_staff_object.out_time = ""
-        attendance_staff_object.save()
+        import math
 
-        return "ok"
-
+        def haversine(lat1, lon1, lat2, lon2):
+            R = 6371  
+    
+            d_lat = math.radians(lat2 - lat1)
+            d_lon = math.radians(lon2 - lon1)
+            
+            a = math.sin(d_lat / 2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(d_lon / 2)**2
+            c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    
+            return R * c  
+            s = SalonBranch.objects.get(id=self.context.get('branch_id'))
+            profile = SwalookUserProfile.objects.get(mobile_no=s.vendor_name.username)
+            distance = haversine(validated_data.get('lat'),validated_data.get('long'),profile.lat,profile.long)
+    
+            if distance <= 0.02:  
+               
+    
+                data =  json.loads(validated_data.get('json_data'))
+                objects = data[0]
+                
+                attendance_staff_object = VendorStaffAttendance()
+                
+                stf = VendorStaff.objects.get(mobile_no=self.context.get('request').query_params.get('staff_id'))
+                attendance_staff_object.staff = stf
+               
+               
+                
+            
+                attendance_staff_object.vendor_name = s.vendor_name
+                attendance_staff_object.vendor_branch_id = self.context.get('branch_id')
+                attendance_staff_object.of_month = objects.get('of_month')
+                attendance_staff_object.year = objects.get('year')
+                attendance_staff_object.attend = objects.get('attend')
+                if validated_data['lat']:
+                    attendance_staff_object.lat = validated_data.get('lat')
+                    attendance_staff_object.long = validated_data.get('long')
+                else:
+                    attendance_staff_object.lat = ""
+                    attendance_staff_object.long = ""
+                if self.context.get('request').FILES.get('photo'):
+                    attendance_staff_object.image = self.context.get('request').FILES.get('photo')
+                
+                
+                
+              
+                attendance_staff_object.date = objects.get('date')
+                
+                attendance_staff_object.in_time = objects.get('in_time')
+                attendance_staff_object.out_time = ""
+                attendance_staff_object.save()
+        
+                return "ok"
+            else:
+                 return "ERROR - LOCATION RADIUS NOT MATCHED"
+                
     
     def update(self, instance, validated_data):
         import json
