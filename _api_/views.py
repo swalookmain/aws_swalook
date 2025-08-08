@@ -1859,7 +1859,7 @@ class vendor_staff_attendance(APIView):
                 pass
         serializer = self.serializer_class(data=request.data, context={'request': request, 'branch_id': branch_name})
 
-        serializer.create(validated_data=request.data)
+        datas = serializer.create(validated_data=request.data)
         prefered_in_time = StaffAttendanceTime.objects.get(vendor_branch_id=branch_name)
         # calculation remaining. 
         try:
@@ -1877,6 +1877,7 @@ class vendor_staff_attendance(APIView):
             return Response({
                 "status": True,
                 "message": "staff attendance added successfully.",
+                "error": datas
 
             
                 # "in_time":request.data.get('json_data')[0].get('in_time'),
@@ -4857,10 +4858,11 @@ class Attendance_mobile_staff(APIView):
     def post(self,request):
         data =  request.data
         serializer = staff_attendance_serializer_update_mobile(data=request.data,context={'request':request})
-        serializer.create(validated_data=data)
+        datas = serializer.create(validated_data=data)
 
         return Response({
             "status": True,
+            "message":datas
         })
 
 
