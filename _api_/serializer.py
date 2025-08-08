@@ -598,9 +598,9 @@ class staff_attendance_serializer(serializers.Serializer):
         
         validated_data['out_time'] = validated_data.get('json_data')[0].get('out_time')
        
-        if len(data) != 10:
-            for attr, value in validated_data.items():
-                setattr(instance, attr, value)
+       
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
 
         
         instance.save()
