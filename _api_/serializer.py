@@ -548,7 +548,7 @@ class staff_attendance_serializer(serializers.Serializer):
             return R * c  
         s = SalonBranch.objects.get(id=self.context.get('branch_id'))
         profile = SwalookUserProfile.objects.get(mobile_no=s.vendor_name.username)
-        distance = haversine(validated_data.get('lat'),validated_data.get('long'),profile.lat,profile.long)
+        distance = haversine(float(validated_data.get('lat')),float(validated_data.get('long')),float(profile.latitude),float(profile.longitude))
 
         if distance <= 0.02:  
            
@@ -1392,7 +1392,7 @@ class staff_attendance_serializer_update_mobile(serializers.Serializer):
             return R * c  
         s = SalonBranch.objects.get(id=self.context.get('branch_id'))
         profile = SwalookUserProfile.objects.get(mobile_no=s.vendor_name.username)
-        distance = haversine(validated_data.get('out_lat'),validated_data.get('out_long'),profile.lat,profile.long)
+        distance = haversine(float(validated_data.get('out_lat')),float(validated_data.get('out_long')),float(profile.latitude),float(profile.longitude))
     
         if distance <= 0.02:  
       
