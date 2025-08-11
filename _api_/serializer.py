@@ -183,6 +183,8 @@ class UpdateProfileSerializer(serializers.Serializer):
     s_gst_percent = serializers.CharField()
     c_gst_percent = serializers.CharField()
     user_ip = serializers.CharField()
+    latitude = serializers.CharField()
+    longitude = serializers.CharField()
     def update(self, instance, validated_data):
         
         for attr, value in validated_data.items():
