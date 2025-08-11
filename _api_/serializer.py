@@ -183,19 +183,21 @@ class UpdateProfileSerializer(serializers.Serializer):
     s_gst_percent = serializers.CharField()
     c_gst_percent = serializers.CharField()
     user_ip = serializers.CharField()
-
     def update(self, instance, validated_data):
-        instance.gst_number = validated_data.get('gst_number', instance.gst_number)
-        instance.s_gst_percent = validated_data.get('s_gst_percent', instance.s_gst_percent)
-        instance.c_gst_percent = validated_data.get('c_gst_percent', instance.c_gst_percent)
-        instance.user_ip = validated_data.get('user_ip', instance.user_ip)
+        
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
 
         profile_pic = self.context.get('request').FILES.get('profile_pic')
         if profile_pic:
             instance.profile_pic = profile_pic
-
         instance.save()
         return instance
+    
+
+    
+
+  
 
 
 class billing_serializer(serializers.ModelSerializer):
