@@ -583,11 +583,25 @@ class VendorCustomerLoyalityLedger(models.Model):
     def __str__(self) -> str:
         return str(self.user)
 
+class VendorExpenseMainCategory(models.Model):
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, db_index=True)
+    vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
+    vendor_expense_category = models.CharField(max_length=200)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['user', 'vendor_branch', 'vendor_expense_category']),
+        ]
+
+    def __str__(self) -> str:
+        return str(self.vendor_expense_category)
 
 class VendorExpenseCategory(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, db_index=True)
     vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
+    vendor_category = models.ForeignKey(VendorExpenseMainCategory, on_delete=models.SET_NULL, null=True, db_index=True)
     vendor_expense_type = models.CharField(max_length=400)
 
     class Meta:
