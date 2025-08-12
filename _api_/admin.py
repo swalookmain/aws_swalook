@@ -4,6 +4,7 @@ from .models import *
 admin.site.register(VendorService)
 admin.site.register(VendorServiceCategory)
 admin.site.register(VendorExpenseMainCategory)
+admin.site.register(VendorExpenseCategory)
 admin.site.register(VendorCoupon)
 admin.site.register(VendorPdf)
 admin.site.register(VendorAppointment)
