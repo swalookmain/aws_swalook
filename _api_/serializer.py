@@ -1129,8 +1129,8 @@ class update_minuimum_amount_serializer(serializers.Serializer):
 
 class VendorExpenseCategorySerializer(serializers.ModelSerializer):
     class Meta:
-        model = VendorExpenseCategory
-        fields = ['id', 'vendor_expense_type']
+        model = VendorExpenseMainCategory
+        fields = ['id', 'vendor_expense_category']
         extra_kwargs = {'id': {'read_only': True}}
 
     def create(self, validated_data):
@@ -1174,11 +1174,11 @@ class VendorEnquerySerializer(serializers.ModelSerializer):
 
 class VendorExpenseSerializer(serializers.ModelSerializer):
     expense_category = VendorExpenseCategorySerializer(many=True, read_only=True)
-    inventory_item = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
+    # inventory_item = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
 
     class Meta:
         model = VendorExpense
-        fields = ['id', 'expense_type', 'inventory_item', 'expense_account', 'expense_category','amount_paid','due_date','completed_date', 'expense_amount', 'invoice_id', "date", "comment"]
+        fields = ['id', 'expense_type',  'expense_account', 'expense_category','amount_paid','due_date','completed_date', 'expense_amount', 'invoice_id', "date", "comment"]
         extra_kwargs = {'id': {'read_only': True}}
 
     def get_week_number(self, day):
