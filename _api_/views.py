@@ -4920,4 +4920,15 @@ class singlestaffadvancedata(APIView):
         }, status=status.HTTP_200_OK)
 
 
+
+
+class get_sub_category_of_expense(APIView):
+    def get(self,request):
+        data = VendorExpenseCategory.objects.filter(vendor_category_id=request.query_params.get('id')).values()
+        return Response({"status":True,
+                         "data":data
+                        })
         
+        
+
+
