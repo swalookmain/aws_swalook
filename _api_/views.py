@@ -8,6 +8,11 @@ import json
 from openpyxl import Workbook
 import os
 import requests
+
+from django.shortcuts import get_object_or_404
+
+from django.template.loader import render_to_string
+from xhtml2pdf import pisa
 from rest_framework.throttling import ScopedRateThrottle
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
@@ -4928,7 +4933,36 @@ class get_sub_category_of_expense(APIView):
         return Response({"status":True,
                          "data":data
                         })
-        
+
+
+
+
+
+def render_pdf_view(request):
+    invoice_id = request.query_params.get('id')
+    invoice = get_object_or_404(VendorInvoice, id=invoice_id)
+
+  
+    try:
+        services = json.loads(invoice.services)
+    except:
+        services = []
+
+   
+    context = {
+        "invoice": invoice,
+        "services": services
+    }
+
+    html = render_to_string("invoice.html", context)
+
+  
+    response = HttpResponse(content_type="application/pdf")
+    response['Content-Disposition'] = f'filename="invoice_{invoice.slno}.pdf"'
+
+    pisa.CreatePDF(html, dest=response)
+    return response
+
         
 
 
