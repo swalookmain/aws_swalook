@@ -129,6 +129,11 @@ urlpatterns = [
     path('api/swalook/staff_attendance_mobile/punch-out/', Attendance_mobile_staff.as_view()),
     path('api/swalook/single_staff_advance/', singlestaffadvancedata.as_view()),
     path('api/swalook/get-type-expense/',get_sub_category_of_expense.as_view()),
+
+
+    path("api/swalook/invoice-pdf/", render_pdf_view, name="pdf-invoice"),
+
+
     
     re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}, name='media'),
     re_path(r'^static/(?P<path>.*)$', serve, {'document_root': settings.STATIC_URL}, name='static'),
