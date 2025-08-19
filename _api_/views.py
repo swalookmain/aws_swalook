@@ -4961,7 +4961,7 @@ class pdf_view(APIView):
     
       
         response = HttpResponse(content_type="application/pdf")
-        response['Content-Disposition'] = f'filename="invoice_{invoice.slno}.pdf"'
+        response['Content-Disposition'] = f'filename="invoice_{invoice[0].slno}.pdf"'
     
         pisa.CreatePDF(html, dest=response)
         return response
