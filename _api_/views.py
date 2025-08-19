@@ -4943,11 +4943,11 @@ class pdf_view(APIView):
     permission_classes = [AllowAny]
     def get(self,request):
         invoice_id = request.query_params.get('id')
-        invoice = VendorInvoice.objects.get(id=invoice_id).values()
+        invoice = VendorInvoice.objects.filter(id=invoice_id).values()
     
       
         try:
-            services = json.loads(invoice.services)
+            services = json.loads(invoice[0].services)
         except:
             services = []
     
