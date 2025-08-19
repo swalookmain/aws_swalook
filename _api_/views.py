@@ -4940,9 +4940,10 @@ class get_sub_category_of_expense(APIView):
 
 
 class pdf_view(APIView):
+    permission_classes = [AllowAny]
     def get(self,request):
         invoice_id = request.query_params.get('id')
-        invoice = get_object_or_404(VendorInvoice, id=invoice_id)
+        invoice = VendorInvoice.objects.get(id=invoice_id).values()
     
       
         try:
@@ -4956,14 +4957,14 @@ class pdf_view(APIView):
             "services": services
         }
     
-        html = render_to_string("invoice.html", context)
+        # html = render_to_string("invoice.html", context)
     
       
-        response = HttpResponse(content_type="application/pdf")
-        response['Content-Disposition'] = f'filename="invoice_{invoice.slno}.pdf"'
+        # response = HttpResponse(content_type="application/pdf")
+        # response['Content-Disposition'] = f'filename="invoice_{invoice.slno}.pdf"'
     
-        pisa.CreatePDF(html, dest=response)
-        return response
+        # pisa.CreatePDF(html, dest=response)
+        return response(context)
 
         
 
