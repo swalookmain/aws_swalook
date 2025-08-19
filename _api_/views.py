@@ -4938,30 +4938,32 @@ class get_sub_category_of_expense(APIView):
 
 
 
-def render_pdf_view(request):
-    invoice_id = request.query_params.get('id')
-    invoice = get_object_or_404(VendorInvoice, id=invoice_id)
 
-  
-    try:
-        services = json.loads(invoice.services)
-    except:
-        services = []
-
-   
-    context = {
-        "invoice": invoice,
-        "services": services
-    }
-
-    html = render_to_string("invoice.html", context)
-
-  
-    response = HttpResponse(content_type="application/pdf")
-    response['Content-Disposition'] = f'filename="invoice_{invoice.slno}.pdf"'
-
-    pisa.CreatePDF(html, dest=response)
-    return response
+class pdf_view(APIview):
+    def get(self,request):
+        invoice_id = request.query_params.get('id')
+        invoice = get_object_or_404(VendorInvoice, id=invoice_id)
+    
+      
+        try:
+            services = json.loads(invoice.services)
+        except:
+            services = []
+    
+       
+        context = {
+            "invoice": invoice,
+            "services": services
+        }
+    
+        html = render_to_string("invoice.html", context)
+    
+      
+        response = HttpResponse(content_type="application/pdf")
+        response['Content-Disposition'] = f'filename="invoice_{invoice.slno}.pdf"'
+    
+        pisa.CreatePDF(html, dest=response)
+        return response
 
         
 
