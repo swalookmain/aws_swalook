@@ -4946,10 +4946,10 @@ class pdf_view(APIView):
         invoice = VendorInvoice.objects.filter(id=invoice_id).values()
     
       
-        try:
+        # try:
             services = json.loads(invoice[0].services)
-        except:
-            services = []
+        # except:
+        #     services = []
     
        
         context = {
