@@ -131,7 +131,7 @@ urlpatterns = [
     path('api/swalook/get-type-expense/',get_sub_category_of_expense.as_view()),
 
 
-    path("api/swalook/invoice-pdf/", render_pdf_view, name="pdf-invoice"),
+    path("api/swalook/invoice-pdf/", pdf_view.as_view(), name="pdf-invoice"),
 
 
     
