@@ -4947,7 +4947,7 @@ class pdf_view(APIView):
     
       
         # try:
-        services = json.loads(invoice[0].services)
+        services = json.loads(invoice[0].get('services'))
         # except:
         #     services = []
     
@@ -4957,14 +4957,14 @@ class pdf_view(APIView):
             "services": services
         }
     
-        # html = render_to_string("invoice.html", context)
+        html = render_to_string("invoice.html", context)
     
       
-        # response = HttpResponse(content_type="application/pdf")
-        # response['Content-Disposition'] = f'filename="invoice_{invoice.slno}.pdf"'
+        response = HttpResponse(content_type="application/pdf")
+        response['Content-Disposition'] = f'filename="invoice_{invoice.slno}.pdf"'
     
-        # pisa.CreatePDF(html, dest=response)
-        return Response(context)
+        pisa.CreatePDF(html, dest=response)
+        return response
 
         
 
