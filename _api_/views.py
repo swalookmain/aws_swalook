@@ -4953,7 +4953,7 @@ class pdf_view(APIView):
     
        
         context = {
-            "invoice": invoice,
+            "invoice": invoice[0],
             "services": services
         }
     
