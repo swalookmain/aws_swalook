@@ -4943,17 +4943,17 @@ class pdf_view(APIView):
     permission_classes = [AllowAny]
     def get(self,request):
         invoice_id = request.query_params.get('id')
-        invoice = VendorInvoice.objects.filter(id=invoice_id).values()
+        invoice = VendorInvoice.objects.get(id=invoice_id)
     
       
         # try:
-        services = json.loads(invoice[0].get('services'))
+        services = json.loads(invoice.services)
         # except:
         #     services = []
     
        
         context = {
-            "invoice": invoice[0],
+            "invoice": invoice,
             "services": services
         }
     
@@ -4961,7 +4961,7 @@ class pdf_view(APIView):
     
       
         response = HttpResponse(content_type="application/pdf")
-        response['Content-Disposition'] = f'filename="invoice_{invoice[0].slno}.pdf"'
+        response['Content-Disposition'] = f'filename="invoice_{invoice.slno}.pdf"'
     
         pisa.CreatePDF(html, dest=response)
         return response
