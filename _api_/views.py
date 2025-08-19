@@ -4939,7 +4939,7 @@ class get_sub_category_of_expense(APIView):
 
 
 
-class pdf_view(APIview):
+class pdf_view(APIView):
     def get(self,request):
         invoice_id = request.query_params.get('id')
         invoice = get_object_or_404(VendorInvoice, id=invoice_id)
