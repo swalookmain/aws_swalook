@@ -4947,7 +4947,7 @@ class pdf_view(APIView):
     
       
         # try:
-            services = json.loads(invoice[0].services)
+        services = json.loads(invoice[0].services)
         # except:
         #     services = []
     
