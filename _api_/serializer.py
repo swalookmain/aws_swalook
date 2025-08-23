@@ -902,16 +902,16 @@ from dateutil.relativedelta import relativedelta
 import datetime as dt
 
 class VendorCustomerLoyalityProfileSerializer(serializers.ModelSerializer):
-    coupon = serializers.ListField(
-        child=serializers.DictField(child=serializers.UUIDField()),
-        required=False  
-    )
+    # coupon = serializers.ListField(
+    #     child=serializers.DictField(child=serializers.UUIDField()),
+    #     required=False  
+    # )
     # memberships = serializers.UUIDField(required=False)
     
 
     class Meta:
         model = VendorCustomers
-        fields = ["id", "name", "mobile_no", "email", "memberships", "d_o_a", "d_o_b", "coupon"]
+        fields = ["id", "name", "mobile_no", "email", "d_o_a", "d_o_b", ]
         extra_kwargs = {'id': {'read_only': True}}
 
 
@@ -919,18 +919,18 @@ class VendorCustomerLoyalityProfileSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
        
         from datetime import date, timedelta
-        coupon_data_list = validated_data.pop('coupon', [])
-        if coupon_data_list == []:
-            validated_data['coupon'] =  ""
+        # coupon_data_list = validated_data.pop('coupon', [])
+        # if coupon_data_list == []:
+        #     validated_data['coupon'] =  ""
             
      
        
         
    
-        coupon_ids = [item.get('coupon_name') for item in coupon_data_list if item.get('coupon_name')]
-        # membership_id = validated_data.pop('memberships')
-        # validated_data['membership_id'] = membership_id
-        validated_data['memberships'] = ""
+        # coupon_ids = [item.get('coupon_name') for item in coupon_data_list if item.get('coupon_name')]
+        # # membership_id = validated_data.pop('memberships')
+        # # validated_data['membership_id'] = membership_id
+        # validated_data['memberships'] = ""
         
        
         user = self.context['request'].user  
@@ -953,23 +953,23 @@ class VendorCustomerLoyalityProfileSerializer(serializers.ModelSerializer):
         customer = VendorCustomers.objects.create(**validated_data)
         
 
-        customer_coupons_to_create = []
+        # customer_coupons_to_create = []
     
-        if coupon_ids:
-            for coupon_id in coupon_ids:
-                customer_coupons_to_create.append(CustomerCoupon(
-                    user=user,
-                    vendor_branch_id=branch_id,
-                    customer_id=str(validated_data['mobile_no']),
-                    coupon_name_id=coupon_id,
-                    issue_date=today,
-                    expiry_date=expiry_date if loyalty_profile_obj else None
-                ))
+        # if coupon_ids:
+        #     for coupon_id in coupon_ids:
+        #         customer_coupons_to_create.append(CustomerCoupon(
+        #             user=user,
+        #             vendor_branch_id=branch_id,
+        #             customer_id=str(validated_data['mobile_no']),
+        #             coupon_name_id=coupon_id,
+        #             issue_date=today,
+        #             expiry_date=expiry_date if loyalty_profile_obj else None
+        #         ))
         
-        if customer_coupons_to_create:
-            CustomerCoupon.objects.bulk_create(customer_coupons_to_create)
-            customer.coupon.add(*customer_coupons_to_create)
-            customer.save()
+        # if customer_coupons_to_create:
+        #     CustomerCoupon.objects.bulk_create(customer_coupons_to_create)
+        #     customer.coupon.add(*customer_coupons_to_create)
+        #     customer.save()
     
     
 
