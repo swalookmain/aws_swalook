@@ -914,7 +914,7 @@ class VendorCustomerLoyalityProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = VendorCustomers
-        fields = ["id", "name", "mobile_no", "email", "d_o_a", "d_o_b","coupon"," memberships" ]
+        fields = ["id", "name", "mobile_no", "email", "d_o_a", "d_o_b","coupon","memberships" ]
         extra_kwargs = {'id': {'read_only': True}}
 
 
