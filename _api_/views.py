@@ -4807,8 +4807,7 @@ class SingleStaffAttendance(APIView):
             of_month=month,
             year=current_date.year,
             staff_id__in=staff
-        ).order_by("date") [::-1]
-
+        ).order_by("date")
         attendance_data = {}
         for record in attendance_queryset:
             sid = record.staff.staff_name
