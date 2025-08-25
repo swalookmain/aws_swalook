@@ -4824,8 +4824,8 @@ class SingleStaffAttendance(APIView):
 
             if record.attend:
                 attendance_data[sid]["present_dates"].append(record.date)
-                attendance_data[sid]["in_time"].insert(0, record.in_time)
-                attendance_data[sid]["out_time"].insert(0, record.out_time)
+                attendance_data[sid]["in_time"].append(record.in_time)
+                attendance_data[sid]["out_time"].append(record.out_time)
 
                 attendance_data[sid]["number_of_days_present"] += 1
             if record.leave:
