@@ -4769,7 +4769,7 @@ class VendorPurchaseView_vp(APIView):
 
 
 class SingleStaffAttendance(APIView):
-      def get(self, request):
+    def get(self, request):
         branch_name = request.query_params.get('branch_name')
         month = request.query_params.get('month')
         staff_id = request.query_params.get('staff_id')
@@ -4787,9 +4787,12 @@ class SingleStaffAttendance(APIView):
 
         current_date = dt.date.today()
 
-        
+        staff = None
         if staff_id:
-            staff = VendorStaff.objects.filter(mobile_no=staff_id,vendor_branch_id=branch_name)
+            staff = VendorStaff.objects.filter(
+                mobile_no=staff_id,
+                vendor_branch_id=branch_name
+            )
             if not staff.exists():
                 return Response({
                     'success': False,
@@ -4800,15 +4803,17 @@ class SingleStaffAttendance(APIView):
                     },
                     'data': None
                 }, status=status.HTTP_404_NOT_FOUND)
-      
+
         attendance_queryset = VendorStaffAttendance.objects.filter(
-    
             vendor_branch_id=branch_name,
             of_month=month,
             year=current_date.year,
-            staff_id__in=staff
-        )[::-1]
+            staff_id__in=staff if staff_id else VendorStaff.objects.filter(vendor_branch_id=branch_name)
+        ).order_by("-date", "-id")
+
         attendance_data = {}
+        seen_dates = {}
+
         for record in attendance_queryset:
             sid = record.staff.staff_name
             if sid not in attendance_data:
@@ -4820,29 +4825,28 @@ class SingleStaffAttendance(APIView):
                     "number_of_days_present": 0,
                     "no_of_days_absent": 0,
                 }
+                seen_dates[sid] = set()
+
+            if record.date in seen_dates[sid]:
+                continue
+            seen_dates[sid].add(record.date)
 
             if record.attend:
-                attendance_data[sid]["present_dates"].append(record.date)
-                attendance_data[sid]["in_time"].append(record.in_time)
-                attendance_data[sid]["out_time"].append(record.out_time)
-
+                attendance_data[sid]["present_dates"].insert(0, record.date)
+                attendance_data[sid]["in_time"].insert(0, record.in_time)
+                attendance_data[sid]["out_time"].insert(0, record.out_time)
                 attendance_data[sid]["number_of_days_present"] += 1
+
             if record.leave:
-                attendance_data[sid]["leave_dates"].append(record.date)
+                attendance_data[sid]["leave_dates"].insert(0, record.date)
                 attendance_data[sid]["no_of_days_absent"] += 1
 
-        
-       
-
-      
         staff_settings_obj = StaffSetting.objects.filter(
-        
             vendor_branch_id=branch_name,
             month=month,
         ).first()
 
         time_obj = StaffAttendanceTime.objects.filter(
-
             vendor_branch_id=branch_name
         ).first()
 
@@ -4854,7 +4858,7 @@ class SingleStaffAttendance(APIView):
             "out_time": time_obj.out_time if time_obj else None,
             "message": "Attendance records retrieved successfully."
         }, status=status.HTTP_200_OK)
-        
+
     
 
 
