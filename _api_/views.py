@@ -4866,7 +4866,7 @@ class Attendance_mobile_staff(APIView):
     serializer_class = staff_attendance_serializer_update_mobile
     def post(self,request):
         data =  request.data
-        serializer = staff_attendance_serializer_update_mobile(data=request.data,context={'request':request})
+        serializer = staff_attendance_serializer_update_mobile(data=request.data,context={'request':request,'branch_id':request.query_params.get('branch_name')})
         datas = serializer.create(validated_data=data)
 
         return Response({
