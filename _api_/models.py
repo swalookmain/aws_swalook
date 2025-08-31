@@ -709,8 +709,18 @@ class Purchase_entry(models.Model):
     amount_paid = models.CharField(max_length=200, null=True, blank=True)
     note = models.CharField(max_length=200, null=True, blank=True)
     image_1 = models.FileField(upload_to='purchase',null=True, blank=True)
-    
-    
+
+
+
+class combo_services(models.Model):
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, db_index=True)
+    vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
+    services = models.JSONField(default=list, blank=True)
+    combo_name = models.CharField(max_length=200, null=True, blank=True)
+    combo_price = models.CharField(max_length=200, null=True, blank=True)
+    duration = models.CharField(max_length=200, null=True, blank=True)
+
     
 
 
