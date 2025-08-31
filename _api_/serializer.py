@@ -1261,7 +1261,31 @@ class SalesTargetSettingSerializer(serializers.ModelSerializer):
 
         instance.save()
         return instance
+        
+class comboSerializer(serializers.ModelSerializer):
+    services = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
 
+
+    class Meta:
+        model = combo_services
+        fields = '__all__'
+        read_only_fields = ['id','vendor_name','vendor_branch']
+
+    def create(self, validated_data):
+        validated_data['vendor_name'] = self.context.get('request').user
+        validated_data['vendor_branch_id'] = self.context.get('branch_id')
+    
+        return super().create(validated_data)
+        
+    
+    
+    
+    def update(self, instance, validated_data):
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save()
+        return instance
 
 
 class PictureSerializer(serializers.ModelSerializer):
