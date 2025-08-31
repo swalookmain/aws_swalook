@@ -1262,7 +1262,7 @@ class SalesTargetSettingSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
         
-class comboSerializer(serializers.ModelSerializer):
+class comboserializer(serializers.ModelSerializer):
     services = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
 
 
