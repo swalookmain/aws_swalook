@@ -1224,7 +1224,12 @@ class VendorExpenseSerializer_get(serializers.ModelSerializer):
     class Meta:
         model = VendorExpense
         fields = "__all__"
+class com_get(serializers.ModelSerializer):
+  
 
+    class Meta:
+        model = combo_services
+        fields = "__all__"
 
 class VendorEnquerySerializer_get(serializers.ModelSerializer):
    
