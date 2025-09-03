@@ -4999,7 +4999,7 @@ class comboservices(APIView):
         serializer.create(validated_data=request.data)
         return Response({
             "status": True,
-            "message": "Vendor Enquery Added Succesfully"
+            "message": "Vendor combo Added Succesfully"
         }, status=status.HTTP_201_CREATED)
 
     def get(self, request):
@@ -5015,8 +5015,8 @@ class comboservices(APIView):
                 'data': None
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        data = VendorEnquery.objects.filter(user=request.user, vendor_branch_id=branch_name)
-        serializer = VendorEnquerySerializer_get(data, many=True)
+        data =  combo_services.objects.filter(user=request.user, vendor_branch_id=branch_name)
+        serializer = com_get(data, many=True)
 
         return Response({
             "status": True,
