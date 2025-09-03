@@ -129,6 +129,7 @@ urlpatterns = [
     path('api/swalook/staff_attendance_mobile/punch-out/', Attendance_mobile_staff.as_view()),
     path('api/swalook/single_staff_advance/', singlestaffadvancedata.as_view()),
     path('api/swalook/get-type-expense/',get_sub_category_of_expense.as_view()),
+    path('api/swalook/combo/',comboservices.as_view()),
 
 
     path("api/swalook/invoice-pdf/", pdf_view.as_view(), name="pdf-invoice"),
