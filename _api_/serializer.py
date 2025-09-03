@@ -1220,7 +1220,7 @@ class VendorExpenseSerializer(serializers.ModelSerializer):
 
 class VendorExpenseSerializer_get(serializers.ModelSerializer):
     expense_category = VendorExpenseCategorySerializer(many=True, read_only=True)
-
+    
     class Meta:
         model = VendorExpense
         fields = "__all__"
@@ -1274,10 +1274,10 @@ class comboserializer(serializers.ModelSerializer):
     class Meta:
         model = combo_services
         fields = '__all__'
-        read_only_fields = ['id','vendor_name','vendor_branch']
+        read_only_fields = ['id','user','vendor_branch']
 
     def create(self, validated_data):
-        validated_data['vendor_name'] = self.context.get('request').user
+        validated_data['user'] = self.context.get('request').user
         validated_data['vendor_branch_id'] = self.context.get('branch_id')
     
         return super().create(validated_data)
