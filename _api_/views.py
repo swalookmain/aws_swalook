@@ -524,12 +524,14 @@ class Table_service(APIView):
     def get(self, request):
         branch_name = request.query_params.get('branch_name')
         query_set = VendorService.objects.filter(user=request.user).order_by('service')
-
+        
         serializer_obj = service_serializer(query_set, many=True)
-
+        combo = combo_services.objects.filter(user=request.user).values()
+        
         return Response({
             "status": True,
-            "data": serializer_obj.data
+            "data": serializer_obj.data,
+            "combo":list(combo)
         }, status=status.HTTP_200_OK)
 
 
