@@ -272,8 +272,8 @@ class Centralized_login(APIView):
             try:
                 result = serializer.create(serializer.validated_data)
                 user_type, token, salon_name, branch = result
-                profile = SwalookUserProfile.objects.get(salon_name=salon_name)
-                inst = StaffAttendanceTime.objects.get(vendor_branch__branch_name=branch)
+                # profile = SwalookUserProfile.objects.get(salon_name=salon_name)
+                # inst = StaffAttendanceTime.objects.get(vendor_branch__branch_name=branch)
                 response_data = {
                     'success': True,
                     'status_code': status.HTTP_200_OK,
@@ -286,9 +286,9 @@ class Centralized_login(APIView):
                         'user': str(request.user),
                         'salon_name': salon_name,
                         'type': user_type,
-                        'image':profile.profile_pic,
-                        'in_time':inst.in_time,
-                        'out_time':inst.out_time
+                        # 'image':profile.profile_pic,
+                        # 'in_time':inst.in_time,
+                        # 'out_time':inst.out_time
                     }
                 }
 
