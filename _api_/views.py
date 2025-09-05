@@ -547,12 +547,14 @@ class Table_service(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # Fetch all services grouped by category
+        final_data = []
+
+        # --- Normal Services grouped by category ---
         services = VendorService.objects.filter(user=request.user).order_by("service")
         service_data = {}
 
         for s in services:
-            category_name = s.category_details.service_category if s.category_details else "Uncategorized"
+            category_name = s.category.service_category if s.category else "Uncategorized"
             if category_name not in service_data:
                 service_data[category_name] = []
             service_data[category_name].append({
@@ -564,48 +566,37 @@ class Table_service(APIView):
                 "for_women": s.for_women,
             })
 
-        # Convert dict → list
-        services_grouped = [
-            {"category": cat, "services": items}
-            for cat, items in service_data.items()
-        ]
+        for cat, items in service_data.items():
+            final_data.append({
+                "category_name": cat,
+                "services": items
+            })
 
-        # Fetch all combos and group inside
+        # --- Combo Services (combo_name becomes category_name) ---
         combos = combo_services.objects.filter(user=request.user).order_by("combo_name")
 
-        combo_list = []
         for combo in combos:
-            combo_services_grouped = {}
-
-            for s in combo.services:  # since services is JSON/ListField
-                category_name = s.get("category") or "Uncategorized"
-                if category_name not in combo_services_grouped:
-                    combo_services_grouped[category_name] = []
-                combo_services_grouped[category_name].append({
-                    "id": s.get("id"),
-                    "service": s.get("service"),
-                    "service_price": s.get("service_price"),
-                    "service_duration": s.get("service_duration"),
-                })
-
-            combo_list.append({
-                "id": str(combo.id),
-                "combo_name": combo.combo_name,
+            final_data.append({
+                "category_name": combo.combo_name,
                 "combo_price": combo.combo_price,
                 "duration": combo.duration,
                 "services": [
-                    {"category": cat, "services": items}
-                    for cat, items in combo_services_grouped.items()
+                    {
+                        "id": s.get("id"),
+                        "service": s.get("service"),
+                        "service_price": s.get("service_price"),
+                        "service_duration": s.get("service_duration"),
+                        "category": s.get("category", "Uncategorized")
+                    }
+                    for s in combo.services
                 ]
             })
 
         return Response({
             "status": True,
-            "data": {
-                "services": services_grouped,
-                "combos": combo_list
-            }
+            "data": final_data
         }, status=status.HTTP_200_OK)
+
 
 
 class get_slno(APIView):
