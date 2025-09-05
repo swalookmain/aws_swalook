@@ -547,14 +547,13 @@ class Table_service(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # all services
+        # Fetch vendor services
         query_set = VendorService.objects.filter(user=request.user).order_by("service")
         services_serializer = service_serializer(query_set, many=True)
 
-        # all combos ordered by combo_name
+        # Fetch combo services ordered
         combos = combo_services.objects.filter(user=request.user).order_by("combo_name")
 
-        # if you already have a serializer for combos, use it instead of values()
         combo_list = []
         for combo in combos:
             combo_list.append({
@@ -566,12 +565,13 @@ class Table_service(APIView):
                 "duration": combo.duration,
                 "services": [
                     {
-                        "id": str(s.id),
-                        "service": s.service,
-                        "category": s.category_details.service_category if s.category_details else "Uncategorized",
-                        "service_price": s.service_price,
-                        "service_duration": s.service_duration
-                    } for s in combo.services.all().order_by("service")
+                        "id": s.get("id"),
+                        "service": s.get("service"),
+                        "category": s.get("category", "Uncategorized"),
+                        "service_price": s.get("service_price"),
+                        "service_duration": s.get("service_duration")
+                    }
+                    for s in combo.services  # no .all()
                 ]
             })
 
@@ -582,7 +582,6 @@ class Table_service(APIView):
                 "combos": combo_list
             }
         }, status=status.HTTP_200_OK)
-
 
 class get_slno(APIView):
     permission_classes = [AllowAny]
