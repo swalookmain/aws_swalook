@@ -264,6 +264,8 @@ class Centralized_login(APIView):
     serializer_class = centralized_login_serializer
     permission_classes = [AllowAny]
 
+    from django.core.exceptions import ValidationError
+
     @transaction.atomic
     def post(self, request):
         serializer = self.serializer_class(data=request.data, context={"request": request})
@@ -272,8 +274,14 @@ class Centralized_login(APIView):
             try:
                 result = serializer.create(serializer.validated_data)
                 user_type, token, salon_name, branch = result
-                # profile = SwalookUserProfile.objects.get(salon_name=salon_name)
-                # inst = StaffAttendanceTime.objects.get(vendor_branch__branch_name=branch)
+
+                profile = SwalookUserProfile.objects.filter(salon_name=salon_name).first()
+                profile_pic = profile.profile_pic.url if profile and profile.profile_pic else None
+
+                inst = StaffAttendanceTime.objects.filter(vendor_branch__branch_name=branch).first()
+                in_time = inst.in_time if inst else None
+                out_time = inst.out_time if inst else None
+
                 response_data = {
                     'success': True,
                     'status_code': status.HTTP_200_OK,
@@ -286,16 +294,16 @@ class Centralized_login(APIView):
                         'user': str(request.user),
                         'salon_name': salon_name,
                         'type': user_type,
-                        # 'image':profile.profile_pic,
-                        # 'in_time':inst.in_time,
-                        # 'out_time':inst.out_time
+                        'image': profile_pic,
+                        'in_time': in_time,
+                        'out_time': out_time
                     }
                 }
 
                 if branch:
                     response_data['data'].update({
-                        'branch_name': branch.branch_name,
-                        'branch_id': branch.id
+                        'branch_name': getattr(branch, 'branch_name', None),
+                        'branch_id': getattr(branch, 'id', None)
                     })
 
                 return Response(response_data, status=status.HTTP_200_OK)
@@ -320,6 +328,8 @@ class Centralized_login(APIView):
             },
             'data': None
         }, status=status.HTTP_400_BAD_REQUEST)
+
+    
 class VendorServices(APIView):
     permission_classes = [IsAuthenticated]
 
