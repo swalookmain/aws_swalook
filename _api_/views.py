@@ -528,20 +528,59 @@ class Delete_invoice(APIView):
         }, status=status.HTTP_200_OK)
 
 
+# class Table_service(APIView):
+#     permission_classes = [IsAuthenticated]
+
+#     def get(self, request):
+#         branch_name = request.query_params.get('branch_name')
+#         query_set = VendorService.objects.filter(user=request.user).order_by('service')
+        
+#         serializer_obj = service_serializer(query_set, many=True)
+#         combo = combo_services.objects.filter(user=request.user).values()
+        
+#         return Response({
+#             "status": True,
+#             "data": serializer_obj.data,
+#             "combo":list(combo)
+#         }, status=status.HTTP_200_OK)
 class Table_service(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        branch_name = request.query_params.get('branch_name')
-        query_set = VendorService.objects.filter(user=request.user).order_by('service')
-        
-        serializer_obj = service_serializer(query_set, many=True)
-        combo = combo_services.objects.filter(user=request.user).values()
-        
+        # all services
+        query_set = VendorService.objects.filter(user=request.user).order_by("service")
+        services_serializer = service_serializer(query_set, many=True)
+
+        # all combos ordered by combo_name
+        combos = combo_services.objects.filter(user=request.user).order_by("combo_name")
+
+        # if you already have a serializer for combos, use it instead of values()
+        combo_list = []
+        for combo in combos:
+            combo_list.append({
+                "id": str(combo.id),
+                "user_id": combo.user.id if combo.user else None,
+                "vendor_branch_id": str(combo.vendor_branch.id) if combo.vendor_branch else None,
+                "combo_name": combo.combo_name,
+                "combo_price": combo.combo_price,
+                "duration": combo.duration,
+                "services": [
+                    {
+                        "id": str(s.id),
+                        "service": s.service,
+                        "category": s.category_details.service_category if s.category_details else "Uncategorized",
+                        "service_price": s.service_price,
+                        "service_duration": s.service_duration
+                    } for s in combo.services.all().order_by("service")
+                ]
+            })
+
         return Response({
             "status": True,
-            "data": serializer_obj.data,
-            "combo":list(combo)
+            "data": {
+                "services": services_serializer.data,
+                "combos": combo_list
+            }
         }, status=status.HTTP_200_OK)
 
 
