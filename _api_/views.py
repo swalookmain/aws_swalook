@@ -583,19 +583,19 @@ class Table_service(APIView):
         combo_list = []
 
         for combo in combos:
-            combo_list.append({
+            combo_services_list.append({
                 "combo_name": combo.combo_name,
                 "combo_price": combo.combo_price,
                 "duration": combo.duration,
                 "services": [
                     {
-                        "id": str(s.id),
-                        "service": s.service,
-                        "service_price": s.service_price,
-                        "service_duration": s.service_duration,
-                        "category": s.category.service_category if s.category else "Uncategorized"
+                        "id": s.get("id"),
+                        "service": s.get("service"),
+                        "service_price": s.get("service_price"),
+                        "service_duration": s.get("service_duration"),
+                        "category": s.get("category", "Uncategorized")
                     }
-                    for s in combo.services.all()
+                    for s in combo.services  
                 ]
             })
 
