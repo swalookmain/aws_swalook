@@ -528,76 +528,87 @@ class Delete_invoice(APIView):
         }, status=status.HTTP_200_OK)
 
 
-class Table_service(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        branch_name = request.query_params.get('branch_name')
-        query_set = VendorService.objects.filter(user=request.user).order_by('service')
-        
-        serializer_obj = service_serializer(query_set, many=True)
-        combo = combo_services.objects.filter(user=request.user).values()
-        
-        return Response({
-            "status": True,
-            "data": serializer_obj.data,
-            "combo":list(combo)
-        }, status=status.HTTP_200_OK)
 # class Table_service(APIView):
 #     permission_classes = [IsAuthenticated]
 
 #     def get(self, request):
-#         final_data = []
-
-#         # --- Normal Services grouped by category ---
-#         services = VendorService.objects.filter(user=request.user).order_by("service")
-#         service_data = {}
-
-#         for s in services:
-#             category_name = s.category.service_category if s.category else "Uncategorized"
-#             if category_name not in service_data:
-#                 service_data[category_name] = []
-#             service_data[category_name].append({
-#                 "id": str(s.id),
-#                 "service": s.service,
-#                 "service_price": s.service_price,
-#                 "service_duration": s.service_duration,
-#                 "for_men": s.for_men,
-#                 "for_women": s.for_women,
-#             })
-
-#         for cat, items in service_data.items():
-#             final_data.append({
-#                 "category_name": cat,
-#                 "services": items
-#             })
-
-#         # --- Combo Services (combo_name becomes category_name) ---
-#         combos = combo_services.objects.filter(user=request.user).order_by("combo_name")
-
-#         for combo in combos:
-#             final_data.append({
-#                 "category_name": combo.combo_name,
-#                 "combo_price": combo.combo_price,
-#                 "duration": combo.duration,
-#                 "services": [
-#                     {
-#                         "id": s.get("id"),
-#                         "service": s.get("service"),
-#                         "service_price": s.get("service_price"),
-#                         "service_duration": s.get("service_duration"),
-#                         "category": s.get("category", "Uncategorized")
-#                     }
-#                     for s in combo.services
-#                 ]
-#             })
-
+#         branch_name = request.query_params.get('branch_name')
+#         query_set = VendorService.objects.filter(user=request.user).order_by('service')
+        
+#         serializer_obj = service_serializer(query_set, many=True)
+#         combo = combo_services.objects.filter(user=request.user).values()
+        
 #         return Response({
 #             "status": True,
-#             "data": final_data
+#             "data": serializer_obj.data,
+#             "combo":list(combo)
 #         }, status=status.HTTP_200_OK)
+from collections import defaultdict
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
 
 
+class Table_service(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        final_data = []
+
+        # --- Normal Services grouped by category ---
+        services = VendorService.objects.filter(user=request.user).order_by("service")
+        service_data = defaultdict(list)
+
+        for s in services:
+            category_name = s.category.service_category if s.category else "Uncategorized"
+            service_data[category_name].append({
+                "id": str(s.id),
+                "service": s.service,
+                "service_price": s.service_price,
+                "service_duration": s.service_duration,
+                "for_men": s.for_men,
+                "for_women": s.for_women,
+            })
+
+        # Add normal categories
+        for cat, items in service_data.items():
+            final_data.append({
+                "category_name": cat,
+                "services": items
+            })
+
+        # --- Combo Services ---
+        combos = combo_services.objects.filter(user=request.user).order_by("combo_name")
+        combo_list = []
+
+        for combo in combos:
+            combo_list.append({
+                "combo_name": combo.combo_name,
+                "combo_price": combo.combo_price,
+                "duration": combo.duration,
+                "services": [
+                    {
+                        "id": str(s.id),
+                        "service": s.service,
+                        "service_price": s.service_price,
+                        "service_duration": s.service_duration,
+                        "category": s.category.service_category if s.category else "Uncategorized"
+                    }
+                    for s in combo.services.all()
+                ]
+            })
+
+        if combo_list:
+            final_data.append({
+                "category_name": "Combo",
+                "combos": combo_list
+            })
+
+        return Response({
+            "status": True,
+            "data": final_data
+        }, status=status.HTTP_200_OK)
 
 class get_slno(APIView):
     permission_classes = [AllowAny]
