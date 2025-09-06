@@ -556,7 +556,7 @@ class Table_service(APIView):
     def get(self, request):
         final_data = []
 
-        # --- Normal Services grouped by category ---
+        
         services = VendorService.objects.filter(user=request.user).order_by("service")
         service_data = defaultdict(list)
 
@@ -583,7 +583,7 @@ class Table_service(APIView):
         combo_list = []
 
         for combo in combos:
-            combo_services_list.append({
+            combo_list.append({
                 "combo_name": combo.combo_name,
                 "combo_price": combo.combo_price,
                 "duration": combo.duration,
