@@ -17,6 +17,7 @@ admin.site.register(VendorCustomers)
 admin.site.register(StaffSetting)
 admin.site.register(StaffSettingSlab)
 admin.site.register(VendorStaffAttendance)
+admin.site.register(comboservices)
 
 admin.site.register(VendorInventoryProduct)
 admin.site.register(VendorCustomerLoyalityPoints)
