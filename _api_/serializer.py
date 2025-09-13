@@ -1417,18 +1417,20 @@ class staff_attendance_serializer_update_mobile(serializers.Serializer):
         import math
 
         def haversine(lat1, lon1, lat2, lon2):
+            import decimal
+            from decimal import Decimal
             R = 6371  
     
             d_lat = math.radians(lat2 - lat1)
             d_lon = math.radians(lon2 - lon1)
             
-            a = float(math.sin(d_lat / 2)**2 + math.cos(math.radians(lat1))) * float(math.cos(math.radians(lat2)) * math.sin(d_lon / 2))**2
+            a = math.sin(d_lat / 2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(d_lon / 2) **2
             c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     
             return R * c  
         s = SalonBranch.objects.get(id=self.context.get('branch_id'))
         profile = SwalookUserProfile.objects.get(mobile_no=s.vendor_name.username)
-        distance = haversine(int(validated_data.get('out_lat')),int(validated_data.get('out_long')),int(profile.latitude),int(profile.longitude))
+        distance = haversine(Decimal((validated_data.get('out_lat'))),{Decimal((validated_data.get('out_long'))),Decimal(profile.latitude),Decimal(profile.longitude))
     
         if distance <= 0.02:  
       
