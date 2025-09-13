@@ -53,6 +53,8 @@ class SwalookUserProfile(models.Model):
     enc_pwd = models.CharField(max_length=400)
     branch_limit = models.IntegerField(default=1, null=True)
     branches_created = models.IntegerField(default=0, null=True)
+    review = models.CharField(max_length=400,blank=True,null=True)
+    
 
     class Meta:
         ordering = ['salon_name']
