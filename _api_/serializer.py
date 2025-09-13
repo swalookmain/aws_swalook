@@ -1430,7 +1430,7 @@ class staff_attendance_serializer_update_mobile(serializers.Serializer):
             return R * c  
         s = SalonBranch.objects.get(id=self.context.get('branch_id'))
         profile = SwalookUserProfile.objects.get(mobile_no=s.vendor_name.username)
-        distance = haversine(Decimal((validated_data.get('out_lat'))),{Decimal((validated_data.get('out_long'))),Decimal(profile.latitude),Decimal(profile.longitude))
+        distance = haversine(Decimal((validated_data.get('out_lat'))),{Decimal((validated_data.get('out_long'))),Decimal(profile.latitude),Decimal(profile.longitude)))
     
         if distance <= 0.02:  
       
