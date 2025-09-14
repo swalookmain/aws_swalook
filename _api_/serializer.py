@@ -500,8 +500,8 @@ class staff_serializer(serializers.ModelSerializer):
 class staff_attendance_serializer(serializers.Serializer):
     json_data = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
     photo =  serializers.ImageField(required=False)
-    lat = serializers.CharField(required=False)
-    long = serializers.CharField(required=False)
+    lat = serializers.FloatField(required=True)
+    long = serializers.FloatField(required=True)
     
     def create(self, validated_data):
         import json
@@ -1404,60 +1404,58 @@ class VendorPurchaseConnect_get(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class staff_attendance_serializer_update_mobile(serializers.Serializer):
-   
-    photo =  serializers.ImageField(required=False)
-    lat = serializers.CharField(required=False)
-    long = serializers.CharField(required=False)
-    
-    def create(self, validated_data):
-        import json
-    
-        
-        import math
+import math
+from rest_framework import serializers
 
-        def haversine(lat1, lon1, lat2, lon2):
-            import decimal
-            from decimal import Decimal
-            R = 6371  
-    
-            d_lat = math.radians(lat2 - lat1)
-            d_lon = math.radians(lon2 - lon1)
-            
-            a = math.sin(d_lat / 2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(d_lon / 2) **2
-            c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    
-            return R * c  
-        s = SalonBranch.objects.get(id=self.context.get('branch_id'))
+class staff_attendance_serializer_update_mobile(serializers.Serializer):
+    photo = serializers.ImageField(required=False)
+    out_lat = serializers.FloatField(required=True)
+    out_long = serializers.FloatField(required=True)
+    date = serializers.DateField(required=True)
+    out_time = serializers.CharField(required=True)
+
+    def haversine(self, lat1, lon1, lat2, lon2):
+        R = 6371  # Earth radius in km
+        d_lat = math.radians(lat2 - lat1)
+        d_lon = math.radians(lon2 - lon1)
+        a = (math.sin(d_lat / 2) ** 2 +
+             math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) *
+             math.sin(d_lon / 2) ** 2)
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        return R * c
+
+    def create(self, validated_data):
+        out_lat = validated_data["out_lat"]
+        out_long = validated_data["out_long"]
+
+        # Fetch profile location
+        s = SalonBranch.objects.get(id=self.context.get("branch_id"))
         profile = SwalookUserProfile.objects.get(mobile_no=s.vendor_name.username)
-        distance = haversine(validated_data.get('out_lat'),validated_data.get('out_long'),profile.latitude,profile.longitude)
-    
-        if distance <= 0.02:  
-      
-            attendance_staff_object = VendorStaffAttendance.objects.get(staff__mobile_no=self.context.get('request').query_params.get('staff_id'),date=validated_data.get('date'))
-            
-           
-           
-         
-            
-         
-           
-            attendance_staff_object.out_lat = validated_data.get('out_lat')
-            attendance_staff_object.out_long = validated_data.get('out_long')
-           
-            if self.context.get('request').FILES.get('photo'):
-                attendance_staff_object.image_1 = self.context.get('request').FILES.get('photo')
-            
-            
-            
-            objects = validated_data
-            attendance_staff_object.date = objects.get('date')
-            
-       
-            attendance_staff_object.out_time = objects.get('out_time')
+
+        profile_lat = float(profile.latitude)
+        profile_long = float(profile.longitude)
+
+        # Calculate distance
+        distance = self.haversine(out_lat, out_long, profile_lat, profile_long)
+
+        if distance <= 0.02:  # within 20 meters
+            staff_mobile = self.context.get("request").query_params.get("staff_id")
+            attendance_staff_object = VendorStaffAttendance.objects.get(
+                staff__mobile_no=staff_mobile,
+                date=validated_data.get("date")
+            )
+
+            attendance_staff_object.out_lat = out_lat
+            attendance_staff_object.out_long = out_long
+
+            if self.context.get("request").FILES.get("photo"):
+                attendance_staff_object.image_1 = self.context.get("request").FILES.get("photo")
+
+            attendance_staff_object.date = validated_data["date"]
+            attendance_staff_object.out_time = validated_data["out_time"]
             attendance_staff_object.save()
 
             return "ok"
         else:
             return "location not matched"
-       
+
