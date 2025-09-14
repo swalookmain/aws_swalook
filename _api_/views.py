@@ -4941,18 +4941,24 @@ class SingleStaffAttendance(APIView):
         }, status=status.HTTP_200_OK)
 
     
-
-
 class Attendance_mobile_staff(APIView):
     serializer_class = staff_attendance_serializer_update_mobile
-    def post(self,request):
-        data =  request.data
-        serializer = staff_attendance_serializer_update_mobile(data=request.data,context={'request':request,'branch_id':request.query_params.get('branch_name')})
-        datas = serializer.create(validated_data=data)
+
+    def post(self, request):
+        serializer = self.serializer_class(
+            data=request.data,
+            context={'request': request, 'branch_id': request.query_params.get('branch_name')}
+        )
+
+ 
+        serializer.is_valid(raise_exception=True)
+
+
+        datas = serializer.create(validated_data=serializer.validated_data)
 
         return Response({
             "status": True,
-            "message":datas
+            "message": datas
         })
 
 
