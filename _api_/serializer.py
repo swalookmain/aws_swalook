@@ -187,6 +187,7 @@ class UpdateProfileSerializer(serializers.Serializer):
     user_ip = serializers.CharField()
     latitude = serializers.CharField()
     longitude = serializers.CharField()
+    review = serializers.CharField()
     def update(self, instance, validated_data):
         
         for attr, value in validated_data.items():
