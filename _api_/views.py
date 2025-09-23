@@ -281,7 +281,7 @@ class Centralized_login(APIView):
                 inst = StaffAttendanceTime.objects.filter(vendor_branch__branch_name=branch).first()
                 in_time = inst.in_time if inst else None
                 out_time = inst.out_time if inst else None
-                review = profile.review
+        
 
                 response_data = {
                     'success': True,
@@ -298,7 +298,7 @@ class Centralized_login(APIView):
                         'image': profile_pic,
                         'in_time': in_time,
                         'out_time': out_time,
-                        'review':review
+                    
                     }
                 }
 
