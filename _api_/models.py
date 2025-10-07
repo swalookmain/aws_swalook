@@ -15,7 +15,7 @@ class SalonBranch(models.Model):
     staff_url = models.CharField(max_length=255)
     admin_url = models.CharField(max_length=255)
     minimum_purchase_loyality = models.IntegerField(default=40, null=True)
-
+    address = models.CharField(max_length=255, null=True, blank=True)
     class Meta:
         ordering = ['vendor_name']
         verbose_name = "Vendor Branch"
