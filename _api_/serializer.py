@@ -712,7 +712,7 @@ class branch_serializer(serializers.ModelSerializer):
         validated_data['password'] = validated_data['password']
         validated_data['branch_name'] = validated_data['branch_name']
         validated_data['staff_name'] = validated_data['staff_name']
-
+        validated_data['address'] = validated_data['address']
         return super().create(validated_data)
 
 
