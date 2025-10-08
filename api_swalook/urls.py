@@ -130,7 +130,7 @@ urlpatterns = [
     path('api/swalook/single_staff_advance/', singlestaffadvancedata.as_view()),
     path('api/swalook/get-type-expense/',get_sub_category_of_expense.as_view()),
     path('api/swalook/combo/',comboservices.as_view()),
-
+    path('api/swalook/vendor-profile/', VendorProfileView.as_view(), name='vendor-profile'),
 
     path("api/swalook/invoice-pdf/", pdf_view.as_view(), name="pdf-invoice"),
 
