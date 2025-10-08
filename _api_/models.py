@@ -7,7 +7,7 @@ import uuid
 
 class SalonBranch(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
-    vendor_name = models.ForeignKey(User, on_delete=models.CASCADE, null=True, db_index=True)
+    vendor_name = models.ForeignKey(User, on_delete=models.CASCADE, null=True, db_index=True, related_name='branches')
     staff_name = models.CharField(max_length=255)
     branch_name = models.CharField(max_length=255)
     password = models.CharField(max_length=20, blank=True)
