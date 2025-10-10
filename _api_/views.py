@@ -5193,11 +5193,6 @@ class comboservices(APIView):
                 },
                 'data': None
             }, status=status.HTTP_404_NOT_FOUND)
-
-from rest_framework import generics
-class VendorProfileView(generics.ListAPIView):
-    queryset = SwalookUserProfile.objects.all()
-    serializer_class = user_data_set_serializer
         
         
 
