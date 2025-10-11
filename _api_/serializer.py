@@ -713,16 +713,10 @@ class branch_serializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 class user_data_set_serializer(serializers.ModelSerializer):
-    branches = branch_serializer()
 
     class Meta:
         model = SwalookUserProfile
         fields = "__all__"
-        extra_fields = ['branches']
-
-    def get_branches(self, obj):
-        branches = SalonBranch.objects.filter(vendor_name__email=obj.email)
-        return branch_serializer(branches, many=True).data
 
 class HelpDesk_Serializer(serializers.ModelSerializer):
     class Meta:
