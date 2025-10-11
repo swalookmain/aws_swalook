@@ -687,17 +687,7 @@ class staff_update_earning_deduction_serializer(ModelSerializer):
         return validated_data
 
 
-class user_data_set_serializer(serializers.ModelSerializer):
-    branches = branch_serializer()
 
-    class Meta:
-        model = SwalookUserProfile
-        fields = "__all__"
-        extra_fields = ['branches']
-
-    def get_branches(self, obj):
-        branches = SalonBranch.objects.filter(vendor_name__email=obj.email)
-        return branch_serializer(branches, many=True).data
 
 
 class staff_serializer_get(serializers.ModelSerializer):
@@ -722,6 +712,17 @@ class branch_serializer(serializers.ModelSerializer):
         validated_data['address'] = validated_data['address']
         return super().create(validated_data)
 
+class user_data_set_serializer(serializers.ModelSerializer):
+    branches = branch_serializer()
+
+    class Meta:
+        model = SwalookUserProfile
+        fields = "__all__"
+        extra_fields = ['branches']
+
+    def get_branches(self, obj):
+        branches = SalonBranch.objects.filter(vendor_name__email=obj.email)
+        return branch_serializer(branches, many=True).data
 
 class HelpDesk_Serializer(serializers.ModelSerializer):
     class Meta:
