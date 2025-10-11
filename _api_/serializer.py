@@ -688,7 +688,7 @@ class staff_update_earning_deduction_serializer(ModelSerializer):
 
 
 class user_data_set_serializer(serializers.ModelSerializer):
-    branches = serializers.SerializerMethodField()
+    branches = branch_serializer()
 
     class Meta:
         model = SwalookUserProfile
@@ -708,7 +708,7 @@ class staff_serializer_get(serializers.ModelSerializer):
 class branch_serializer(serializers.ModelSerializer):
     class Meta:
         model = SalonBranch
-        fields = ["id", "staff_name", "branch_name", "password", "admin_password", "staff_url", "admin_url"]
+        fields = ["id", "address", "staff_name", "branch_name", "password", "admin_password", "staff_url", "admin_url"]
         extra_kwargs = {'id': {'read_only': True}}
 
     def create(self, validated_data):
