@@ -209,22 +209,83 @@ class UpdateProfileSerializer(serializers.Serializer):
 class billing_serializer(serializers.ModelSerializer):
     json_data = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
     new_mode = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
-    
+    combo_details = serializers.ListField(child=serializers.DictField(), required=False, allow_empty=True)
+    comboService = serializers.ListField(child=serializers.DictField(), required=False, allow_empty=True)
+
     class Meta:
         model = VendorInvoice
-        fields = ["customer_name", "mobile_no", "email", "address", "date","services", "mode_of_payment", "new_mode","service_by", "json_data", "loyalty_points_deducted", "total_prise", "total_quantity", "total_tax", "total_discount", "grand_total", "total_cgst", "total_sgst", "gst_number", "comment", "slno","coupon_points_used"]
+        fields = [
+            "customer_name", "mobile_no", "email", "address", "date", "services",
+            "mode_of_payment", "new_mode", "service_by", "json_data",
+            "loyalty_points_deducted", "total_prise", "total_quantity", "total_tax",
+            "total_discount", "grand_total", "total_cgst", "total_sgst", "gst_number",
+            "comment", "slno", "coupon_points_used", "combo_details", "comboService"
+        ]
         extra_kwargs = {'id': {'read_only': True}}
 
-    def create(self, validated_data):
-     
-        validated_data['vendor_name'] = self.context.get('request').user
+    def validate(self, data):
+        """Convert comboService to combo_details"""
+        combo_service = data.pop('comboService', [])
 
-        
+        if combo_service:
+            data['combo_details'] = self.convert_combo_service(combo_service, data)
+
+        return data
+
+    def convert_combo_service(self, combo_service, data):
+        """Convert frontend format to our combo_details format"""
+        if not combo_service:
+            return []
+
+        combos_dict = {}
+        total_price = data.get('total_prise', 0)
+
+        for item in combo_service:
+            combo_id = item.get('comboId', '')
+            combo_name = item.get('comboName', '')
+            service_name = item.get('serviceName', '')
+            service_Id = item.get('serviceId',  '')
+            category = item.get('category', 'Combo')
+            staff = item.get('staff', [])
+            quantity = item.get('quantity', 1)
+            gst = item.get('gst', 'No GST')
+            # duration = item.get('duration', '0 min')
+
+            if combo_id not in combos_dict:
+                combos_dict[combo_id] = {
+                    "category": category,
+                    "combo_name": combo_name,
+                    "total_price": str(total_price),
+                    "services": []
+                }
+
+
+            combos_dict[combo_id]["services"].append({
+                "service_Id": service_Id,
+                "service_name": service_name,
+                # "original_price": "0",
+                # "duration": duration,
+                "staff": staff,
+                "quantity": quantity,
+                "gst": gst
+            })
+
+        return list(combos_dict.values())
+
+    def create(self, validated_data):
+        combo_details = validated_data.pop('combo_details', [])
+
+        validated_data['vendor_name'] = self.context.get('request').user
         validated_data['vendor_branch_id'] = self.context.get('branch_id')
+
         self.update_inventory(validated_data['json_data'])
-        # self.handle_loyalty_points(validated_data)
-        #self.update_staff_business_to_month(validated_data.get('services'))
-        super().create(validated_data)
+
+
+        invoice = VendorInvoice.objects.create(
+            **validated_data,
+            combo_details=combo_details
+        )
+
         return validated_data['slno']
 
     def handle_loyalty_points(self, validated_data):
