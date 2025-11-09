@@ -3470,7 +3470,7 @@ class CouponView(APIView):
         id = request.query_params.get('id')
         branch_name = request.query_params.get('branch_name')
 
-        service_obj = VendorCoupon.filter(user=request.user, vendor_branch_id=branch_name, coupon_name=request.data.get('coupon_name')).exclude(id=id)
+        service_obj = VendorCoupon.objects.filter(user=request.user, vendor_branch_id=branch_name, coupon_name=request.data.get('coupon_name')).exclude(id=id)
         if service_obj.exists():
             return Response({
                 'success': False,
