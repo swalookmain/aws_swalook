@@ -2143,6 +2143,160 @@ class vendor_staff_attendance(APIView):
         pass
 
 
+class AttendanceDashboard(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        branch_name = request.query_params.get('branch_name')
+        date_param = request.query_params.get('date')
+
+        if not branch_name:
+            return Response({
+                'status': False,
+                'message': 'branch_name parameter is required!'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        
+        try:
+            if date_param:
+                
+                filter_date = dt.datetime.strptime(date_param, '%Y-%m-%d').date()
+            else:
+                
+                filter_date = dt.date.today()
+        except ValueError:
+            return Response({
+                'status': False,
+                'message': 'Invalid date format. Use YYYY-MM-DD'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            
+            staff_members = VendorStaff.objects.filter(
+                vendor_name=request.user,
+                vendor_branch_id=branch_name
+            )
+
+            if not staff_members.exists():
+                return Response({
+                    'status': False,
+                    'message': 'No staff found for this branch!'
+                }, status=status.HTTP_404_NOT_FOUND)
+
+      
+            attendance_records = VendorStaffAttendance.objects.filter(
+                vendor_name=request.user,
+                vendor_branch_id=branch_name,
+                date=filter_date  
+            )
+
+            
+            try:
+                time_settings = StaffAttendanceTime.objects.get(
+                    vendor_name=request.user,
+                    vendor_branch_id=branch_name
+                )
+                expected_in_time = time_settings.in_time
+            except StaffAttendanceTime.DoesNotExist:
+                expected_in_time = "09:00"
+
+            
+            attendance_data = []
+            present_count = 0
+            late_arrival_count = 0
+            absent_count = 0
+
+            for staff in staff_members:
+                staff_attendance = attendance_records.filter(staff=staff).first()
+
+                if staff_attendance and staff_attendance.attend:
+                    in_time = staff_attendance.in_time or "--"
+                    out_time = staff_attendance.out_time or "--"
+                    location = f"{staff_attendance.lat}, {staff_attendance.long}" if staff_attendance.lat else "Location not available"
+                    selfie_url = self.get_selfie_image(staff_attendance, request)
+                    has_selfie = bool(selfie_url)
+
+                    is_late = self.is_time_late(in_time, expected_in_time)
+
+                    if is_late:
+                        status_text = "Late Arrival"
+                        status_color = "orange"
+                        late_arrival_count += 1
+                    else:
+                        status_text = "Present"
+                        status_color = "green"
+
+                    present_count += 1  
+
+                else:
+                    status_text = "Absent"
+                    status_color = "red"
+                    absent_count += 1
+                    in_time = "--"
+                    out_time = "--"
+                    location = "--"
+                    selfie_url = None
+                    has_selfie = False
+
+                staff_data = {
+                    'staff_id': str(staff.id),
+                    'staff_name': staff.staff_name,
+                    'mobile_number': staff.mobile_no,
+                    'staff_role': staff.staff_role,
+                    'checkin_time': in_time,
+                    'checkout_time': out_time,
+                    'location': location,
+                    'status': status_text,
+                    'status_color': status_color,
+                    'has_selfie': has_selfie,
+                    'selfie_url': selfie_url,
+                    'actions': ['view']
+                }
+                attendance_data.append(staff_data)
+
+            # Dashboard summary
+            total_staff = staff_members.count()
+            dashboard_summary = {
+                'total_staff': total_staff,
+                'present_count': present_count,
+                'absent_count': absent_count,
+                'late_arrival_count': late_arrival_count,
+                'attendance_percentage': round((present_count / total_staff) * 100, 2) if total_staff > 0 else 0,
+                'expected_in_time': expected_in_time,
+                'filter_date': filter_date.strftime('%Y-%m-%d')  # Ensure consistent format
+            }
+
+            return Response({
+                'status': True,
+                'dashboard_summary': dashboard_summary,
+                'attendance_data': attendance_data,
+                'message': f'Attendance data for {filter_date.strftime("%Y-%m-%d")} retrieved successfully'
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                'status': False,
+                'message': f'Error retrieving dashboard data: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def is_time_late(self, actual_time, expected_time):
+        """Check if staff arrived late"""
+        from datetime import datetime
+        try:
+            if actual_time == "--":
+                return False
+            actual = datetime.strptime(actual_time, '%H:%M').time()
+            expected = datetime.strptime(expected_time, '%H:%M').time()
+            return actual > expected
+        except:
+            return False
+
+    def get_selfie_image(self, attendance_record, request):
+        """Get selfie image URL"""
+        if attendance_record and attendance_record.image:
+            return request.build_absolute_uri(attendance_record.image.url)
+        return None
+
 # class salary_disburse(APIView):
 #     permission_classes = [IsAuthenticated]
 #     serializer_class = staff_salary_serializer
