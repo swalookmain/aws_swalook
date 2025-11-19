@@ -5052,7 +5052,14 @@ class SingleStaffAttendance(APIView):
         seen_dates = {}
 
         for record in attendance_queryset:
+
+            
+            record_date = record.date
+            if isinstance(record_date, str):
+                record_date = dt.datetime.strptime(record_date, "%Y-%m-%d").date()
+
             sid = record.staff.staff_name
+
             if sid not in attendance_data:
                 attendance_data[sid] = {
                     "present_dates": [],
@@ -5064,19 +5071,25 @@ class SingleStaffAttendance(APIView):
                 }
                 seen_dates[sid] = set()
 
-            if record.date in seen_dates[sid]:
+            if record_date in seen_dates[sid]:
                 continue
-            seen_dates[sid].add(record.date)
+            seen_dates[sid].add(record_date)
 
             if record.attend:
-                attendance_data[sid]["present_dates"].insert(0, record.date)
-                attendance_data[sid]["in_time"].insert(0, record.in_time)
-                attendance_data[sid]["out_time"].insert(0, record.out_time)
+                attendance_data[sid]["present_dates"].append(str(record_date))
+                attendance_data[sid]["in_time"].append(record.in_time)
+                attendance_data[sid]["out_time"].append(record.out_time)
                 attendance_data[sid]["number_of_days_present"] += 1
 
             if record.leave:
-                attendance_data[sid]["leave_dates"].insert(0, record.date)
+                attendance_data[sid]["leave_dates"].append(str(record_date))
                 attendance_data[sid]["no_of_days_absent"] += 1
+
+        # Finally reverse sorted list (latest first)
+        for sid in attendance_data:
+            attendance_data[sid]["present_dates"].sort(reverse=True)
+            attendance_data[sid]["in_time"].reverse()
+            attendance_data[sid]["out_time"].reverse()
 
         staff_settings_obj = StaffSetting.objects.filter(
             vendor_branch_id=branch_name,
