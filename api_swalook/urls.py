@@ -85,6 +85,7 @@ urlpatterns = [
     path('api/swalook/staff/', vendor_staff.as_view(), name='staff'),
     path('api/swalook/staff/setting/', vendor_staff_setting_slabs.as_view(), name='staff_setting'),
     path('api/swalook/staff/attendance/', vendor_staff_attendance.as_view(), name='staff_attendance'),
+    path('api/swalook/attendance/details/', AttendanceDashboard.as_view(), name='attendance_dashboard'),
     path('api/swalook/staff/generate-payslip/', salary_disburse.as_view(), name='generate_payslip'),
     path('api/swalook/business-analysis/week-customer/', Sales_Per_Customer.as_view(), name='business_analysis_week_customer'),
     path('api/swalook/business-analysis/month-customer/', Sales_Per_Customer_monthly.as_view(), name='business_analysis_month_customer'),
