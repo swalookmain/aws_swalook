@@ -564,38 +564,61 @@ class staff_serializer(serializers.ModelSerializer):
 
 class staff_attendance_serializer(serializers.Serializer):
     json_data = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
-    photo =  serializers.ImageField(required=False)
-    lat = serializers.FloatField(required=True)
-    long = serializers.FloatField(required=True)
-    
+    photo = serializers.ImageField(required=False)
+    lat = serializers.FloatField(required=False)
+    long = serializers.FloatField(required=False)
+
+    def is_staff_app_request(self):
+        """Auto-detect if request is from staff app"""
+        request = self.context.get('request')
+        if not request:
+            return False
+
+        user_agent = request.META.get('HTTP_USER_AGENT', '').lower()
+
+        mobile_keywords = [
+            'android', 'ios', 'mobile', 'reactnative',
+            'flutter', 'xamarin', 'cordova', 'phonegap'
+        ]
+
+        is_mobile_app = any(keyword in user_agent for keyword in mobile_keywords)
+
+        return is_mobile_app
+
+    def validate(self, data):
+        if self.is_staff_app_request():
+            if data.get('lat') is None:
+                raise serializers.ValidationError({"lat": "This field is required for staff app."})
+            if data.get('long') is None:
+                raise serializers.ValidationError({"long": "This field is required for staff app."})
+
+        return data
+
     def create(self, validated_data):
         import json
+        import math
+
+        is_staff_app = self.is_staff_app_request()
+
         
         for objects in validated_data['json_data']:
             try:
                 objects.get('of_month')
                 attendance_staff_object = VendorStaffAttendance()
 
-               
                 attendance_staff_object.staff_id = self.context.get('request').query_params.get('staff_id')
-        
-                
+
                 s = SalonBranch.objects.get(id=self.context.get('request').query_params.get('branch_name'))
                 attendance_staff_object.vendor_name = s.vendor_name
                 attendance_staff_object.vendor_branch_id = self.context.get('request').query_params.get('branch_name')
                 attendance_staff_object.of_month = objects.get('of_month')
                 attendance_staff_object.year = objects.get('year')
                 attendance_staff_object.attend = objects.get('attend')
-                
-               
+
                 attendance_staff_object.lat = ""
                 attendance_staff_object.long = ""
-               
-                
-                
-              
+
                 attendance_staff_object.date = objects.get('date')
-                
                 attendance_staff_object.in_time = objects.get('in_time')
                 attendance_staff_object.out_time = ""
                 attendance_staff_object.save()
@@ -603,75 +626,73 @@ class staff_attendance_serializer(serializers.Serializer):
 
             except Exception:
                 break
-        import math
 
         def haversine(lat1, lon1, lat2, lon2):
-            R = 6371  
-    
+            R = 6371
             d_lat = math.radians(lat2 - lat1)
             d_lon = math.radians(lon2 - lon1)
-            
             a = math.sin(d_lat / 2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(d_lon / 2)**2
             c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    
-            return R * c  
+            return R * c
+
         s = SalonBranch.objects.get(id=self.context.get('branch_id'))
         profile = SwalookUserProfile.objects.get(mobile_no=s.vendor_name.username)
-        distance = haversine(float(validated_data.get('lat')),float(validated_data.get('long')),float(profile.latitude),float(profile.longitude))
 
-        if distance <= 0.02:  
-           
-    
-                data =  json.loads(validated_data.get('json_data'))
-                objects = data[0]
-                
-                attendance_staff_object = VendorStaffAttendance()
-                
-                stf = VendorStaff.objects.get(mobile_no=self.context.get('request').query_params.get('staff_id'))
-                attendance_staff_object.staff = stf
-               
-               
-                
-            
-                attendance_staff_object.vendor_name = s.vendor_name
-                attendance_staff_object.vendor_branch_id = self.context.get('branch_id')
-                attendance_staff_object.of_month = objects.get('of_month')
-                attendance_staff_object.year = objects.get('year')
-                attendance_staff_object.attend = objects.get('attend')
-                if validated_data['lat']:
-                    attendance_staff_object.lat = validated_data.get('lat')
-                    attendance_staff_object.long = validated_data.get('long')
-                else:
-                    attendance_staff_object.lat = ""
-                    attendance_staff_object.long = ""
-                if self.context.get('request').FILES.get('photo'):
-                    attendance_staff_object.image = self.context.get('request').FILES.get('photo')
-                
-                
-                
-              
-                attendance_staff_object.date = objects.get('date')
-                
-                attendance_staff_object.in_time = objects.get('in_time')
-                attendance_staff_object.out_time = ""
-                attendance_staff_object.save()
         
-                return "ok"
+        if is_staff_app:
+            
+            if not validated_data.get('lat') or not validated_data.get('long'):
+                return "ERROR - LOCATION REQUIRED FOR STAFF APP"
+
+            distance = haversine(
+                float(validated_data.get('lat')),
+                float(validated_data.get('long')),
+                float(profile.latitude),
+                float(profile.longitude)
+            )
+
+            if distance > 0.02:
+                return "ERROR - LOCATION RADIUS NOT MATCHED"
+
+        data = json.loads(validated_data.get('json_data'))
+        objects = data[0]
+
+        attendance_staff_object = VendorStaffAttendance()
+        stf = VendorStaff.objects.get(mobile_no=self.context.get('request').query_params.get('staff_id'))
+        attendance_staff_object.staff = stf
+
+        attendance_staff_object.vendor_name = s.vendor_name
+        attendance_staff_object.vendor_branch_id = self.context.get('branch_id')
+        attendance_staff_object.of_month = objects.get('of_month')
+        attendance_staff_object.year = objects.get('year')
+        attendance_staff_object.attend = objects.get('attend')
+
+        
+        if validated_data.get('lat'):
+            attendance_staff_object.lat = validated_data.get('lat')
+            attendance_staff_object.long = validated_data.get('long')
         else:
-            return "ERROR - LOCATION RADIUS NOT MATCHED"
-                
-    
+            attendance_staff_object.lat = ""
+            attendance_staff_object.long = ""
+
+        if self.context.get('request').FILES.get('photo'):
+            attendance_staff_object.image = self.context.get('request').FILES.get('photo')
+
+        attendance_staff_object.date = objects.get('date')
+        attendance_staff_object.in_time = objects.get('in_time')
+        attendance_staff_object.out_time = ""
+        attendance_staff_object.save()
+
+        return "ok"
+
     def update(self, instance, validated_data):
         import json
-       
-        
+
         validated_data['out_time'] = validated_data.get('json_data')[0].get('out_time')
-       
-       
+
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
 
-        
         instance.save()
         return instance
 
@@ -1199,8 +1220,8 @@ class update_minuimum_amount_serializer(serializers.Serializer):
 
 class VendorExpenseCategorySerializer(serializers.ModelSerializer):
     class Meta:
-        model = VendorExpenseMainCategory
-        fields = ['id', 'vendor_expense_category']
+        model = VendorExpenseCategory
+        fields = ['id', 'vendor_expense_type']
         extra_kwargs = {'id': {'read_only': True}}
 
     def create(self, validated_data):
