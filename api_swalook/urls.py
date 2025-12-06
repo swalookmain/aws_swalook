@@ -134,6 +134,14 @@ urlpatterns = [
 
     path("api/swalook/invoice-pdf/", pdf_view.as_view(), name="pdf-invoice"),
 
+    # Inventory Analytics APIs
+    path('api/swalook/analytics/inventory/summary/', InventoryAnalyticsSummaryView.as_view(), name='inventory-analytics-summary'),
+    path('api/swalook/analytics/inventory/stock-health/', InventoryStockHealthView.as_view(), name='inventory-stock-health'),
+    path('api/swalook/analytics/inventory/value/', InventoryValueAnalyticsView.as_view(), name='inventory-value-analytics'),
+    path('api/swalook/analytics/inventory/suppliers/', TopSuppliersView.as_view(), name='inventory-top-suppliers'),
+    path('api/swalook/inventory/items/', InventoryItemsListView.as_view(), name='inventory-items-list'),
+    path('api/swalook/inventory/items/<uuid:id>/history/', InventoryItemHistoryView.as_view(), name='inventory-item-history'),
+    path('api/swalook/inventory/adjustments/', InventoryAdjustmentsView.as_view(), name='inventory-adjustments'),
 
     
     re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}, name='media'),

@@ -5363,3 +5363,616 @@ class comboservices(APIView):
         
         
 
+# ========== Inventory Analytics Views ==========
+
+class InventoryAnalyticsSummaryView(APIView):
+    """
+    GET /api/swalook/analytics/inventory/summary/
+    Returns overview metrics: Total SKUs, Inventory Value, Low-stock count, Turnover
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        branch_name = request.query_params.get('branch_name')
+        if not branch_name:
+            return Response({
+                "status": False,
+                "message": "branch_name is required"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        products = VendorInventoryProduct.objects.filter(
+            user=request.user,
+            vendor_branch_id=branch_name
+        )
+
+        total_skus = products.count()
+        
+        # Calculate inventory value (stocks * sell price)
+        inventory_value = 0.0
+        low_stock_count = 0
+        out_of_stock_count = 0
+        
+        for product in products:
+            if product.stocks_in_hand and product.product_price:
+                inventory_value += float(product.stocks_in_hand * product.product_price)
+            
+            if product.stocks_in_hand == 0:
+                out_of_stock_count += 1
+            elif product.reorder_threshold and product.stocks_in_hand <= product.reorder_threshold:
+                low_stock_count += 1
+
+        # Calculate inventory turnover (simplified: total sales value / avg inventory value)
+        # For now, we'll use a placeholder calculation
+        today = date.today()
+        thirty_days_ago = today - timedelta(days=30)
+        
+        # Get sales from inventory invoices in last 30 days
+        sales_value = VendorInventoryInvoice.objects.filter(
+            user=request.user,
+            vendor_branch_id=branch_name,
+            date__gte=thirty_days_ago
+        ).aggregate(total=Sum('grand_total'))['total'] or 0
+        
+        # Turnover = Sales / Avg Inventory (annualized)
+        turnover = round((float(sales_value) * 12) / inventory_value, 1) if inventory_value > 0 else 0
+
+        return Response({
+            "status": True,
+            "data": {
+                "total_skus": total_skus,
+                "inventory_value": round(inventory_value, 2),
+                "low_stock_count": low_stock_count,
+                "out_of_stock_count": out_of_stock_count,
+                "inventory_turnover": turnover
+            }
+        }, status=status.HTTP_200_OK)
+
+
+class InventoryStockHealthView(APIView):
+    """
+    GET /api/swalook/analytics/inventory/stock-health/
+    Returns stock health breakdown: healthy/low/out counts, top low-stock items
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        branch_name = request.query_params.get('branch_name')
+        days = int(request.query_params.get('days', 30))
+        
+        if not branch_name:
+            return Response({
+                "status": False,
+                "message": "branch_name is required"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        products = VendorInventoryProduct.objects.filter(
+            user=request.user,
+            vendor_branch_id=branch_name
+        ).select_related('category')
+
+        total_count = products.count()
+        healthy_count = 0
+        low_count = 0
+        out_count = 0
+        low_stock_items = []
+
+        # Calculate average daily sales per product for DOS
+        today = date.today()
+        days_ago = today - timedelta(days=days)
+        
+        # Get product sales from VendorInvoice json_data
+        invoices = VendorInvoice.objects.filter(
+            vendor_name=request.user,
+            vendor_branch_id=branch_name,
+            date__gte=days_ago
+        ).values_list('json_data', flat=True)
+
+        # Aggregate sales per product
+        product_sales = defaultdict(int)
+        for invoice_json in invoices:
+            if invoice_json:
+                for item in invoice_json:
+                    product_id = item.get('id')
+                    quantity = int(item.get('quantity', 0))
+                    if product_id:
+                        product_sales[product_id] += quantity
+
+        # Classify products
+        for product in products:
+            reorder_threshold = product.reorder_threshold or 10
+            
+            if product.stocks_in_hand == 0:
+                out_count += 1
+                # Add to low stock list
+                low_stock_items.append({
+                    "id": str(product.id),
+                    "product_id": product.product_id,
+                    "product_name": product.product_name,
+                    "stocks_in_hand": 0,
+                    "days_of_stock": "Out",
+                    "reorder_threshold": reorder_threshold,
+                    "category": product.category.product_category if product.category else None
+                })
+            elif product.stocks_in_hand <= reorder_threshold:
+                low_count += 1
+                # Calculate DOS
+                avg_daily_sales = product_sales.get(str(product.id), 0) / days
+                dos = int(product.stocks_in_hand / avg_daily_sales) if avg_daily_sales > 0 else "-"
+                
+                low_stock_items.append({
+                    "id": str(product.id),
+                    "product_id": product.product_id,
+                    "product_name": product.product_name,
+                    "stocks_in_hand": product.stocks_in_hand,
+                    "days_of_stock": dos,
+                    "reorder_threshold": reorder_threshold,
+                    "category": product.category.product_category if product.category else None
+                })
+            else:
+                healthy_count += 1
+
+        # Sort low stock items by stock level (ascending) and limit to top 4
+        low_stock_items.sort(key=lambda x: x['stocks_in_hand'])
+        top_low_stock = low_stock_items[:4]
+
+        # Calculate avg DOS for healthy items
+        total_dos = 0
+        dos_count = 0
+        for product in products:
+            if product.stocks_in_hand > 0:
+                avg_daily_sales = product_sales.get(str(product.id), 0) / days
+                if avg_daily_sales > 0:
+                    total_dos += product.stocks_in_hand / avg_daily_sales
+                    dos_count += 1
+        
+        avg_dos = int(total_dos / dos_count) if dos_count > 0 else 0
+
+        return Response({
+            "status": True,
+            "data": {
+                "summary": {
+                    "healthy_count": healthy_count,
+                    "healthy_percent": round((healthy_count / total_count * 100), 0) if total_count > 0 else 0,
+                    "low_count": low_count,
+                    "low_percent": round((low_count / total_count * 100), 0) if total_count > 0 else 0,
+                    "out_count": out_count,
+                    "out_percent": round((out_count / total_count * 100), 0) if total_count > 0 else 0,
+                    "avg_days_of_stock": avg_dos
+                },
+                "low_stock_items": top_low_stock
+            }
+        }, status=status.HTTP_200_OK)
+
+
+class InventoryValueAnalyticsView(APIView):
+    """
+    GET /api/swalook/analytics/inventory/value/
+    Returns ABC segmentation and top value SKUs
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        branch_name = request.query_params.get('branch_name')
+        
+        if not branch_name:
+            return Response({
+                "status": False,
+                "message": "branch_name is required"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        products = VendorInventoryProduct.objects.filter(
+            user=request.user,
+            vendor_branch_id=branch_name
+        ).select_related('category')
+
+        # Calculate value for each product
+        product_values = []
+        total_value = 0.0
+        
+        for product in products:
+            value = float(product.stocks_in_hand * product.product_price) if product.stocks_in_hand and product.product_price else 0
+            total_value += value
+            product_values.append({
+                "id": str(product.id),
+                "product_name": product.product_name,
+                "value": value,
+                "stocks_in_hand": product.stocks_in_hand
+            })
+
+        # Sort by value descending
+        product_values.sort(key=lambda x: x['value'], reverse=True)
+
+        # ABC segmentation (A=70%, B=20%, C=10%)
+        cumulative_value = 0
+        a_items = []
+        b_items = []
+        c_items = []
+        
+        for item in product_values:
+            cumulative_value += item['value']
+            cumulative_percent = (cumulative_value / total_value * 100) if total_value > 0 else 0
+            
+            if cumulative_percent <= 70:
+                a_items.append(item)
+            elif cumulative_percent <= 90:
+                b_items.append(item)
+            else:
+                c_items.append(item)
+
+        a_value = sum(i['value'] for i in a_items)
+        b_value = sum(i['value'] for i in b_items)
+        c_value = sum(i['value'] for i in c_items)
+
+        # Average cost per SKU
+        total_count = len(product_values)
+        avg_cost = round(total_value / total_count, 2) if total_count > 0 else 0
+
+        # Top 3 value SKUs
+        top_value_skus = product_values[:3]
+
+        return Response({
+            "status": True,
+            "data": {
+                "total_value": round(total_value, 2),
+                "avg_cost_per_sku": avg_cost,
+                "abc_segmentation": {
+                    "A": {
+                        "percent": round((a_value / total_value * 100), 0) if total_value > 0 else 0,
+                        "value": round(a_value, 2),
+                        "sku_count": len(a_items)
+                    },
+                    "B": {
+                        "percent": round((b_value / total_value * 100), 0) if total_value > 0 else 0,
+                        "value": round(b_value, 2),
+                        "sku_count": len(b_items)
+                    },
+                    "C": {
+                        "percent": round((c_value / total_value * 100), 0) if total_value > 0 else 0,
+                        "value": round(c_value, 2),
+                        "sku_count": len(c_items)
+                    }
+                },
+                "top_value_skus": top_value_skus
+            }
+        }, status=status.HTTP_200_OK)
+
+
+class InventoryItemsListView(APIView):
+    """
+    GET /api/swalook/inventory/items/
+    Enhanced items list with filtering, pagination, sorting, search
+    Query params: search, category, stock_status, sort_by, page, page_size
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        branch_name = request.query_params.get('branch_name')
+        search = request.query_params.get('search', '')
+        category = request.query_params.get('category')
+        stock_status = request.query_params.get('stock_status')  # 'healthy', 'low', 'out'
+        sort_by = request.query_params.get('sort_by', '-date')
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('page_size', 20))
+
+        if not branch_name:
+            return Response({
+                "status": False,
+                "message": "branch_name is required"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Base queryset
+        products = VendorInventoryProduct.objects.filter(
+            user=request.user,
+            vendor_branch_id=branch_name
+        ).select_related('category')
+
+        # Search filter
+        if search:
+            products = products.filter(
+                models.Q(product_name__icontains=search) |
+                models.Q(product_id__icontains=search)
+            )
+
+        # Category filter
+        if category:
+            products = products.filter(category_id=category)
+
+        # Stock status filter
+        if stock_status == 'out':
+            products = products.filter(stocks_in_hand=0)
+        elif stock_status == 'low':
+            products = products.filter(
+                stocks_in_hand__gt=0,
+                stocks_in_hand__lte=models.F('reorder_threshold')
+            )
+        elif stock_status == 'healthy':
+            products = products.filter(
+                stocks_in_hand__gt=models.F('reorder_threshold')
+            )
+
+        # Sorting
+        valid_sort_fields = ['product_name', '-product_name', 'stocks_in_hand', '-stocks_in_hand', 
+                           'product_price', '-product_price', 'date', '-date', 'expiry_date', '-expiry_date']
+        if sort_by in valid_sort_fields:
+            products = products.order_by(sort_by)
+        else:
+            products = products.order_by('-date')
+
+        # Total count before pagination
+        total_count = products.count()
+
+        # Pagination
+        start = (page - 1) * page_size
+        end = start + page_size
+        products_page = products[start:end]
+
+        # Get DOS data and supplier data for context
+        today = date.today()
+        thirty_days_ago = today - timedelta(days=30)
+        
+        # Calculate DOS from invoice data
+        invoices = VendorInvoice.objects.filter(
+            vendor_name=request.user,
+            vendor_branch_id=branch_name,
+            date__gte=thirty_days_ago
+        ).values_list('json_data', flat=True)
+
+        product_sales = defaultdict(int)
+        for invoice_json in invoices:
+            if invoice_json:
+                for item in invoice_json:
+                    product_id = item.get('id')
+                    quantity = int(item.get('quantity', 0))
+                    if product_id:
+                        product_sales[product_id] += quantity
+
+        dos_data = {}
+        for product in products_page:
+            avg_daily_sales = product_sales.get(str(product.id), 0) / 30
+            if avg_daily_sales > 0 and product.stocks_in_hand:
+                dos_data[str(product.id)] = int(product.stocks_in_hand / avg_daily_sales)
+            elif product.stocks_in_hand == 0:
+                dos_data[str(product.id)] = "Out"
+            else:
+                dos_data[str(product.id)] = "-"
+
+        # Get supplier data from Purchase_entry
+        supplier_data = {}
+        product_ids = [p.id for p in products_page]
+        
+        # Get latest purchase for each product from Purchase_entry
+        purchases = Purchase_entry.objects.filter(
+            user=request.user,
+            vendor_branch_id=branch_name
+        ).select_related('vendor').order_by('-uploaded_at')
+
+        for purchase in purchases:
+            if purchase.products:
+                for prod in purchase.products:
+                    prod_id = prod.get('product_id') or prod.get('id')
+                    if prod_id and prod_id not in supplier_data:
+                        supplier_data[str(prod_id)] = {
+                            'name': purchase.vendor.vendor_name if purchase.vendor else '-',
+                            'date': str(purchase.uploaded_at) if purchase.uploaded_at else None
+                        }
+
+        # Serialize
+        serializer = InventoryItemDetailSerializer(
+            products_page, 
+            many=True,
+            context={
+                'dos_data': dos_data,
+                'supplier_data': supplier_data
+            }
+        )
+
+        # Calculate pagination URLs
+        has_next = end < total_count
+        has_prev = page > 1
+
+        return Response({
+            "status": True,
+            "data": {
+                "count": total_count,
+                "page": page,
+                "page_size": page_size,
+                "next": f"?page={page + 1}" if has_next else None,
+                "previous": f"?page={page - 1}" if has_prev else None,
+                "results": serializer.data
+            }
+        }, status=status.HTTP_200_OK)
+
+
+class InventoryItemHistoryView(APIView):
+    """
+    GET /api/swalook/inventory/items/<id>/history/
+    Returns purchase history, utilization, and adjustments for an item
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, id):
+        branch_name = request.query_params.get('branch_name')
+        
+        if not branch_name:
+            return Response({
+                "status": False,
+                "message": "branch_name is required"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            product = VendorInventoryProduct.objects.get(
+                id=id,
+                user=request.user,
+                vendor_branch_id=branch_name
+            )
+        except VendorInventoryProduct.DoesNotExist:
+            return Response({
+                "status": False,
+                "message": "Product not found"
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        # Get utilization history
+        utilizations = Utilization_Inventory.objects.filter(
+            product=product,
+            user=request.user,
+            vendor_branch_id=branch_name
+        ).order_by('-created_at').values(
+            'id', 'staff', 'product_quantity', 'created_at'
+        )[:20]
+
+        # Get adjustments history
+        adjustments = InventoryAdjustment.objects.filter(
+            product=product,
+            user=request.user,
+            vendor_branch_id=branch_name
+        ).order_by('-date').values(
+            'id', 'adjustment_quantity', 'adjustment_type', 'notes', 'date', 'created_at'
+        )[:20]
+
+        # Get purchase history from Purchase_entry
+        purchases = []
+        purchase_entries = Purchase_entry.objects.filter(
+            user=request.user,
+            vendor_branch_id=branch_name
+        ).select_related('vendor').order_by('-uploaded_at')
+
+        for entry in purchase_entries:
+            if entry.products:
+                for prod in entry.products:
+                    if str(prod.get('product_id')) == str(product.id) or str(prod.get('id')) == str(product.id):
+                        purchases.append({
+                            'id': str(entry.id),
+                            'supplier': entry.vendor.vendor_name if entry.vendor else '-',
+                            'quantity': prod.get('quantity', 0),
+                            'cost': prod.get('cost', 0),
+                            'date': str(entry.uploaded_at)
+                        })
+                        break
+
+        return Response({
+            "status": True,
+            "data": {
+                "product": {
+                    "id": str(product.id),
+                    "product_id": product.product_id,
+                    "product_name": product.product_name,
+                    "stocks_in_hand": product.stocks_in_hand
+                },
+                "purchases": purchases[:10],
+                "utilizations": list(utilizations),
+                "adjustments": list(adjustments)
+            }
+        }, status=status.HTTP_200_OK)
+
+
+class InventoryAdjustmentsView(APIView):
+    """
+    GET/POST /api/swalook/inventory/adjustments/
+    List and create inventory adjustments (shrinkage log)
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = InventoryAdjustmentSerializer
+
+    def get(self, request):
+        branch_name = request.query_params.get('branch_name')
+        limit = int(request.query_params.get('limit', 10))
+        
+        if not branch_name:
+            return Response({
+                "status": False,
+                "message": "branch_name is required"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        adjustments = InventoryAdjustment.objects.filter(
+            user=request.user,
+            vendor_branch_id=branch_name
+        ).select_related('product').order_by('-date', '-created_at')[:limit]
+
+        serializer = self.serializer_class(adjustments, many=True)
+
+        return Response({
+            "status": True,
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)
+
+    @transaction.atomic
+    def post(self, request):
+        branch_name = request.query_params.get('branch_name')
+        
+        if not branch_name:
+            return Response({
+                "status": False,
+                "message": "branch_name is required"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = self.serializer_class(
+            data=request.data,
+            context={'request': request, 'branch_id': branch_name}
+        )
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "status": True,
+                "message": "Adjustment created successfully",
+                "data": serializer.data
+            }, status=status.HTTP_201_CREATED)
+
+        return Response({
+            "status": False,
+            "errors": serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+class TopSuppliersView(APIView):
+    """
+    GET /api/swalook/analytics/inventory/suppliers/
+    Returns top suppliers by purchase volume
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        branch_name = request.query_params.get('branch_name')
+        limit = int(request.query_params.get('limit', 5))
+        
+        if not branch_name:
+            return Response({
+                "status": False,
+                "message": "branch_name is required"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Aggregate purchase amounts by supplier
+        supplier_totals = defaultdict(float)
+        
+        purchases = Purchase_entry.objects.filter(
+            user=request.user,
+            vendor_branch_id=branch_name
+        ).select_related('vendor')
+
+        for entry in purchases:
+            if entry.vendor and entry.products:
+                total_value = 0
+                for prod in entry.products:
+                    qty = float(prod.get('quantity', 0))
+                    cost = float(prod.get('cost', 0))
+                    total_value += qty * cost
+                
+                supplier_name = entry.vendor.vendor_name
+                supplier_totals[supplier_name] += total_value
+
+        # Sort by value and get top suppliers
+        sorted_suppliers = sorted(
+            supplier_totals.items(),
+            key=lambda x: x[1],
+            reverse=True
+        )[:limit]
+
+        top_suppliers = [
+            {"name": name, "total_value": round(value, 2)}
+            for name, value in sorted_suppliers
+        ]
+
+        return Response({
+            "status": True,
+            "data": top_suppliers
+        }, status=status.HTTP_200_OK)
