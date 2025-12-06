@@ -5387,14 +5387,16 @@ class InventoryAnalyticsSummaryView(APIView):
 
         total_skus = products.count()
         
-        # Calculate inventory value (stocks * sell price)
+        # Calculate inventory value (stocks * cost price for accurate valuation)
         inventory_value = 0.0
         low_stock_count = 0
         out_of_stock_count = 0
         
         for product in products:
-            if product.stocks_in_hand and product.product_price:
-                inventory_value += float(product.stocks_in_hand * product.product_price)
+            # Use cost_price if available, otherwise fall back to product_price
+            unit_cost = product.cost_price if product.cost_price else product.product_price
+            if product.stocks_in_hand and unit_cost:
+                inventory_value += float(product.stocks_in_hand * unit_cost)
             
             if product.stocks_in_hand == 0:
                 out_of_stock_count += 1
@@ -5565,17 +5567,19 @@ class InventoryValueAnalyticsView(APIView):
             vendor_branch_id=branch_name
         ).select_related('category')
 
-        # Calculate value for each product
+        # Calculate value for each product (using cost_price for accurate valuation)
         product_values = []
         total_value = 0.0
         
         for product in products:
-            value = float(product.stocks_in_hand * product.product_price) if product.stocks_in_hand and product.product_price else 0
+            # Use cost_price if available, otherwise fall back to product_price
+            unit_cost = float(product.cost_price) if product.cost_price else (float(product.product_price) if product.product_price else 0)
+            value = float(product.stocks_in_hand) * unit_cost if product.stocks_in_hand else 0
             total_value += value
             product_values.append({
                 "id": str(product.id),
                 "product_name": product.product_name,
-                "value": value,
+                "value": round(value, 2),
                 "stocks_in_hand": product.stocks_in_hand
             })
 
@@ -5976,3 +5980,247 @@ class TopSuppliersView(APIView):
             "status": True,
             "data": top_suppliers
         }, status=status.HTTP_200_OK)
+
+
+class ReorderAPIView(APIView):
+    """
+    POST /api/swalook/inventory/reorder/
+    Creates a prefilled Purchase Order draft for reordering inventory
+    
+    Request body:
+    {
+        "product_id": "uuid-of-product",
+        "quantity": 10  // optional, defaults to reorder_threshold
+    }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        branch_name = request.query_params.get('branch_name')
+        product_id = request.data.get('product_id')
+        quantity = request.data.get('quantity')
+        
+        if not branch_name:
+            return Response({
+                "status": False,
+                "message": "branch_name is required"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        if not product_id:
+            return Response({
+                "status": False,
+                "message": "product_id is required"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            product = VendorInventoryProduct.objects.get(
+                id=product_id,
+                user=request.user,
+                vendor_branch_id=branch_name
+            )
+        except VendorInventoryProduct.DoesNotExist:
+            return Response({
+                "status": False,
+                "message": "Product not found"
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        # Use provided quantity or calculate based on reorder threshold
+        reorder_qty = quantity if quantity else max(
+            (product.reorder_threshold or 10) - product.stocks_in_hand, 
+            product.reorder_threshold or 10
+        )
+
+        # Find last supplier for this product
+        last_supplier = None
+        last_cost = product.cost_price or product.product_price
+        
+        purchases = Purchase_entry.objects.filter(
+            user=request.user,
+            vendor_branch_id=branch_name
+        ).select_related('vendor').order_by('-uploaded_at')
+
+        for entry in purchases:
+            if entry.products:
+                for prod in entry.products:
+                    prod_id = str(prod.get('product_id') or prod.get('id', ''))
+                    if prod_id == str(product.id):
+                        last_supplier = {
+                            'id': str(entry.vendor.id) if entry.vendor else None,
+                            'name': entry.vendor.vendor_name if entry.vendor else '-',
+                            'address': entry.vendor.vendor_address if entry.vendor else None,
+                            'mobile_no': entry.vendor.vendor_mobile_no if entry.vendor else None,
+                            'email': entry.vendor.vendor_email if entry.vendor else None
+                        }
+                        last_cost = prod.get('cost') or last_cost
+                        break
+                if last_supplier:
+                    break
+
+        # Build prefilled PO draft
+        po_draft = {
+            "vendor": last_supplier,
+            "products": [{
+                "product_id": str(product.id),
+                "product_code": product.product_id,
+                "product_name": product.product_name,
+                "category": product.category.product_category if product.category else None,
+                "quantity": reorder_qty,
+                "cost": float(last_cost) if last_cost else 0,
+                "unit": product.unit,
+                "total": float(reorder_qty * float(last_cost)) if last_cost else 0
+            }],
+            "notes": f"Reorder for low stock item: {product.product_name}",
+            "current_stock": product.stocks_in_hand,
+            "reorder_threshold": product.reorder_threshold or 10
+        }
+
+        return Response({
+            "status": True,
+            "message": "Reorder draft created successfully",
+            "data": po_draft
+        }, status=status.HTTP_200_OK)
+
+
+class InventoryExportCSVView(APIView):
+    """
+    GET /api/swalook/inventory/items/export/
+    Exports inventory items as CSV file
+    Supports same filters as InventoryItemsListView: search, category, stock_status
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        import csv
+        from django.http import HttpResponse
+        
+        branch_name = request.query_params.get('branch_name')
+        search = request.query_params.get('search', '')
+        category = request.query_params.get('category')
+        stock_status = request.query_params.get('stock_status')
+        
+        if not branch_name:
+            return Response({
+                "status": False,
+                "message": "branch_name is required"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Base queryset
+        products = VendorInventoryProduct.objects.filter(
+            user=request.user,
+            vendor_branch_id=branch_name
+        ).select_related('category')
+
+        # Search filter
+        if search:
+            products = products.filter(
+                models.Q(product_name__icontains=search) |
+                models.Q(product_id__icontains=search)
+            )
+
+        # Category filter
+        if category:
+            products = products.filter(category_id=category)
+
+        # Stock status filter
+        if stock_status == 'out':
+            products = products.filter(stocks_in_hand=0)
+        elif stock_status == 'low':
+            products = products.filter(
+                stocks_in_hand__gt=0,
+                stocks_in_hand__lte=models.F('reorder_threshold')
+            )
+        elif stock_status == 'healthy':
+            products = products.filter(
+                stocks_in_hand__gt=models.F('reorder_threshold')
+            )
+
+        products = products.order_by('product_name')
+
+        # Calculate DOS data
+        today = date.today()
+        thirty_days_ago = today - timedelta(days=30)
+        
+        invoices = VendorInvoice.objects.filter(
+            vendor_name=request.user,
+            vendor_branch_id=branch_name,
+            date__gte=thirty_days_ago
+        ).values_list('json_data', flat=True)
+
+        product_sales = defaultdict(int)
+        for invoice_json in invoices:
+            if invoice_json:
+                for item in invoice_json:
+                    pid = item.get('id')
+                    qty = int(item.get('quantity', 0))
+                    if pid:
+                        product_sales[pid] += qty
+
+        # Get supplier data
+        supplier_data = {}
+        purchases = Purchase_entry.objects.filter(
+            user=request.user,
+            vendor_branch_id=branch_name
+        ).select_related('vendor').order_by('-uploaded_at')
+
+        for entry in purchases:
+            if entry.products:
+                for prod in entry.products:
+                    prod_id = str(prod.get('product_id') or prod.get('id', ''))
+                    if prod_id and prod_id not in supplier_data:
+                        supplier_data[prod_id] = {
+                            'name': entry.vendor.vendor_name if entry.vendor else '-',
+                            'date': str(entry.uploaded_at) if entry.uploaded_at else None
+                        }
+
+        # Create CSV response
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="inventory_export.csv"'
+
+        writer = csv.writer(response)
+        
+        # Write headers
+        writer.writerow([
+            'SKU', 'Item Name', 'Category', 'Quantity', 'Unit', 
+            'Cost Price', 'Sell Price', 'Value (Cost)', 'Value (Sell)',
+            'Days of Stock', 'Reorder Threshold', 'Supplier', 
+            'Last Purchase', 'Expiry Date'
+        ])
+
+        # Write data rows
+        for product in products:
+            # Calculate DOS
+            avg_daily_sales = product_sales.get(str(product.id), 0) / 30
+            if product.stocks_in_hand == 0:
+                dos = 'Out'
+            elif avg_daily_sales > 0:
+                dos = int(product.stocks_in_hand / avg_daily_sales)
+            else:
+                dos = '-'
+
+            # Calculate values
+            cost_price = float(product.cost_price) if product.cost_price else 0
+            sell_price = float(product.product_price) if product.product_price else 0
+            value_cost = product.stocks_in_hand * cost_price
+            value_sell = product.stocks_in_hand * sell_price
+
+            # Get supplier info
+            sup_info = supplier_data.get(str(product.id), {})
+
+            writer.writerow([
+                product.product_id,
+                product.product_name,
+                product.category.product_category if product.category else '-',
+                product.stocks_in_hand,
+                product.unit,
+                cost_price,
+                sell_price,
+                round(value_cost, 2),
+                round(value_sell, 2),
+                dos,
+                product.reorder_threshold or 10,
+                sup_info.get('name', '-'),
+                sup_info.get('date', '-'),
+                product.expiry_date
+            ])
+
+        return response

@@ -1598,9 +1598,10 @@ class InventoryItemDetailSerializer(serializers.ModelSerializer):
         ]
     
     def get_value(self, obj):
-        """Calculate inventory value = stocks * sell price"""
-        if obj.stocks_in_hand and obj.product_price:
-            return float(obj.stocks_in_hand * obj.product_price)
+        """Calculate inventory value = stocks * cost price (or sell price as fallback)"""
+        unit_cost = obj.cost_price if obj.cost_price else obj.product_price
+        if obj.stocks_in_hand and unit_cost:
+            return float(obj.stocks_in_hand * unit_cost)
         return 0.0
     
     def get_days_of_stock(self, obj):

@@ -160,24 +160,83 @@ This backend serves as the core engine for the Swalook CRM mobile and web applic
 
 ## Part 1: Deployment Steps
 
-### 1. Pull & Apply Migrations
+### Step 1: SSH into Server
 ```bash
+ssh user@your-server-ip
 cd /path/to/aws_swalook
-git pull origin main
+```
 
-# Create and apply migrations
+### Step 2: Pull Latest Changes
+```bash
+git pull origin main
+```
+
+### Step 3: Activate Virtual Environment
+```bash
+source venv/bin/activate  # or: source env/bin/activate
+```
+
+### Step 4: Install Dependencies (if any new)
+```bash
+pip install -r requirements.txt
+```
+
+### Step 5: Run Migrations
+```bash
 python manage.py makemigrations _api_
 python manage.py migrate
-
-# Restart server
-sudo supervisorctl restart swalook  # or: sudo systemctl restart gunicorn
 ```
 
-### 2. Verify Deployment
+### Step 6: Collect Static Files (if needed)
 ```bash
+python manage.py collectstatic --noinput
+```
+
+### Step 7: Restart the Server
+```bash
+# If using Supervisor:
+sudo supervisorctl restart swalook
+
+# If using systemd:
+sudo systemctl restart gunicorn
+
+# If using PM2:
+pm2 restart swalook
+```
+
+### Step 8: Verify Deployment
+
+Test the APIs are working:
+
+```bash
+# 1. Test Summary API
 curl -H "Authorization: Token <TOKEN>" \
   "https://api.swalook.com/api/swalook/analytics/inventory/summary/?branch_name=<BRANCH_ID>"
+
+# 2. Test Stock Health API
+curl -H "Authorization: Token <TOKEN>" \
+  "https://api.swalook.com/api/swalook/analytics/inventory/stock-health/?branch_name=<BRANCH_ID>"
+
+# 3. Test Reorder API (NEW)
+curl -X POST -H "Authorization: Token <TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"product_id": "<PRODUCT_UUID>"}' \
+  "https://api.swalook.com/api/swalook/inventory/reorder/?branch_name=<BRANCH_ID>"
+
+# 4. Test Export CSV (NEW)
+curl -H "Authorization: Token <TOKEN>" \
+  "https://api.swalook.com/api/swalook/inventory/items/export/?branch_name=<BRANCH_ID>" \
+  -o test_export.csv
 ```
+
+### Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| 500 Error | Check logs: `tail -f /var/log/swalook/error.log` |
+| Import Error | Run `pip install -r requirements.txt` |
+| Migration Error | Try `python manage.py migrate --fake-initial` |
+| Permission Error | Check file ownership: `chown -R www-data:www-data .` |
 
 ---
 
@@ -345,6 +404,59 @@ interface TopSuppliers {
 }
 ```
 
+#### 8. Reorder API (Create PO Draft)
+**POST** `/api/swalook/inventory/reorder/?branch_name={branchId}`
+```typescript
+// Request
+interface ReorderRequest {
+  product_id: string;  // UUID of product
+  quantity?: number;   // Optional, defaults to reorder threshold
+}
+
+// Response
+interface ReorderResponse {
+  status: boolean;
+  message: string;
+  data: {
+    vendor: {
+      id: string | null;
+      name: string;
+      address: string | null;
+      mobile_no: string | null;
+      email: string | null;
+    } | null;
+    products: Array<{
+      product_id: string;
+      product_code: string;
+      product_name: string;
+      category: string | null;
+      quantity: number;
+      cost: number;
+      unit: string;
+      total: number;
+    }>;
+    notes: string;
+    current_stock: number;
+    reorder_threshold: number;
+  }
+}
+```
+
+#### 9. Export CSV
+**GET** `/api/swalook/inventory/items/export/?branch_name={branchId}`
+
+Query params: `search`, `category`, `stock_status` (same as items list)
+
+Returns: CSV file with columns:
+- SKU, Item Name, Category, Quantity, Unit
+- Cost Price, Sell Price, Value (Cost), Value (Sell)
+- Days of Stock, Reorder Threshold, Supplier, Last Purchase, Expiry Date
+
+---
+
+> [!NOTE]
+> **Inventory Value Calculation**: All inventory value calculations use `cost_price` when available, falling back to `product_price` (sell price) if cost is not set. This provides accurate cost-based inventory valuation.
+
 ---
 
 ## Frontend Implementation Checklist
@@ -358,4 +470,5 @@ interface TopSuppliers {
 - [ ] Implement Shrinkage Log list
 - [ ] Implement Stock Adjustment modal (POST)
 - [ ] Implement Top Suppliers widget
-- [ ] Add "Reorder" button that links to Purchase Order creation
+- [ ] Add "Reorder" button using Reorder API
+- [ ] Add "Export CSV" button using Export endpoint
