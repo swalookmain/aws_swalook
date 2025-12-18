@@ -991,14 +991,15 @@ import datetime as dt
 
 class VendorCustomerLoyalityProfileSerializer(serializers.ModelSerializer):
     coupon = serializers.ListField(
-        child=serializers.DictField(child=serializers.UUIDField()),
-        required=False  
+        child=serializers.DictField(),  
+        required=False
     )
     memberships = serializers.ListField(
-        child=serializers.DictField(child=serializers.UUIDField()),
-        required=False  
+        child=serializers.DictField(),  
+        required=False,
+        allow_null=True
     )
-    
+
 
     class Meta:
         model = VendorCustomers
@@ -1006,46 +1007,59 @@ class VendorCustomerLoyalityProfileSerializer(serializers.ModelSerializer):
         extra_kwargs = {'id': {'read_only': True}}
 
 
+    def to_internal_value(self, data):
+        
+        if 'memberships' in data and data['memberships'] == "None":
+            data['memberships'] = []
+        if 'coupon' in data and data['coupon'] == "None":
+            data['coupon'] = []
+        return super().to_internal_value(data)
+
+
 
     def create(self, validated_data):
-       
+
         from datetime import date, timedelta
         # coupon_data_list = validated_data.pop('coupon', [])
         # if coupon_data_list == []:
         #     validated_data['coupon'] =  ""
-            
-     
-       
-        
-   
+
+
+
+
+
         # coupon_ids = [item.get('coupon_name') for item in coupon_data_list if item.get('coupon_name')]
         # # membership_id = validated_data.pop('memberships')
         # # validated_data['membership_id'] = membership_id
-        validated_data['memberships'] = ""
-        
-       
-        user = self.context['request'].user  
+        # validated_data['memberships'] = ""
+        if validated_data.get('memberships') in ["None", "none", "NULL", "null", "", None]:
+            validated_data['memberships'] = []
+        if validated_data.get('coupon') in ["None", "none", "NULL", "null", "", None]:
+            validated_data['coupon'] = []
+
+
+        user = self.context['request'].user
         branch_id = self.context['request'].query_params.get('branch_name')
-        
+
         today = date.today()
-        expiry_date = today + timedelta(days=30)  
-        loyalty_profile_obj = None  
-        
-        
-        
+        expiry_date = today + timedelta(days=30)
+        loyalty_profile_obj = None
+
+
+
         validated_data['vendor_branch_id'] = branch_id
-         
-        
+
+
         validated_data['user'] = user
 
-    
-        
-            
+
+
+
         customer = VendorCustomers.objects.create(**validated_data)
-        
+
 
         # customer_coupons_to_create = []
-    
+
         # if coupon_ids:
         #     for coupon_id in coupon_ids:
         #         customer_coupons_to_create.append(CustomerCoupon(
@@ -1056,19 +1070,19 @@ class VendorCustomerLoyalityProfileSerializer(serializers.ModelSerializer):
         #             issue_date=today,
         #             expiry_date=expiry_date if loyalty_profile_obj else None
         #         ))
-        
+
         # if customer_coupons_to_create:
         #     CustomerCoupon.objects.bulk_create(customer_coupons_to_create)
         #     customer.coupon.add(*customer_coupons_to_create)
         #     customer.save()
-    
-    
 
-    
-        
-    
-       
-    
+
+
+
+
+
+
+
         return customer
 
 class VendorLoyalityTypeSerializer_get(serializers.ModelSerializer):
@@ -1158,56 +1172,81 @@ class Vendor_Type_Loyality_Update_Serializer(serializers.Serializer):
 
 
 class loyality_customer_update_serializer(serializers.Serializer):
-    name = serializers.CharField(required=False)
-    mobile_no = serializers.CharField(required=False)
-    email = serializers.CharField(required=False)
-    d_o_a = serializers.CharField(required=False)
-    d_o_b = serializers.CharField(required=False)
-    membership = serializers.ListField(
-        child=serializers.DictField(child=serializers.UUIDField()), 
-        required=False
-    )
-    coupon = serializers.ListField(
-        child=serializers.DictField(child=serializers.UUIDField()), 
-        required=False
-    )
-    expiry_date = serializers.DateField(required=False)
+    name = serializers.CharField(required=False, allow_blank=True)
+    mobile_no = serializers.CharField(required=False, allow_blank=True)
+    email = serializers.CharField(required=False, allow_blank=True)
+    d_o_a = serializers.CharField(required=False, allow_blank=True)
+    d_o_b = serializers.CharField(required=False, allow_blank=True)
+    memberships = serializers.JSONField(required=False, allow_null=True)
+    coupon = serializers.JSONField(required=False, allow_null=True)
+    expiry_date = serializers.DateField(required=False, allow_null=True)
+
+    def to_internal_value(self, data):
+        
+        if 'memberships' in data and data['memberships'] in ["None", "none", "null", "", None]:
+            data['memberships'] = []
+        if 'coupon' in data and data['coupon'] in ["None", "none", "null", "", None]:
+            data['coupon'] = []
+
+        
+        if 'memberships' in data and isinstance(data['memberships'], dict):
+            data['memberships'] = [data['memberships']]
+        if 'coupon' in data and isinstance(data['coupon'], dict):
+            data['coupon'] = [data['coupon']]
+
+        return super().to_internal_value(data)
 
     def update(self, instance, validated_data):
-   
-     
-        instance.name = validated_data.get('name', instance.name)
-        instance.mobile_no = validated_data.get('mobile_no', instance.mobile_no)
-        instance.email = validated_data.get('email', instance.email)
-        instance.d_o_a = validated_data.get('d_o_a', instance.d_o_a)
-        instance.d_o_b = validated_data.get('d_o_b', instance.d_o_b)
         
+        for field in ['name', 'mobile_no', 'email', 'd_o_a', 'd_o_b']:
+            if field in validated_data:
+                val = validated_data.get(field)
+                if val is not None and val != "":
+                    setattr(instance, field, val)
 
-        coupon_data_list = validated_data.get('coupon', None)
+        
+        if 'memberships' in validated_data:
+            mem = validated_data.get('memberships')
+            
+            if mem and not (isinstance(mem, list) and len(mem) == 1 and mem[0] == {}):
+                instance.memberships = json.dumps(mem)
+
+        
+        coupon_list = None
+        if 'coupon' in validated_data:
+            coupon_list = validated_data.get('coupon')
+            if coupon_list and not (isinstance(coupon_list, list) and len(coupon_list) == 1 and coupon_list[0] == {}):
+                instance.coupon = json.dumps(coupon_list)
+
         expiry_date = validated_data.get('expiry_date', None)
 
-        if coupon_data_list:  
+        
+        if coupon_list:
             customer_coupon_ids = []
-            user_id = self.context.get('user_id')  
+            user_id = self.context.get('user_id')
             vendor_branch_id = self.context.get('vendor_branch_id')
 
-            for coupon_data in coupon_data_list:
+            for coupon_data in coupon_list:
                 coupon_name_id = coupon_data.get('coupon_name')
+                if coupon_name_id:
+                    try:
+                        uuid.UUID(str(coupon_name_id))
+                        customer_coupon = CustomerCoupon.objects.create(
+                            user_id=user_id,
+                            vendor_branch_id=vendor_branch_id,
+                            customer_id=str(instance.id),
+                            coupon_name_id=coupon_name_id,
+                            expiry_date=expiry_date or instance.d_o_b
+                        )
+                        customer_coupon_ids.append(customer_coupon.id)
+                    except (ValueError, AttributeError):
+                        continue
 
-                customer_coupon = CustomerCoupon.objects.create(
-                    user_id=user_id,
-                    vendor_branch_id=vendor_branch_id,
-                    customer_id=str(instance.id),
-                    coupon_name_id=coupon_name_id,
-                    expiry_date=expiry_date or instance.d_o_b  
-                )
-                customer_coupon_ids.append(customer_coupon.id)
-
-            instance.coupon.set(customer_coupon_ids)
+            if customer_coupon_ids:
+                instance.coupon.set(customer_coupon_ids)
 
         instance.save()
         return instance
-
 
 
 class update_minuimum_amount_serializer(serializers.Serializer):
