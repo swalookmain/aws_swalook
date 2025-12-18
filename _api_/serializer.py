@@ -1156,6 +1156,7 @@ class Vendor_Type_Loyality_Update_Serializer(serializers.Serializer):
             clp.price = charge
             clp.user = self.context.get('request').user
             clp.vendor_branch_id = self.context.get('branch_id')
+            clp.active = active
             clp.save()
             return "ok"
         else:
@@ -1168,6 +1169,7 @@ class Vendor_Type_Loyality_Update_Serializer(serializers.Serializer):
             clp.price = charge
             clp.user = self.context.get('request').user
             clp.vendor_branch_id = self.context.get('branch_id')
+            clp.active = active
             clp.save()
             return "ok"
 
