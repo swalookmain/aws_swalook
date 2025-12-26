@@ -5489,11 +5489,12 @@ class InventoryStockHealthView(APIView):
                 low_stock_items.append({
                     "id": str(product.id),
                     "product_id": product.product_id,
-                    "product_name": product.product_name,
-                    "stocks_in_hand": 0,
+                    "name": product.product_name,
+                    "qty": 0,
                     "days_of_stock": "Out",
                     "reorder_threshold": reorder_threshold,
-                    "category": product.category.product_category if product.category else None
+                    "category": product.category.product_category if product.category else None,
+                    "color": "bg-red-600"
                 })
             elif product.stocks_in_hand <= reorder_threshold:
                 low_count += 1
@@ -5504,17 +5505,18 @@ class InventoryStockHealthView(APIView):
                 low_stock_items.append({
                     "id": str(product.id),
                     "product_id": product.product_id,
-                    "product_name": product.product_name,
-                    "stocks_in_hand": product.stocks_in_hand,
+                    "name": product.product_name,
+                    "qty": product.stocks_in_hand,
                     "days_of_stock": dos,
                     "reorder_threshold": reorder_threshold,
-                    "category": product.category.product_category if product.category else None
+                    "category": product.category.product_category if product.category else None,
+                    "color": "bg-orange-500"
                 })
             else:
                 healthy_count += 1
 
         # Sort low stock items by stock level (ascending) and limit to top 4
-        low_stock_items.sort(key=lambda x: x['stocks_in_hand'])
+        low_stock_items.sort(key=lambda x: x['qty'])
         top_low_stock = low_stock_items[:4]
 
         # Calculate avg DOS for healthy items
@@ -5539,9 +5541,9 @@ class InventoryStockHealthView(APIView):
                     "low_percent": round((low_count / total_count * 100), 0) if total_count > 0 else 0,
                     "out_count": out_count,
                     "out_percent": round((out_count / total_count * 100), 0) if total_count > 0 else 0,
-                    "avg_days_of_stock": avg_dos
+                    "avgDays": avg_dos
                 },
-                "low_stock_items": top_low_stock
+                "lowStockItems": top_low_stock
             }
         }, status=status.HTTP_200_OK)
 
@@ -5578,9 +5580,9 @@ class InventoryValueAnalyticsView(APIView):
             total_value += value
             product_values.append({
                 "id": str(product.id),
-                "product_name": product.product_name,
+                "name": product.product_name,
                 "value": round(value, 2),
-                "stocks_in_hand": product.stocks_in_hand
+                "qty": product.stocks_in_hand
             })
 
         # Sort by value descending
@@ -5636,7 +5638,7 @@ class InventoryValueAnalyticsView(APIView):
                         "sku_count": len(c_items)
                     }
                 },
-                "top_value_skus": top_value_skus
+                "topSkus": top_value_skus
             }
         }, status=status.HTTP_200_OK)
 
