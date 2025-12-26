@@ -1454,6 +1454,12 @@ class VendorInventoryUtilization(serializers.ModelSerializer):
         
         return super().create(validated_data)
 
+     def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation['category'] = instance.category.product_category if instance.category else None
+        representation['product'] = instance.product.product_name if instance.product else None
+        return representation
+
 
 
 
