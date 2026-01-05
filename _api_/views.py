@@ -5585,35 +5585,46 @@ class InventoryValueAnalyticsView(APIView):
                 "qty": product.stocks_in_hand
             })
 
-        # Sort by value descending
+        # Sort by value descending (value = price * quantity)
         product_values.sort(key=lambda x: x['value'], reverse=True)
 
-        # ABC segmentation (A=70%, B=20%, C=10%)
+        # New segmentation: Top 80% products shown individually, rest in "Others"
+        total_count = len(product_values)
+        
+        # Calculate how many products make up the top 80% by value
+        top_products = []
+        others_value = 0
+        others_qty = 0
         cumulative_value = 0
-        a_items = []
-        b_items = []
-        c_items = []
         
         for item in product_values:
             cumulative_value += item['value']
             cumulative_percent = (cumulative_value / total_value * 100) if total_value > 0 else 0
             
-            if cumulative_percent <= 70:
-                a_items.append(item)
-            elif cumulative_percent <= 90:
-                b_items.append(item)
+            if cumulative_percent <= 80:
+                # Include this product individually in the top segment
+                top_products.append({
+                    "name": item['name'],
+                    "value": item['value'],
+                    "qty": item['qty']
+                })
             else:
-                c_items.append(item)
+                # Aggregate into "Others"
+                others_value += item['value']
+                others_qty += item['qty'] if item['qty'] else 0
 
-        a_value = sum(i['value'] for i in a_items)
-        b_value = sum(i['value'] for i in b_items)
-        c_value = sum(i['value'] for i in c_items)
+        # Add "Others" category if there are remaining products
+        if others_value > 0:
+            top_products.append({
+                "name": "Others",
+                "value": round(others_value, 2),
+                "qty": others_qty
+            })
 
         # Average cost per SKU
-        total_count = len(product_values)
         avg_cost = round(total_value / total_count, 2) if total_count > 0 else 0
 
-        # Top 3 value SKUs
+        # For backward compatibility, also return top 3 SKUs
         top_value_skus = product_values[:3]
 
         return Response({
@@ -5621,23 +5632,7 @@ class InventoryValueAnalyticsView(APIView):
             "data": {
                 "total_value": round(total_value, 2),
                 "avg_cost_per_sku": avg_cost,
-                "abc_segmentation": {
-                    "A": {
-                        "percent": round((a_value / total_value * 100), 0) if total_value > 0 else 0,
-                        "value": round(a_value, 2),
-                        "sku_count": len(a_items)
-                    },
-                    "B": {
-                        "percent": round((b_value / total_value * 100), 0) if total_value > 0 else 0,
-                        "value": round(b_value, 2),
-                        "sku_count": len(b_items)
-                    },
-                    "C": {
-                        "percent": round((c_value / total_value * 100), 0) if total_value > 0 else 0,
-                        "value": round(c_value, 2),
-                        "sku_count": len(c_items)
-                    }
-                },
+                "segmentation": top_products,
                 "topSkus": top_value_skus
             }
         }, status=status.HTTP_200_OK)
