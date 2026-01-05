@@ -1495,6 +1495,12 @@ class VendorInventoryUtilization(serializers.ModelSerializer):
         
         return super().create(validated_data)
 
+     def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        representation['category'] = instance.category.product_category if instance.category else None
+        representation['product'] = instance.product.product_name if instance.product else None
+        return representation
+
 
 
 
@@ -1591,3 +1597,79 @@ class staff_attendance_serializer_update_mobile(serializers.Serializer):
             return "location not matched"
 
 
+# ========== Inventory Analytics Serializers ==========
+
+class InventoryAdjustmentSerializer(serializers.ModelSerializer):
+    """Serializer for inventory adjustments (shrinkage log)"""
+    product_name = serializers.CharField(source='product.product_name', read_only=True)
+    product_id_code = serializers.CharField(source='product.product_id', read_only=True)
+    
+    class Meta:
+        model = InventoryAdjustment
+        fields = [
+            'id', 'product', 'product_name', 'product_id_code',
+            'adjustment_quantity', 'adjustment_type', 'notes',
+            'date', 'created_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'product_name', 'product_id_code']
+
+    def create(self, validated_data):
+        # Set user and branch from context
+        validated_data['user'] = self.context.get('request').user
+        validated_data['vendor_branch_id'] = self.context.get('branch_id')
+        
+        # Update product stock
+        product = validated_data['product']
+        product.stocks_in_hand += validated_data['adjustment_quantity']  # Can be negative
+        product.save()
+        
+        return super().create(validated_data)
+
+
+class InventoryItemDetailSerializer(serializers.ModelSerializer):
+    """Enhanced serializer for inventory items with computed fields"""
+    category_details = VendorProductCategorySerializer(read_only=True, source='category')
+    value = serializers.SerializerMethodField()
+    days_of_stock = serializers.SerializerMethodField()
+    supplier = serializers.SerializerMethodField()
+    last_purchase_date = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = VendorInventoryProduct
+        fields = [
+            'id', 'product_id', 'product_name', 'product_description',
+            'category', 'category_details', 'stocks_in_hand',
+            'cost_price', 'product_price', 'value',
+            'days_of_stock', 'reorder_threshold', 'unit',
+            'supplier', 'last_purchase_date', 'expiry_date', 'date'
+        ]
+    
+    def get_value(self, obj):
+        """Calculate inventory value = stocks * cost price (or sell price as fallback)"""
+        unit_cost = obj.cost_price if obj.cost_price else obj.product_price
+        if obj.stocks_in_hand and unit_cost:
+            return float(obj.stocks_in_hand * unit_cost)
+        return 0.0
+    
+    def get_days_of_stock(self, obj):
+        """Calculate days of stock based on recent sales velocity"""
+        # This is calculated at the view level and passed in context
+        dos_data = self.context.get('dos_data', {})
+        return dos_data.get(str(obj.id), '-')
+    
+    def get_supplier(self, obj):
+        """Get most recent supplier from Purchase_entry"""
+        supplier_data = self.context.get('supplier_data', {})
+        return supplier_data.get(str(obj.id), {}).get('name', '-')
+    
+    def get_last_purchase_date(self, obj):
+        """Get most recent purchase date"""
+        supplier_data = self.context.get('supplier_data', {})
+        return supplier_data.get(str(obj.id), {}).get('date', None)
+
+
+class InventoryItemHistorySerializer(serializers.Serializer):
+    """Serializer for item history including purchases, utilization, and adjustments"""
+    purchases = serializers.ListField(read_only=True)
+    utilizations = serializers.ListField(read_only=True)
+    adjustments = serializers.ListField(read_only=True)

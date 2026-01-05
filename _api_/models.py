@@ -495,10 +495,12 @@ class VendorInventoryProduct(models.Model):
     product_id = models.CharField(max_length=400)
     product_name = models.CharField(max_length=400)
     product_price = models.DecimalField(blank=True, null=True, max_digits=10, decimal_places=2)
+    cost_price = models.DecimalField(blank=True, null=True, max_digits=10, decimal_places=2)  # Purchase/cost price
     product_description = models.TextField()
     vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
     category = models.ForeignKey(VendorProductCategory, on_delete=models.SET_NULL, blank=True, null=True, db_index=True)
     stocks_in_hand = models.IntegerField(default=0)
+    reorder_threshold = models.IntegerField(default=10, null=True, blank=True)  # Low stock alert threshold
     
     unit = models.CharField(max_length=400)
     date = models.DateField()
@@ -525,6 +527,36 @@ class Utilization_Inventory(models.Model):
     created_at = models.DateField()
     product = models.ForeignKey(VendorInventoryProduct, on_delete=models.SET_NULL, null=True)
     category = models.ForeignKey(VendorProductCategory, on_delete=models.SET_NULL, blank=True, null=True, db_index=True)
+
+
+class InventoryAdjustment(models.Model):
+    """Track stock adjustments for shrinkage, damage, expiry, or corrections."""
+    ADJUSTMENT_TYPE_CHOICES = [
+        ('Damaged', 'Damaged'),
+        ('Expired', 'Expired'),
+        ('Lost', 'Lost'),
+        ('Correction', 'Correction'),
+        ('Other', 'Other'),
+    ]
+    
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, db_index=True)
+    vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
+    product = models.ForeignKey(VendorInventoryProduct, on_delete=models.CASCADE, related_name='adjustments')
+    adjustment_quantity = models.IntegerField()  # Negative for reductions, positive for additions
+    adjustment_type = models.CharField(max_length=50, choices=ADJUSTMENT_TYPE_CHOICES, default='Other')
+    notes = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    date = models.DateField()
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['user', 'vendor_branch', 'date']),
+        ]
+        ordering = ['-date', '-created_at']
+
+    def __str__(self) -> str:
+        return f"{self.product.product_name} - {self.adjustment_quantity} ({self.adjustment_type})"
 
 
 class VendorInventoryInvoice(models.Model):

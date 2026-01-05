@@ -21,4 +21,5 @@ admin.site.register(combo_services)
 
 admin.site.register(VendorInventoryProduct)
 admin.site.register(VendorCustomerLoyalityPoints)
+admin.site.register(InventoryAdjustment)
 
