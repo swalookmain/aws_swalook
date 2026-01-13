@@ -144,6 +144,12 @@ urlpatterns = [
     path('api/swalook/inventory/adjustments/', InventoryAdjustmentsView.as_view(), name='inventory-adjustments'),
     path('api/swalook/inventory/reorder/', ReorderAPIView.as_view(), name='inventory-reorder'),
     path('api/swalook/inventory/items/export/', InventoryExportCSVView.as_view(), name='inventory-export-csv'),
+    
+    # Service-Based Inventory Consumption APIs
+    path('api/swalook/inventory/service-usage/', ServiceProductUsageView.as_view(), name='service-product-usage'),
+    path('api/swalook/inventory/service-usage/bulk/', BulkServiceProductUsageView.as_view(), name='service-product-usage-bulk'),
+    path('api/swalook/inventory/consumption-tracker/', ProductConsumptionTrackerView.as_view(), name='consumption-tracker'),
+    path('api/swalook/inventory/consumption-log/', ServiceConsumptionLogView.as_view(), name='consumption-log'),
 
     
     re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}, name='media'),

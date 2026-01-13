@@ -6264,3 +6264,297 @@ class InventoryExportCSVView(APIView):
             ])
 
         return response
+
+
+# ============================================================================
+# Service-Based Inventory Consumption Views
+# ============================================================================
+
+class ServiceProductUsageView(APIView):
+    """
+    CRUD API for service-product consumption rules.
+    
+    GET: List rules for a service or all rules for branch
+    POST: Create new rule
+    PUT: Update existing rule
+    DELETE: Remove rule
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        branch_name = request.query_params.get('branch_name')
+        service_id = request.query_params.get('service_id')
+        product_id = request.query_params.get('product_id')
+        
+        if not branch_name:
+            return Response({
+                "status": False,
+                "message": "branch_name is required"
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        rules = ServiceProductUsage.objects.filter(
+            user=request.user,
+            vendor_branch_id=branch_name,
+            is_active=True
+        ).select_related('service', 'product')
+        
+        if service_id:
+            rules = rules.filter(service_id=service_id)
+        if product_id:
+            rules = rules.filter(product_id=product_id)
+        
+        serializer = ServiceProductUsageListSerializer(rules, many=True)
+        
+        return Response({
+            "status": True,
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)
+    
+    @transaction.atomic
+    def post(self, request):
+        branch_name = request.query_params.get('branch_name')
+        
+        if not branch_name:
+            return Response({
+                "status": False,
+                "message": "branch_name is required"
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        serializer = ServiceProductUsageSerializer(
+            data=request.data,
+            context={'request': request, 'branch_id': branch_name}
+        )
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "status": True,
+                "message": "Usage rule created successfully",
+                "data": serializer.data
+            }, status=status.HTTP_201_CREATED)
+        
+        return Response({
+            "status": False,
+            "errors": serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    @transaction.atomic
+    def put(self, request):
+        branch_name = request.query_params.get('branch_name')
+        rule_id = request.query_params.get('id')
+        
+        if not branch_name or not rule_id:
+            return Response({
+                "status": False,
+                "message": "branch_name and id are required"
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            rule = ServiceProductUsage.objects.get(
+                id=rule_id,
+                user=request.user,
+                vendor_branch_id=branch_name
+            )
+        except ServiceProductUsage.DoesNotExist:
+            return Response({
+                "status": False,
+                "message": "Rule not found"
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        serializer = ServiceProductUsageSerializer(
+            rule,
+            data=request.data,
+            partial=True,
+            context={'request': request, 'branch_id': branch_name}
+        )
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "status": True,
+                "message": "Usage rule updated successfully",
+                "data": serializer.data
+            }, status=status.HTTP_200_OK)
+        
+        return Response({
+            "status": False,
+            "errors": serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    def delete(self, request):
+        branch_name = request.query_params.get('branch_name')
+        rule_id = request.query_params.get('id')
+        
+        if not branch_name or not rule_id:
+            return Response({
+                "status": False,
+                "message": "branch_name and id are required"
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            rule = ServiceProductUsage.objects.get(
+                id=rule_id,
+                user=request.user,
+                vendor_branch_id=branch_name
+            )
+            rule.is_active = False
+            rule.save()
+            
+            return Response({
+                "status": True,
+                "message": "Usage rule deleted successfully"
+            }, status=status.HTTP_200_OK)
+        except ServiceProductUsage.DoesNotExist:
+            return Response({
+                "status": False,
+                "message": "Rule not found"
+            }, status=status.HTTP_404_NOT_FOUND)
+
+
+class ProductConsumptionTrackerView(APIView):
+    """
+    GET /api/swalook/inventory/consumption-tracker/
+    Returns current consumption tracker status for all products
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        branch_name = request.query_params.get('branch_name')
+        product_id = request.query_params.get('product_id')
+        
+        if not branch_name:
+            return Response({
+                "status": False,
+                "message": "branch_name is required"
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        trackers = ProductConsumptionTracker.objects.filter(
+            user=request.user,
+            vendor_branch_id=branch_name
+        ).select_related('product')
+        
+        if product_id:
+            trackers = trackers.filter(product_id=product_id)
+        
+        serializer = ProductConsumptionTrackerSerializer(trackers, many=True)
+        
+        return Response({
+            "status": True,
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)
+
+
+class ServiceConsumptionLogView(APIView):
+    """
+    GET /api/swalook/inventory/consumption-log/
+    Returns consumption log with optional filters
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        branch_name = request.query_params.get('branch_name')
+        limit = int(request.query_params.get('limit', 50))
+        invoice_id = request.query_params.get('invoice_id')
+        product_id = request.query_params.get('product_id')
+        
+        if not branch_name:
+            return Response({
+                "status": False,
+                "message": "branch_name is required"
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        logs = ServiceConsumptionLog.objects.filter(
+            user=request.user,
+            vendor_branch_id=branch_name
+        ).select_related('service', 'product', 'invoice')
+        
+        if invoice_id:
+            logs = logs.filter(invoice_id=invoice_id)
+        if product_id:
+            logs = logs.filter(product_id=product_id)
+        
+        logs = logs.order_by('-created_at')[:limit]
+        
+        serializer = ServiceConsumptionLogSerializer(logs, many=True)
+        
+        return Response({
+            "status": True,
+            "data": serializer.data
+        }, status=status.HTTP_200_OK)
+
+
+class BulkServiceProductUsageView(APIView):
+    """
+    POST /api/swalook/inventory/service-usage/bulk/
+    Bulk create/update service-product usage rules
+    """
+    permission_classes = [IsAuthenticated]
+    
+    @transaction.atomic
+    def post(self, request):
+        branch_name = request.query_params.get('branch_name')
+        
+        if not branch_name:
+            return Response({
+                "status": False,
+                "message": "branch_name is required"
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        rules_data = request.data.get('rules', [])
+        
+        if not rules_data:
+            return Response({
+                "status": False,
+                "message": "rules list is required"
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        created_count = 0
+        updated_count = 0
+        errors = []
+        
+        for idx, rule_data in enumerate(rules_data):
+            try:
+                service_id = rule_data.get('service')
+                product_id = rule_data.get('product')
+                hair_length = rule_data.get('hair_length', 'all')
+                
+                # Check if rule exists
+                existing_rule = ServiceProductUsage.objects.filter(
+                    vendor_branch_id=branch_name,
+                    service_id=service_id,
+                    product_id=product_id,
+                    hair_length=hair_length
+                ).first()
+                
+                if existing_rule:
+                    # Update existing
+                    existing_rule.usage_amount = rule_data.get('usage_amount', existing_rule.usage_amount)
+                    existing_rule.unit_type = rule_data.get('unit_type', existing_rule.unit_type)
+                    existing_rule.product_total_capacity = rule_data.get('product_total_capacity', existing_rule.product_total_capacity)
+                    existing_rule.is_active = rule_data.get('is_active', True)
+                    existing_rule.save()
+                    updated_count += 1
+                else:
+                    # Create new
+                    ServiceProductUsage.objects.create(
+                        user=request.user,
+                        vendor_branch_id=branch_name,
+                        service_id=service_id,
+                        product_id=product_id,
+                        hair_length=hair_length,
+                        usage_amount=rule_data.get('usage_amount'),
+                        unit_type=rule_data.get('unit_type', 'percentage'),
+                        product_total_capacity=rule_data.get('product_total_capacity'),
+                        is_active=rule_data.get('is_active', True)
+                    )
+                    created_count += 1
+            except Exception as e:
+                errors.append(f"Rule {idx}: {str(e)}")
+        
+        return Response({
+            "status": True,
+            "message": f"Created {created_count}, Updated {updated_count} rules",
+            "created": created_count,
+            "updated": updated_count,
+            "errors": errors
+        }, status=status.HTTP_200_OK)
