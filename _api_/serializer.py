@@ -975,7 +975,29 @@ class VendorCustomerLoyalityProfileSerializer_get(serializers.ModelSerializer):
         fields = "__all__"
         extra_kwargs = {'id': {'read_only': True}}
         depth = 2
+    
+    def safe_json(self, value):
+        
+        if value in [None, "", "null", "None"]:
+            return []
 
+        if isinstance(value, (list, dict)):
+            return value
+
+        if isinstance(value, str):
+            try:
+                return json.loads(value)
+            except Exception:
+                return []
+
+        return []
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['memberships'] = self.safe_json(data.get('memberships'))
+        data['coupon'] = self.safe_json(data.get('coupon'))
+
+        return data
 
 class billing_serializer_get(serializers.ModelSerializer):
     vendor_customers_profile = VendorCustomerLoyalityProfileSerializer_get(read_only=True)
