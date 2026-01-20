@@ -578,6 +578,39 @@ class appointment_serializer(serializers.ModelSerializer):
 
             return appointment
 
+    def validate(self, data):
+        booking_time_str = data.get('booking_time')
+        branch_id = self.context.get('branch_id')
+
+        if not booking_time_str or not branch_id:
+            return data
+
+        try:
+            branch = SalonBranch.objects.get(id=branch_id)
+        except SalonBranch.DoesNotExist:
+            return data # Or raise error, but sticking to flow
+
+        if branch.opening_time and branch.closing_time:
+            # Parse booking time
+            try:
+                # Try 24hr format first
+                booking_time = datetime.strptime(booking_time_str, '%H:%M').time()
+            except ValueError:
+                try:
+                    # Try 12hr format
+                    booking_time = datetime.strptime(booking_time_str, '%I:%M %p').time()
+                except ValueError:
+                    # Could not parse, skip check or raise error? 
+                    # For now, let's assume valid time string or skip
+                    return data
+            
+            if not (branch.opening_time <= booking_time <= branch.closing_time):
+                raise serializers.ValidationError(
+                    f"Booking time {booking_time_str} is outside of salon operating hours ({branch.opening_time.strftime('%H:%M')} - {branch.closing_time.strftime('%H:%M')})."
+                )
+
+        return data
+
 
 class UpdateAppointmentSerializer(serializers.ModelSerializer):
     class Meta:
@@ -609,6 +642,29 @@ class UpdateAppointmentSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 f"An appointment for this customer on {data['booking_date']} at {data['booking_time']} already exists."
             )
+        
+        # Check operating hours
+        if branch_name:
+            try:
+                branch = SalonBranch.objects.get(id=branch_name)
+                if branch.opening_time and branch.closing_time:
+                    booking_time_str = data.get('booking_time')
+                    if booking_time_str:
+                        try:
+                            booking_time = datetime.strptime(booking_time_str, '%H:%M').time()
+                        except ValueError:
+                            try:
+                                booking_time = datetime.strptime(booking_time_str, '%I:%M %p').time()
+                            except ValueError:
+                                return data # Skip if parse fails
+
+                        if not (branch.opening_time <= booking_time <= branch.closing_time):
+                            raise serializers.ValidationError(
+                                f"Booking time {booking_time_str} is outside of salon operating hours ({branch.opening_time.strftime('%H:%M')} - {branch.closing_time.strftime('%H:%M')})."
+                            )
+            except SalonBranch.DoesNotExist:
+                pass
+
 
         return data
 
@@ -957,7 +1013,7 @@ class staff_serializer_get(serializers.ModelSerializer):
 class branch_serializer(serializers.ModelSerializer):
     class Meta:
         model = SalonBranch
-        fields = ["id", "address", "staff_name", "branch_name", "password", "admin_password", "staff_url", "admin_url"]
+        fields = ["id", "address", "staff_name", "branch_name", "password", "admin_password", "staff_url", "admin_url", "opening_time", "closing_time"]
         extra_kwargs = {'id': {'read_only': True}}
 
     def create(self, validated_data):
