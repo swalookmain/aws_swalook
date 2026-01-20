@@ -211,6 +211,12 @@ class billing_serializer(serializers.ModelSerializer):
     new_mode = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
     combo_details = serializers.ListField(child=serializers.DictField(), required=False, allow_empty=True)
     comboService = serializers.ListField(child=serializers.DictField(), required=False, allow_empty=True)
+    hair_length = serializers.ChoiceField(
+        choices=['short', 'medium', 'long'],
+        default='medium',
+        required=False,
+        write_only=True
+    )
 
     class Meta:
         model = VendorInvoice
@@ -219,7 +225,8 @@ class billing_serializer(serializers.ModelSerializer):
             "mode_of_payment", "new_mode", "service_by", "json_data",
             "loyalty_points_deducted", "total_prise", "total_quantity", "total_tax",
             "total_discount", "grand_total", "total_cgst", "total_sgst", "gst_number",
-            "comment", "slno", "coupon_points_used", "combo_details", "comboService"
+            "comment", "slno", "coupon_points_used", "combo_details", "comboService",
+            "hair_length"
         ]
         extra_kwargs = {'id': {'read_only': True}}
 
@@ -274,19 +281,188 @@ class billing_serializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         combo_details = validated_data.pop('combo_details', [])
+        hair_length = validated_data.pop('hair_length', 'medium')  # Get hair length, default to medium
 
         validated_data['vendor_name'] = self.context.get('request').user
         validated_data['vendor_branch_id'] = self.context.get('branch_id')
 
+        # Handle direct product sales deduction
         self.update_inventory(validated_data['json_data'])
 
-
+        # Create the invoice first
         invoice = VendorInvoice.objects.create(
             **validated_data,
             combo_details=combo_details
         )
 
+        # Process service-based product consumption (auto-deduction)
+        self.process_service_consumption(
+            services_str=validated_data.get('services', '[]'),
+            combo_details=combo_details,
+            hair_length=hair_length,
+            invoice=invoice
+        )
+
         return validated_data['slno']
+
+    def process_service_consumption(self, services_str, combo_details, hair_length, invoice):
+        """
+        Process service-based inventory consumption.
+        1. Parse services from invoice
+        2. Find consumption rules for each service
+        3. Accumulate usage in tracker
+        4. Deduct inventory when threshold reached
+        5. Create consumption logs
+        """
+        from decimal import Decimal
+        from .models import ServiceProductUsage, ProductConsumptionTracker, ServiceConsumptionLog
+        import logging
+        
+        logger = logging.getLogger(__name__)
+        branch_id = self.context.get('branch_id')
+        user = self.context.get('request').user
+        
+        # Parse services JSON
+        try:
+            services = json.loads(services_str) if isinstance(services_str, str) else services_str
+        except (json.JSONDecodeError, TypeError):
+            services = []
+        
+        # Also process combo services if available
+        all_services = list(services) if services else []
+        
+        for combo in (combo_details or []):
+            combo_services = combo.get('services', [])
+            for svc in combo_services:
+                all_services.append({
+                    'service_id': svc.get('service_Id') or svc.get('service_id'),
+                    'service_name': svc.get('serviceName') or svc.get('service_name'),
+                    'quantity': svc.get('quantity', 1)
+                })
+        
+        # Process each service
+        for service_item in all_services:
+            # Try to extract service ID from different possible formats
+            service_id = (
+                service_item.get('service_id') or 
+                service_item.get('id') or
+                service_item.get('serviceId')
+            )
+            # Also get service name as fallback
+            service_name = (
+                service_item.get('Description') or
+                service_item.get('service_name') or
+                service_item.get('name')
+            )
+            quantity = int(service_item.get('quantity') or service_item.get('Quantity') or 1)
+            
+            if not service_id and not service_name:
+                continue
+            
+            # Find consumption rules for this service
+            # First try by ID, then fallback to name matching
+            if service_id:
+                rules = ServiceProductUsage.objects.filter(
+                    vendor_branch_id=branch_id,
+                    service_id=service_id,
+                    is_active=True
+                ).filter(
+                    models.Q(hair_length=hair_length) | models.Q(hair_length='all')
+                ).select_related('product', 'service')
+            else:
+                # Fallback: Find service by name, then get rules
+                try:
+                    service_obj = VendorService.objects.filter(
+                        vendor_branch_id=branch_id,
+                        service__iexact=service_name
+                    ).first()
+                    if service_obj:
+                        rules = ServiceProductUsage.objects.filter(
+                            vendor_branch_id=branch_id,
+                            service=service_obj,
+                            is_active=True
+                        ).filter(
+                            models.Q(hair_length=hair_length) | models.Q(hair_length='all')
+                        ).select_related('product', 'service')
+                    else:
+                        rules = []
+                except Exception:
+                    rules = []
+            
+            for rule in rules:
+                self._process_single_consumption(
+                    rule=rule,
+                    service_quantity=quantity,
+                    user=user,
+                    branch_id=branch_id,
+                    invoice=invoice,
+                    hair_length=hair_length,
+                    logger=logger
+                )
+
+    def _process_single_consumption(self, rule, service_quantity, user, branch_id, invoice, hair_length, logger):
+        """Process consumption for a single service-product rule."""
+        from decimal import Decimal
+        from .models import ProductConsumptionTracker, ServiceConsumptionLog
+        
+        usage_per_service = Decimal(str(rule.usage_amount))
+        total_usage = usage_per_service * service_quantity
+        
+        # Get product capacity (default 100 for percentage)
+        product_capacity = Decimal(str(rule.product_total_capacity or 100))
+        
+        # Get or create consumption tracker
+        tracker, created = ProductConsumptionTracker.objects.get_or_create(
+            vendor_branch_id=branch_id,
+            product=rule.product,
+            unit_type=rule.unit_type,
+            defaults={'user': user, 'accumulated_usage': Decimal('0')}
+        )
+        
+        # Add usage to tracker
+        tracker.accumulated_usage += total_usage
+        
+        # Calculate inventory deduction
+        units_to_deduct = int(tracker.accumulated_usage // product_capacity)
+        actual_deduction = 0
+        
+        if units_to_deduct > 0:
+            product = rule.product
+            
+            # Safety check: don't go below zero
+            actual_deduction = min(units_to_deduct, product.stocks_in_hand)
+            
+            if actual_deduction > 0:
+                product.stocks_in_hand -= actual_deduction
+                product.save()
+                tracker.total_units_deducted += actual_deduction
+            
+            if actual_deduction < units_to_deduct:
+                # Log warning: insufficient stock
+                logger.warning(
+                    f"Insufficient stock for {product.product_name}. "
+                    f"Needed: {units_to_deduct}, Available: {product.stocks_in_hand + actual_deduction}, "
+                    f"Deducted: {actual_deduction}"
+                )
+            
+            # Keep remainder in tracker for next cycle
+            tracker.accumulated_usage = tracker.accumulated_usage % product_capacity
+        
+        tracker.save()
+        
+        # Create consumption log for audit trail
+        ServiceConsumptionLog.objects.create(
+            user=user,
+            vendor_branch_id=branch_id,
+            invoice=invoice,
+            service=rule.service,
+            product=rule.product,
+            hair_length=hair_length,
+            service_quantity=service_quantity,
+            usage_amount=total_usage,
+            unit_type=rule.unit_type,
+            units_deducted=actual_deduction
+        )
 
     def handle_loyalty_points(self, validated_data):
         if int(validated_data['grand_total']) > 100:
@@ -402,6 +578,39 @@ class appointment_serializer(serializers.ModelSerializer):
 
             return appointment
 
+    def validate(self, data):
+        booking_time_str = data.get('booking_time')
+        branch_id = self.context.get('branch_id')
+
+        if not booking_time_str or not branch_id:
+            return data
+
+        try:
+            branch = SalonBranch.objects.get(id=branch_id)
+        except SalonBranch.DoesNotExist:
+            return data # Or raise error, but sticking to flow
+
+        if branch.opening_time and branch.closing_time:
+            # Parse booking time
+            try:
+                # Try 24hr format first
+                booking_time = datetime.strptime(booking_time_str, '%H:%M').time()
+            except ValueError:
+                try:
+                    # Try 12hr format
+                    booking_time = datetime.strptime(booking_time_str, '%I:%M %p').time()
+                except ValueError:
+                    # Could not parse, skip check or raise error? 
+                    # For now, let's assume valid time string or skip
+                    return data
+            
+            if not (branch.opening_time <= booking_time <= branch.closing_time):
+                raise serializers.ValidationError(
+                    f"Booking time {booking_time_str} is outside of salon operating hours ({branch.opening_time.strftime('%H:%M')} - {branch.closing_time.strftime('%H:%M')})."
+                )
+
+        return data
+
 
 class UpdateAppointmentSerializer(serializers.ModelSerializer):
     class Meta:
@@ -433,6 +642,29 @@ class UpdateAppointmentSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 f"An appointment for this customer on {data['booking_date']} at {data['booking_time']} already exists."
             )
+        
+        # Check operating hours
+        if branch_name:
+            try:
+                branch = SalonBranch.objects.get(id=branch_name)
+                if branch.opening_time and branch.closing_time:
+                    booking_time_str = data.get('booking_time')
+                    if booking_time_str:
+                        try:
+                            booking_time = datetime.strptime(booking_time_str, '%H:%M').time()
+                        except ValueError:
+                            try:
+                                booking_time = datetime.strptime(booking_time_str, '%I:%M %p').time()
+                            except ValueError:
+                                return data # Skip if parse fails
+
+                        if not (branch.opening_time <= booking_time <= branch.closing_time):
+                            raise serializers.ValidationError(
+                                f"Booking time {booking_time_str} is outside of salon operating hours ({branch.opening_time.strftime('%H:%M')} - {branch.closing_time.strftime('%H:%M')})."
+                            )
+            except SalonBranch.DoesNotExist:
+                pass
+
 
         return data
 
@@ -781,7 +1013,7 @@ class staff_serializer_get(serializers.ModelSerializer):
 class branch_serializer(serializers.ModelSerializer):
     class Meta:
         model = SalonBranch
-        fields = ["id", "address", "staff_name", "branch_name", "password", "admin_password", "staff_url", "admin_url"]
+        fields = ["id", "address", "staff_name", "branch_name", "password", "admin_password", "staff_url", "admin_url", "opening_time", "closing_time"]
         extra_kwargs = {'id': {'read_only': True}}
 
     def create(self, validated_data):
@@ -1713,3 +1945,110 @@ class InventoryItemHistorySerializer(serializers.Serializer):
     purchases = serializers.ListField(read_only=True)
     utilizations = serializers.ListField(read_only=True)
     adjustments = serializers.ListField(read_only=True)
+
+
+# ============================================================================
+# Service-Based Inventory Consumption Serializers
+# ============================================================================
+
+class ServiceProductUsageSerializer(serializers.ModelSerializer):
+    """Serializer for service-product consumption rules"""
+    service_name = serializers.CharField(source='service.service', read_only=True)
+    product_name = serializers.CharField(source='product.product_name', read_only=True)
+    product_unit = serializers.CharField(source='product.unit', read_only=True)
+    
+    class Meta:
+        from .models import ServiceProductUsage
+        model = ServiceProductUsage
+        fields = [
+            'id', 'service', 'service_name', 'product', 'product_name', 'product_unit',
+            'hair_length', 'usage_amount', 'unit_type', 'product_total_capacity',
+            'is_active', 'created_at', 'updated_at'
+        ]
+        extra_kwargs = {'id': {'read_only': True}}
+    
+    def validate(self, data):
+        # Ensure usage_amount is positive
+        if data.get('usage_amount', 0) <= 0:
+            raise serializers.ValidationError({"usage_amount": "Usage amount must be greater than 0"})
+        
+        # Ensure product_total_capacity is positive if provided
+        if data.get('product_total_capacity') and data['product_total_capacity'] <= 0:
+            raise serializers.ValidationError({"product_total_capacity": "Total capacity must be greater than 0"})
+        
+        return data
+    
+    def create(self, validated_data):
+        validated_data['user'] = self.context.get('request').user
+        validated_data['vendor_branch_id'] = self.context.get('branch_id')
+        return super().create(validated_data)
+    
+    def update(self, instance, validated_data):
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
+
+
+class ServiceProductUsageListSerializer(serializers.ModelSerializer):
+    """Lightweight serializer for listing service-product usage rules"""
+    service_name = serializers.CharField(source='service.service', read_only=True)
+    product_name = serializers.CharField(source='product.product_name', read_only=True)
+    
+    class Meta:
+        from .models import ServiceProductUsage
+        model = ServiceProductUsage
+        fields = [
+            'id', 'service', 'service_name', 'product', 'product_name',
+            'hair_length', 'usage_amount', 'unit_type', 'is_active'
+        ]
+
+
+class ProductConsumptionTrackerSerializer(serializers.ModelSerializer):
+    """Serializer for consumption tracker status"""
+    product_name = serializers.CharField(source='product.product_name', read_only=True)
+    product_id_code = serializers.CharField(source='product.product_id', read_only=True)
+    current_stock = serializers.IntegerField(source='product.stocks_in_hand', read_only=True)
+    
+    class Meta:
+        from .models import ProductConsumptionTracker
+        model = ProductConsumptionTracker
+        fields = [
+            'id', 'product', 'product_name', 'product_id_code',
+            'accumulated_usage', 'unit_type', 'total_units_deducted',
+            'current_stock', 'last_updated'
+        ]
+
+
+class ServiceConsumptionLogSerializer(serializers.ModelSerializer):
+    """Serializer for consumption audit log"""
+    service_name = serializers.CharField(source='service.service', read_only=True)
+    product_name = serializers.CharField(source='product.product_name', read_only=True)
+    invoice_slno = serializers.CharField(source='invoice.slno', read_only=True)
+    
+    class Meta:
+        from .models import ServiceConsumptionLog
+        model = ServiceConsumptionLog
+        fields = [
+            'id', 'invoice', 'invoice_slno', 'service', 'service_name',
+            'product', 'product_name', 'hair_length', 'service_quantity',
+            'usage_amount', 'unit_type', 'units_deducted', 'created_at'
+        ]
+
+
+class BulkServiceProductUsageSerializer(serializers.Serializer):
+    """Serializer for bulk creating/updating service-product rules"""
+    rules = serializers.ListField(
+        child=serializers.DictField(),
+        min_length=1
+    )
+    
+    def validate_rules(self, value):
+        for idx, rule in enumerate(value):
+            if not rule.get('service'):
+                raise serializers.ValidationError(f"Rule {idx}: service is required")
+            if not rule.get('product'):
+                raise serializers.ValidationError(f"Rule {idx}: product is required")
+            if not rule.get('usage_amount') or float(rule.get('usage_amount', 0)) <= 0:
+                raise serializers.ValidationError(f"Rule {idx}: usage_amount must be greater than 0")
+        return value

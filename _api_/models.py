@@ -16,6 +16,8 @@ class SalonBranch(models.Model):
     admin_url = models.CharField(max_length=255)
     minimum_purchase_loyality = models.IntegerField(default=40, null=True)
     address = models.CharField(max_length=255, null=True, blank=True)
+    opening_time = models.TimeField(null=True, blank=True)
+    closing_time = models.TimeField(null=True, blank=True)
     class Meta:
         ordering = ['vendor_name']
         verbose_name = "Vendor Branch"
@@ -756,9 +758,107 @@ class combo_services(models.Model):
     combo_price = models.CharField(max_length=200, null=True, blank=True)
     duration = models.CharField(max_length=200, null=True, blank=True)
 
+
+class ServiceProductUsage(models.Model):
+    """
+    Defines product consumption rules for services.
+    Example: Hair Coloring uses 25ml of Hair Color per service for short hair.
+    """
+    HAIR_LENGTH_CHOICES = [
+        ('short', 'Short'),
+        ('medium', 'Medium'),
+        ('long', 'Long'),
+        ('all', 'All Lengths'),
+    ]
     
+    UNIT_TYPE_CHOICES = [
+        ('percentage', 'Percentage (%)'),
+        ('ml', 'Milliliters (ml)'),
+        ('gm', 'Grams (gm)'),
+        ('unit', 'Full Unit'),
+    ]
+    
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, db_index=True)
+    vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.CASCADE, db_index=True)
+    service = models.ForeignKey(VendorService, on_delete=models.CASCADE, related_name='product_usages')
+    product = models.ForeignKey(VendorInventoryProduct, on_delete=models.CASCADE, related_name='service_usages')
+    
+    hair_length = models.CharField(max_length=10, choices=HAIR_LENGTH_CHOICES, default='all')
+    usage_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    unit_type = models.CharField(max_length=20, choices=UNIT_TYPE_CHOICES, default='percentage')
+    product_total_capacity = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['vendor_branch', 'service']),
+            models.Index(fields=['vendor_branch', 'product']),
+        ]
+        unique_together = [['vendor_branch', 'service', 'product', 'hair_length']]
+    
+    def __str__(self):
+        return f"{self.service.service} -> {self.product.product_name} ({self.hair_length})"
 
 
+class ProductConsumptionTracker(models.Model):
+    """
+    Tracks accumulated partial usage for fractional inventory deduction.
+    When accumulated_usage >= product_total_capacity, deduct 1 unit from inventory.
+    """
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, db_index=True)
+    vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.CASCADE, db_index=True)
+    product = models.ForeignKey(VendorInventoryProduct, on_delete=models.CASCADE, related_name='consumption_trackers')
+    
+    accumulated_usage = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    unit_type = models.CharField(max_length=20, default='ml')
+    total_units_deducted = models.IntegerField(default=0)
+    
+    last_updated = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['vendor_branch', 'product']),
+        ]
+        unique_together = [['vendor_branch', 'product', 'unit_type']]
+    
+    def __str__(self):
+        return f"{self.product.product_name} - Accumulated: {self.accumulated_usage}"
+
+
+class ServiceConsumptionLog(models.Model):
+    """
+    Log of each service consumption event for audit trail.
+    Records when inventory was deducted due to service completion.
+    """
+    id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, db_index=True)
+    vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.CASCADE, db_index=True)
+    invoice = models.ForeignKey(VendorInvoice, on_delete=models.SET_NULL, null=True, related_name='consumption_logs')
+    service = models.ForeignKey(VendorService, on_delete=models.SET_NULL, null=True)
+    product = models.ForeignKey(VendorInventoryProduct, on_delete=models.SET_NULL, null=True)
+    
+    hair_length = models.CharField(max_length=10, default='medium')
+    service_quantity = models.IntegerField(default=1)
+    usage_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    unit_type = models.CharField(max_length=20)
+    units_deducted = models.IntegerField(default=0)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['vendor_branch', 'created_at']),
+            models.Index(fields=['invoice']),
+        ]
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.service.service if self.service else 'Unknown'} - {self.units_deducted} units"
 
 
 
