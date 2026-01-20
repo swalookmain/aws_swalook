@@ -1151,7 +1151,29 @@ class VendorCustomerLoyalityProfileSerializer_get(serializers.ModelSerializer):
         fields = "__all__"
         extra_kwargs = {'id': {'read_only': True}}
         depth = 2
+    
+    def safe_json(self, value):
+        
+        if value in [None, "", "null", "None"]:
+            return []
 
+        if isinstance(value, (list, dict)):
+            return value
+
+        if isinstance(value, str):
+            try:
+                return json.loads(value)
+            except Exception:
+                return []
+
+        return []
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['memberships'] = self.safe_json(data.get('memberships'))
+        data['coupon'] = self.safe_json(data.get('coupon'))
+
+        return data
 
 class billing_serializer_get(serializers.ModelSerializer):
     vendor_customers_profile = VendorCustomerLoyalityProfileSerializer_get(read_only=True)
@@ -1184,7 +1206,6 @@ class VendorCustomerLoyalityProfileSerializer(serializers.ModelSerializer):
 
 
     def to_internal_value(self, data):
-        
         if 'memberships' in data and data['memberships'] == "None":
             data['memberships'] = []
         if 'coupon' in data and data['coupon'] == "None":
@@ -1194,48 +1215,76 @@ class VendorCustomerLoyalityProfileSerializer(serializers.ModelSerializer):
 
 
     def create(self, validated_data):
+        user = self.context['request'].user
+        branch_id = self.context['request'].query_params.get('branch_name')
 
-        from datetime import date, timedelta
+        memberships_input = validated_data.pop('memberships', [])
+        coupon_input = validated_data.pop('coupon', [])
         # coupon_data_list = validated_data.pop('coupon', [])
         # if coupon_data_list == []:
         #     validated_data['coupon'] =  ""
-
-
-
-
-
         # coupon_ids = [item.get('coupon_name') for item in coupon_data_list if item.get('coupon_name')]
         # # membership_id = validated_data.pop('memberships')
         # # validated_data['membership_id'] = membership_id
         # validated_data['memberships'] = ""
-        if validated_data.get('memberships') in ["None", "none", "NULL", "null", "", None]:
-            validated_data['memberships'] = []
-        if validated_data.get('coupon') in ["None", "none", "NULL", "null", "", None]:
-            validated_data['coupon'] = []
-
-
-        user = self.context['request'].user
-        branch_id = self.context['request'].query_params.get('branch_name')
-
-        today = date.today()
-        expiry_date = today + timedelta(days=30)
-        loyalty_profile_obj = None
-
-
 
         validated_data['vendor_branch_id'] = branch_id
-
-
         validated_data['user'] = user
-
-
-
 
         customer = VendorCustomers.objects.create(**validated_data)
 
+        membership_snapshots = []
 
+        for mem in memberships_input:
+            program_type = mem.get("program_type")
+
+            if not program_type:
+                continue
+
+            try:
+                m = VendorLoyalityProgramTypes.objects.get(
+                    program_type=program_type,
+                    vendor_branch_id=branch_id,
+                    user=user
+                )
+
+                membership_snapshots.append({
+                    "id": str(m.id),
+                    "program_type": m.program_type,
+                    "price": m.price,
+                    "expiry_duration": m.expiry_duration,
+                    "discount": m.discount,
+                    "limit": m.limit,
+                    "active": m.active
+                })
+
+            except VendorLoyalityProgramTypes.DoesNotExist:
+                pass
+
+        customer.memberships = json.dumps(membership_snapshots)
+
+        coupon_snapshots = []
+
+        for cpn in coupon_input:
+            coupon_id = cpn.get("coupon_name")  
+
+            try:
+                c = VendorCoupon.objects.get(id=coupon_id)
+
+                coupon_snapshots.append({
+                    "id": str(c.id),
+                    "coupon_name": c.coupon_name,
+                    "coupon_price": c.coupon_price,
+                    "coupon_points_hold": c.coupon_points_hold,
+                    "active": c.active
+                })
+
+            except VendorCoupon.DoesNotExist:
+                pass
+
+        customer.coupon = json.dumps(coupon_snapshots)
+        customer.save()
         # customer_coupons_to_create = []
-
         # if coupon_ids:
         #     for coupon_id in coupon_ids:
         #         customer_coupons_to_create.append(CustomerCoupon(
@@ -1246,19 +1295,10 @@ class VendorCustomerLoyalityProfileSerializer(serializers.ModelSerializer):
         #             issue_date=today,
         #             expiry_date=expiry_date if loyalty_profile_obj else None
         #         ))
-
         # if customer_coupons_to_create:
         #     CustomerCoupon.objects.bulk_create(customer_coupons_to_create)
         #     customer.coupon.add(*customer_coupons_to_create)
         #     customer.save()
-
-
-
-
-
-
-
-
         return customer
 
 class VendorLoyalityTypeSerializer_get(serializers.ModelSerializer):
