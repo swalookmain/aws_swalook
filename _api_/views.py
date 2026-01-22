@@ -1066,8 +1066,6 @@ class edit_branch(APIView):
         queryset.admin_password = accept_json_stream.get('admin_password')
         queryset.staff_url = accept_json_stream.get('staff_url')
         queryset.admin_url = accept_json_stream.get('admin_url')
-        queryset.opening_time = accept_json_stream.get('opening_time')
-        queryset.closing_time = accept_json_stream.get('closing_time')
         queryset.vendor_name = request.user
         queryset.save()
 
