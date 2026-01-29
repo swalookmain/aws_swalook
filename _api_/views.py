@@ -843,14 +843,14 @@ class VendorAppointments(CreateAPIView, ListAPIView):
             return Response({
                 'status': False,
                 'text': f"Appointment for this customer {request.data.get('mobile_no')} on {request.data.get('booking_date')} at {request.data.get('booking_time')} already exists."
-            })
+            }, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = appointment_serializer(data=request.data, context={"request": request, "branch_id": branch_name})
         if serializer.is_valid():
             serializer.save()
-            return Response({"status": True})
+            return Response({"status": True}, status=status.HTTP_201_CREATED)
 
-        return Response({"status": False, "errors": serializer.errors})
+        return Response({"status": False, "errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     def list(self, request):
         branch_name = request.query_params.get('branch_name')
