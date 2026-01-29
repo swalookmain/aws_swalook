@@ -580,42 +580,62 @@ class appointment_serializer(serializers.ModelSerializer):
 
     def validate(self, data):
         booking_time_str = data.get('booking_time')
-        branch_id = self.context.get('branch_id')
+        booking_date_str = data.get('booking_date')
+        branch_id_or_name = self.context.get('branch_id')
 
-        if not booking_time_str or not branch_id:
-            return data
+        if not branch_id_or_name:
+            raise serializers.ValidationError({"branch": "Branch information is missing."})
+
+        if not booking_time_str:
+            raise serializers.ValidationError({"booking_time": "Booking time is required."})
+
+        # Try to find the branch first (it could be a UUID string or a Name)
+        try:
+            # First try as UUID
+            branch = SalonBranch.objects.get(id=branch_id_or_name, vendor_name=self.context.get('request').user)
+        except (SalonBranch.DoesNotExist, ValueError, ValidationError):
+            # Fallback to name
+            branch = SalonBranch.objects.filter(branch_name=branch_id_or_name, vendor_name=self.context.get('request').user).first()
+            if not branch:
+                 raise serializers.ValidationError({"branch": f"Branch '{branch_id_or_name}' not found."})
 
         # Use StaffAttendanceTime instead of branch opening/closing time
         try:
             staff_time = StaffAttendanceTime.objects.get(
-                vendor_branch_id=branch_id,
+                vendor_branch=branch,
                 vendor_name=self.context.get('request').user
             )
         except StaffAttendanceTime.DoesNotExist:
-            # No staff time configured - allow booking without time validation
-            # Could optionally raise a warning here
-            return data
+            # If timing is not configured, we should decide if we allow it.
+            # Based on user feedback, we should likely disallow or at least return a 200 with error if it was intended to be strict.
+            # But making it strict here ensures consistency.
+            raise serializers.ValidationError(
+                f"Salon working hours are not configured for branch '{branch.branch_name}'. Please set attendance timing first."
+            )
 
         if staff_time.in_time and staff_time.out_time:
             # Parse booking time
             try:
-                # Try 24hr format first
+                # Try 24hr format HH:MM
                 booking_time = datetime.strptime(booking_time_str, '%H:%M').time()
             except ValueError:
                 try:
-                    # Try 12hr format
+                    # Try 12hr format HH:MM AM/PM
                     booking_time = datetime.strptime(booking_time_str, '%I:%M %p').time()
                 except ValueError:
-                    # Could not parse, skip check
-                    return data
+                    raise serializers.ValidationError(
+                        {"booking_time": f"Invalid time format: '{booking_time_str}'. Please use HH:MM or HH:MM AM/PM."}
+                    )
             
             # Parse staff times (they are stored as strings in format "HH:MM")
             try:
                 staff_in_time = datetime.strptime(staff_time.in_time, '%H:%M').time()
                 staff_out_time = datetime.strptime(staff_time.out_time, '%H:%M').time()
             except ValueError:
-                # If staff times are not in expected format, skip validation
-                return data
+                # If staff times are not in expected format, we have a config error
+                raise serializers.ValidationError(
+                    "Internal Error: Staff working hours are incorrectly configured (expected HH:MM)."
+                )
             
             if not (staff_in_time <= booking_time <= staff_out_time):
                 raise serializers.ValidationError(
@@ -640,12 +660,23 @@ class UpdateAppointmentSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         request = self.context.get('request')
-        branch_name = self.context.get('branch_name')
+        branch_name_or_id = self.context.get('branch_name')
         appointment_id = self.instance.id if self.instance else None
+
+        if not branch_name_or_id:
+            raise serializers.ValidationError({"branch": "Branch information is missing."})
+
+        # Try to find the branch
+        try:
+            branch = SalonBranch.objects.get(id=branch_name_or_id, vendor_name=request.user)
+        except (SalonBranch.DoesNotExist, ValueError, ValidationError):
+            branch = SalonBranch.objects.filter(branch_name=branch_name_or_id, vendor_name=request.user).first()
+            if not branch:
+                 raise serializers.ValidationError({"branch": f"Branch '{branch_name_or_id}' not found."})
 
         conflicting_appointments = VendorAppointment.objects.filter(
             vendor_name=request.user,
-            vendor_branch_id=branch_name,
+            vendor_branch=branch,
             mobile_no=data['mobile_no'],
             booking_date=data['booking_date'],
             booking_time=data['booking_time'],
@@ -657,38 +688,42 @@ class UpdateAppointmentSerializer(serializers.ModelSerializer):
             )
         
         # Check staff working hours
-        if branch_name:
-            try:
-                staff_time = StaffAttendanceTime.objects.get(
-                    vendor_branch_id=branch_name,
-                    vendor_name=request.user
-                )
-                
-                if staff_time.in_time and staff_time.out_time:
-                    booking_time_str = data.get('booking_time')
-                    if booking_time_str:
+        try:
+            staff_time = StaffAttendanceTime.objects.get(
+                vendor_branch=branch,
+                vendor_name=request.user
+            )
+            
+            if staff_time.in_time and staff_time.out_time:
+                booking_time_str = data.get('booking_time')
+                if booking_time_str:
+                    try:
+                        booking_time = datetime.strptime(booking_time_str, '%H:%M').time()
+                    except ValueError:
                         try:
-                            booking_time = datetime.strptime(booking_time_str, '%H:%M').time()
+                            booking_time = datetime.strptime(booking_time_str, '%I:%M %p').time()
                         except ValueError:
-                            try:
-                                booking_time = datetime.strptime(booking_time_str, '%I:%M %p').time()
-                            except ValueError:
-                                return data # Skip if parse fails
-
-                        # Parse staff times
-                        try:
-                            staff_in_time = datetime.strptime(staff_time.in_time, '%H:%M').time()
-                            staff_out_time = datetime.strptime(staff_time.out_time, '%H:%M').time()
-                        except ValueError:
-                            return data
-
-                        if not (staff_in_time <= booking_time <= staff_out_time):
-                            raise serializers.ValidationError(
-                                f"Booking time {booking_time_str} is outside of staff working hours ({staff_time.in_time} - {staff_time.out_time})."
+                             raise serializers.ValidationError(
+                                {"booking_time": f"Invalid time format: '{booking_time_str}'. Please use HH:MM or HH:MM AM/PM."}
                             )
-            except StaffAttendanceTime.DoesNotExist:
-                pass # No staff time configured - allow booking
 
+                    # Parse staff times
+                    try:
+                        staff_in_time = datetime.strptime(staff_time.in_time, '%H:%M').time()
+                        staff_out_time = datetime.strptime(staff_time.out_time, '%H:%M').time()
+                    except ValueError:
+                         raise serializers.ValidationError(
+                            "Internal Error: Staff working hours are incorrectly configured (expected HH:MM)."
+                        )
+
+                    if not (staff_in_time <= booking_time <= staff_out_time):
+                        raise serializers.ValidationError(
+                            f"Booking time {booking_time_str} is outside of staff working hours ({staff_time.in_time} - {staff_time.out_time})."
+                        )
+        except StaffAttendanceTime.DoesNotExist:
+            raise serializers.ValidationError(
+                f"Salon working hours are not configured for branch '{branch.branch_name}'. Please set attendance timing first."
+            )
 
         return data
 
