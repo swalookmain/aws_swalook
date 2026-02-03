@@ -322,14 +322,20 @@ class billing_serializer(serializers.ModelSerializer):
         branch_id = self.context.get('branch_id')
         user = self.context.get('request').user
         
+        logger.info(f"[CONSUMPTION] Processing invoice {invoice.slno} for branch {branch_id}")
+        logger.info(f"[CONSUMPTION] Services string: {services_str[:200] if services_str else 'None'}...")
+        logger.info(f"[CONSUMPTION] Hair length: {hair_length}")
+        
         # Parse services JSON
         try:
             services = json.loads(services_str) if isinstance(services_str, str) else services_str
-        except (json.JSONDecodeError, TypeError):
+        except (json.JSONDecodeError, TypeError) as e:
+            logger.warning(f"[CONSUMPTION] Failed to parse services JSON: {e}")
             services = []
         
         # Also process combo services if available
         all_services = list(services) if services else []
+        logger.info(f"[CONSUMPTION] Parsed {len(all_services)} services from services field")
         
         for combo in (combo_details or []):
             combo_services = combo.get('services', [])
@@ -340,8 +346,41 @@ class billing_serializer(serializers.ModelSerializer):
                     'quantity': svc.get('quantity', 1)
                 })
         
+        if combo_details:
+            logger.info(f"[CONSUMPTION] Added {len(combo_details)} combo services")
+        
+        # ALSO check json_data for service information (this is the key fix!)
+        json_data = self.validated_data.get('json_data', [])
+        if json_data:
+            logger.info(f"[CONSUMPTION] Checking json_data with {len(json_data)} items")
+            for item in json_data:
+                # json_data contains line items - check if it's a service (not a product)
+                item_id = item.get('id')
+                item_desc = item.get('Description') or item.get('description')
+                item_qty = item.get('quantity') or item.get('Quantity', 1)
+                
+                # Try to determine if this is a service by checking if it exists in VendorService
+                if item_id:
+                    try:
+                        service_obj = VendorService.objects.filter(
+                            id=item_id,
+                            vendor_branch_id=branch_id
+                        ).first()
+                        
+                        if service_obj:
+                            all_services.append({
+                                'service_id': str(item_id),
+                                'service_name': item_desc,
+                                'quantity': int(item_qty)
+                            })
+                            logger.info(f"[CONSUMPTION] Found service in json_data: {item_desc} (ID: {item_id})")
+                    except Exception as e:
+                        logger.debug(f"[CONSUMPTION] Item {item_id} not a service: {e}")
+        
+        logger.info(f"[CONSUMPTION] Total services to process: {len(all_services)}")
+        
         # Process each service
-        for service_item in all_services:
+        for idx, service_item in enumerate(all_services):
             # Try to extract service ID from different possible formats
             service_id = (
                 service_item.get('service_id') or 
@@ -356,11 +395,15 @@ class billing_serializer(serializers.ModelSerializer):
             )
             quantity = int(service_item.get('quantity') or service_item.get('Quantity') or 1)
             
+            logger.info(f"[CONSUMPTION] Service {idx+1}: ID={service_id}, Name={service_name}, Qty={quantity}")
+            
             if not service_id and not service_name:
+                logger.warning(f"[CONSUMPTION] Skipping service item - no ID or name: {service_item}")
                 continue
             
             # Find consumption rules for this service
             # First try by ID, then fallback to name matching
+            rules = []
             if service_id:
                 rules = ServiceProductUsage.objects.filter(
                     vendor_branch_id=branch_id,
@@ -369,7 +412,10 @@ class billing_serializer(serializers.ModelSerializer):
                 ).filter(
                     models.Q(hair_length=hair_length) | models.Q(hair_length='all')
                 ).select_related('product', 'service')
-            else:
+                
+                logger.info(f"[CONSUMPTION] Found {len(rules)} rules by service_id={service_id}")
+            
+            if not rules and service_name:
                 # Fallback: Find service by name, then get rules
                 try:
                     service_obj = VendorService.objects.filter(
@@ -384,21 +430,35 @@ class billing_serializer(serializers.ModelSerializer):
                         ).filter(
                             models.Q(hair_length=hair_length) | models.Q(hair_length='all')
                         ).select_related('product', 'service')
+                        logger.info(f"[CONSUMPTION] Found {len(rules)} rules by service_name={service_name}")
                     else:
-                        rules = []
-                except Exception:
-                    rules = []
+                        logger.warning(f"[CONSUMPTION] Service not found by name: {service_name}")
+                except Exception as e:
+                    logger.error(f"[CONSUMPTION] Error finding service by name: {e}")
             
-            for rule in rules:
-                self._process_single_consumption(
-                    rule=rule,
-                    service_quantity=quantity,
-                    user=user,
-                    branch_id=branch_id,
-                    invoice=invoice,
-                    hair_length=hair_length,
-                    logger=logger
+            if not rules:
+                logger.warning(
+                    f"[CONSUMPTION] No consumption rules found for service_id={service_id}, "
+                    f"service_name={service_name}, branch={branch_id}, hair_length={hair_length}"
                 )
+            else:
+                logger.info(f"[CONSUMPTION] Processing {len(rules)} consumption rules")
+                for rule in rules:
+                    logger.info(
+                        f"[CONSUMPTION] Rule: {rule.service.service} -> {rule.product.product_name} "
+                        f"({rule.usage_amount} {rule.unit_type})"
+                    )
+                    self._process_single_consumption(
+                        rule=rule,
+                        service_quantity=quantity,
+                        user=user,
+                        branch_id=branch_id,
+                        invoice=invoice,
+                        hair_length=hair_length,
+                        logger=logger
+                    )
+        
+        logger.info(f"[CONSUMPTION] Completed processing for invoice {invoice.slno}")
 
     def _process_single_consumption(self, rule, service_quantity, user, branch_id, invoice, hair_length, logger):
         """Process consumption for a single service-product rule."""
@@ -411,6 +471,12 @@ class billing_serializer(serializers.ModelSerializer):
         # Get product capacity (default 100 for percentage)
         product_capacity = Decimal(str(rule.product_total_capacity or 100))
         
+        logger.info(
+            f"[TRACKER] Processing: {rule.product.product_name} | "
+            f"Usage: {usage_per_service} {rule.unit_type} x {service_quantity} = {total_usage} | "
+            f"Capacity: {product_capacity}"
+        )
+        
         # Get or create consumption tracker
         tracker, created = ProductConsumptionTracker.objects.get_or_create(
             vendor_branch_id=branch_id,
@@ -419,8 +485,17 @@ class billing_serializer(serializers.ModelSerializer):
             defaults={'user': user, 'accumulated_usage': Decimal('0')}
         )
         
+        if created:
+            logger.info(f"[TRACKER] Created new tracker for {rule.product.product_name}")
+        
+        old_accumulated = tracker.accumulated_usage
+        
         # Add usage to tracker
         tracker.accumulated_usage += total_usage
+        
+        logger.info(
+            f"[TRACKER] Accumulated usage: {old_accumulated} + {total_usage} = {tracker.accumulated_usage}"
+        )
         
         # Calculate inventory deduction
         units_to_deduct = int(tracker.accumulated_usage // product_capacity)
@@ -428,6 +503,7 @@ class billing_serializer(serializers.ModelSerializer):
         
         if units_to_deduct > 0:
             product = rule.product
+            old_stock = product.stocks_in_hand
             
             # Safety check: don't go below zero
             actual_deduction = min(units_to_deduct, product.stocks_in_hand)
@@ -436,17 +512,29 @@ class billing_serializer(serializers.ModelSerializer):
                 product.stocks_in_hand -= actual_deduction
                 product.save()
                 tracker.total_units_deducted += actual_deduction
+                
+                logger.info(
+                    f"[INVENTORY] Deducted {actual_deduction} units from {product.product_name} | "
+                    f"Stock: {old_stock} -> {product.stocks_in_hand}"
+                )
             
             if actual_deduction < units_to_deduct:
                 # Log warning: insufficient stock
                 logger.warning(
-                    f"Insufficient stock for {product.product_name}. "
-                    f"Needed: {units_to_deduct}, Available: {product.stocks_in_hand + actual_deduction}, "
+                    f"[INVENTORY] Insufficient stock for {product.product_name}. "
+                    f"Needed: {units_to_deduct}, Available: {old_stock}, "
                     f"Deducted: {actual_deduction}"
                 )
             
             # Keep remainder in tracker for next cycle
-            tracker.accumulated_usage = tracker.accumulated_usage % product_capacity
+            remainder = tracker.accumulated_usage % product_capacity
+            logger.info(f"[TRACKER] Rollover remainder: {remainder} {rule.unit_type}")
+            tracker.accumulated_usage = remainder
+        else:
+            logger.info(
+                f"[TRACKER] Not enough accumulated usage to deduct. "
+                f"Need {product_capacity}, have {tracker.accumulated_usage}"
+            )
         
         tracker.save()
         
@@ -462,6 +550,11 @@ class billing_serializer(serializers.ModelSerializer):
             usage_amount=total_usage,
             unit_type=rule.unit_type,
             units_deducted=actual_deduction
+        )
+        
+        logger.info(
+            f"[LOG] Created consumption log: {rule.service.service} -> {rule.product.product_name} | "
+            f"Deducted: {actual_deduction} units"
         )
 
     def handle_loyalty_points(self, validated_data):
