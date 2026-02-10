@@ -445,9 +445,7 @@ class Migration(migrations.Migration):
             name='ServiceProductUsage',
             fields=[
                 ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('hair_length', models.CharField(choices=[('short', 'Short'), ('medium', 'Medium'), ('long', 'Long'), ('all', 'All Lengths')], default='all', max_length=10)),
                 ('usage_amount', models.DecimalField(decimal_places=2, max_digits=10)),
-                ('unit_type', models.CharField(choices=[('percentage', 'Percentage (%)'), ('ml', 'Milliliters (ml)'), ('gm', 'Grams (gm)'), ('unit', 'Full Unit')], default='percentage', max_length=20)),
                 ('product_total_capacity', models.DecimalField(blank=True, decimal_places=2, max_digits=10, null=True)),
                 ('is_active', models.BooleanField(default=True)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
@@ -459,7 +457,7 @@ class Migration(migrations.Migration):
             ],
             options={
                 'indexes': [models.Index(fields=['vendor_branch', 'service'], name='Dapi__servi_vendor__ce911e_idx'), models.Index(fields=['vendor_branch', 'product'], name='Dapi__servi_vendor__9efe3c_idx')],
-                'unique_together': {('vendor_branch', 'service', 'product', 'hair_length')},
+                'unique_together': {('vendor_branch', 'service', 'product')},
             },
         ),
         migrations.AddIndex(

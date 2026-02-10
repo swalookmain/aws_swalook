@@ -23,9 +23,7 @@ This guide provides the necessary API details to integrate the service-based inv
 {
   "service": "SERVICE_UUID", // UUID of the service
   "product": "PRODUCT_UUID", // UUID of the inventory product
-  "hair_length": "medium", // options: "short", "medium", "long", "all"
   "usage_amount": 25, // Amount consumed per service
-  "unit_type": "percentage", // options: "percentage", "ml", "gm", "unit"
   "product_total_capacity": 100 // Total capacity of the product unit
 }
 ```
