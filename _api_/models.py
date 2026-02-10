@@ -762,29 +762,13 @@ class ServiceProductUsage(models.Model):
     Defines product consumption rules for services.
     Example: Hair Coloring uses 25ml of Hair Color per service for short hair.
     """
-    HAIR_LENGTH_CHOICES = [
-        ('short', 'Short'),
-        ('medium', 'Medium'),
-        ('long', 'Long'),
-        ('all', 'All Lengths'),
-    ]
-    
-    UNIT_TYPE_CHOICES = [
-        ('percentage', 'Percentage (%)'),
-        ('ml', 'Milliliters (ml)'),
-        ('gm', 'Grams (gm)'),
-        ('unit', 'Full Unit'),
-    ]
-    
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, db_index=True)
     vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.CASCADE, db_index=True)
     service = models.ForeignKey(VendorService, on_delete=models.CASCADE, related_name='product_usages')
     product = models.ForeignKey(VendorInventoryProduct, on_delete=models.CASCADE, related_name='service_usages')
     
-    hair_length = models.CharField(max_length=10, choices=HAIR_LENGTH_CHOICES, default='all')
     usage_amount = models.DecimalField(max_digits=10, decimal_places=2)
-    unit_type = models.CharField(max_length=20, choices=UNIT_TYPE_CHOICES, default='percentage')
     product_total_capacity = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     
     is_active = models.BooleanField(default=True)
@@ -796,10 +780,10 @@ class ServiceProductUsage(models.Model):
             models.Index(fields=['vendor_branch', 'service']),
             models.Index(fields=['vendor_branch', 'product']),
         ]
-        unique_together = [['vendor_branch', 'service', 'product', 'hair_length']]
+        unique_together = [['vendor_branch', 'service', 'product']]
     
     def __str__(self):
-        return f"{self.service.service} -> {self.product.product_name} ({self.hair_length})"
+        return f"{self.service.service} -> {self.product.product_name}"
 
 
 class ProductConsumptionTracker(models.Model):

@@ -6516,34 +6516,25 @@ class BulkServiceProductUsageView(APIView):
             try:
                 service_id = rule_data.get('service')
                 product_id = rule_data.get('product')
-                hair_length = rule_data.get('hair_length', 'all')
                 
-                # Check if rule exists
                 existing_rule = ServiceProductUsage.objects.filter(
                     vendor_branch_id=branch_name,
                     service_id=service_id,
-                    product_id=product_id,
-                    hair_length=hair_length
+                    product_id=product_id
                 ).first()
-                
                 if existing_rule:
-                    # Update existing
                     existing_rule.usage_amount = rule_data.get('usage_amount', existing_rule.usage_amount)
-                    existing_rule.unit_type = rule_data.get('unit_type', existing_rule.unit_type)
                     existing_rule.product_total_capacity = rule_data.get('product_total_capacity', existing_rule.product_total_capacity)
                     existing_rule.is_active = rule_data.get('is_active', True)
                     existing_rule.save()
                     updated_count += 1
                 else:
-                    # Create new
                     ServiceProductUsage.objects.create(
                         user=request.user,
                         vendor_branch_id=branch_name,
                         service_id=service_id,
                         product_id=product_id,
-                        hair_length=hair_length,
                         usage_amount=rule_data.get('usage_amount'),
-                        unit_type=rule_data.get('unit_type', 'percentage'),
                         product_total_capacity=rule_data.get('product_total_capacity'),
                         is_active=rule_data.get('is_active', True)
                     )

@@ -2114,7 +2114,7 @@ class ServiceProductUsageSerializer(serializers.ModelSerializer):
         model = ServiceProductUsage
         fields = [
             'id', 'service', 'service_name', 'product', 'product_name', 'product_unit',
-            'hair_length', 'usage_amount', 'unit_type', 'product_total_capacity',
+            'usage_amount', 'product_total_capacity',
             'is_active', 'created_at', 'updated_at'
         ]
         extra_kwargs = {'id': {'read_only': True}}
@@ -2152,7 +2152,7 @@ class ServiceProductUsageListSerializer(serializers.ModelSerializer):
         model = ServiceProductUsage
         fields = [
             'id', 'service', 'service_name', 'product', 'product_name',
-            'hair_length', 'usage_amount', 'unit_type', 'is_active'
+            'usage_amount', 'is_active'
         ]
 
 
