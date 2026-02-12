@@ -781,6 +781,7 @@ class ServiceProductUsage(models.Model):
             models.Index(fields=['vendor_branch', 'product']),
         ]
         unique_together = [['vendor_branch', 'service', 'product']]
+        db_table = 'api_serviceproductusage'
     
     def __str__(self):
         return f"{self.service.service} -> {self.product.product_name}"
@@ -807,6 +808,7 @@ class ProductConsumptionTracker(models.Model):
             models.Index(fields=['vendor_branch', 'product']),
         ]
         unique_together = [['vendor_branch', 'product', 'unit_type']]
+        db_table = 'api_productconsumptiontracker'
     
     def __str__(self):
         return f"{self.product.product_name} - Accumulated: {self.accumulated_usage}"
@@ -837,6 +839,7 @@ class ServiceConsumptionLog(models.Model):
             models.Index(fields=['vendor_branch', 'created_at']),
             models.Index(fields=['invoice']),
         ]
+        db_table = 'api_serviceconsumptionlog'
         ordering = ['-created_at']
     
     def __str__(self):
