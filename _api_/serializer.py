@@ -497,45 +497,33 @@ class billing_serializer(serializers.ModelSerializer):
             f"[TRACKER] Accumulated usage: {old_accumulated} + {total_usage} = {tracker.accumulated_usage}"
         )
         
-        # Calculate inventory deduction
-        units_to_deduct = int(tracker.accumulated_usage // product_capacity)
-        actual_deduction = 0
+        # Calculate fractional unit deduction: usage / pack_capacity
+        # e.g. 10ml used, pack_size=1000ml → deduct 0.01 units
+        fractional_deduction = total_usage / product_capacity
         
-        if units_to_deduct > 0:
-            product = rule.product
-            old_stock = product.stocks_in_hand
+        product = rule.product
+        old_stock = product.stocks_in_hand
+        
+        actual_deduction = min(fractional_deduction, product.stocks_in_hand)
+        
+        if actual_deduction > 0:
+            product.stocks_in_hand = product.stocks_in_hand - actual_deduction
+            product.save()
+            tracker.total_units_deducted += actual_deduction
             
-            # Safety check: don't go below zero
-            actual_deduction = min(units_to_deduct, product.stocks_in_hand)
-            
-            if actual_deduction > 0:
-                product.stocks_in_hand -= actual_deduction
-                product.save()
-                tracker.total_units_deducted += actual_deduction
-                
-                logger.info(
-                    f"[INVENTORY] Deducted {actual_deduction} units from {product.product_name} | "
-                    f"Stock: {old_stock} -> {product.stocks_in_hand}"
-                )
-            
-            if actual_deduction < units_to_deduct:
-                # Log warning: insufficient stock
-                logger.warning(
-                    f"[INVENTORY] Insufficient stock for {product.product_name}. "
-                    f"Needed: {units_to_deduct}, Available: {old_stock}, "
-                    f"Deducted: {actual_deduction}"
-                )
-            
-            # Keep remainder in tracker for next cycle
-            remainder = tracker.accumulated_usage % product_capacity
-            logger.info(f"[TRACKER] Rollover remainder: {remainder} {rule.unit_type}")
-            tracker.accumulated_usage = remainder
-        else:
             logger.info(
-                f"[TRACKER] Not enough accumulated usage to deduct. "
-                f"Need {product_capacity}, have {tracker.accumulated_usage}"
+                f"[INVENTORY] Deducted {actual_deduction} units from {product.product_name} | "
+                f"Stock: {old_stock} -> {product.stocks_in_hand}"
             )
         
+        if actual_deduction < fractional_deduction:
+            logger.warning(
+                f"[INVENTORY] Insufficient stock for {product.product_name}. "
+                f"Needed: {fractional_deduction}, Available: {old_stock}, "
+                f"Deducted: {actual_deduction}"
+            )
+        
+        tracker.accumulated_usage += total_usage
         tracker.save()
         
         # Create consumption log for audit trail
@@ -1213,7 +1201,7 @@ class Inventory_Product_Serializer(serializers.ModelSerializer):
 
     class Meta:
         model = VendorInventoryProduct
-        fields = ["id", "product_name", "product_price", "product_description", "product_id", "stocks_in_hand", "unit","category","category_details","expiry_date"]
+        fields = ["id", "product_name", "product_price", "product_description", "product_id", "stocks_in_hand", "unit", "pack_size", "category", "category_details", "expiry_date"]
         extra_kwargs = {'id': {'read_only': True}}
 
     def create(self, validated_data):
@@ -1246,6 +1234,7 @@ class update_inventory_product_serializer(serializers.Serializer):
     product_price = serializers.CharField()
     stocks_in_hand = serializers.CharField()
     unit = serializers.CharField()
+    pack_size = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     category = serializers.UUIDField()
     def update(self, instance, validated_data):
         instance.product_id = validated_data.get('product_id', instance.product_id)
@@ -1254,6 +1243,7 @@ class update_inventory_product_serializer(serializers.Serializer):
         instance.product_price = validated_data.get('product_price', instance.product_price)
         instance.stocks_in_hand = validated_data.get('stocks_in_hand', instance.stocks_in_hand)
         instance.unit = validated_data.get('unit', instance.unit)
+        instance.pack_size = validated_data.get('pack_size', instance.pack_size)
         instance.category_id = validated_data.get('category')
         instance.save()
         return instance
