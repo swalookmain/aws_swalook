@@ -2054,7 +2054,7 @@ class InventoryItemDetailSerializer(serializers.ModelSerializer):
             'id', 'product_id', 'product_name', 'product_description',
             'category', 'category_details', 'stocks_in_hand',
             'cost_price', 'product_price', 'value',
-            'days_of_stock', 'reorder_threshold', 'unit',
+            'days_of_stock', 'reorder_threshold', 'unit', 'pack_size',
             'supplier', 'last_purchase_date', 'expiry_date', 'date'
         ]
     

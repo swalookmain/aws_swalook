@@ -1673,7 +1673,7 @@ class Inventory_Products_get(APIView):
         branch_name = request.query_params.get('branch_name')
         if "%20" in branch_name:
             branch_name = branch_name.replace("%20", " ")
-        product_obj = VendorInventoryProduct.objects.filter(user=request.user, vendor_branch_id=branch_name).values('id', 'product_name')
+        product_obj = VendorInventoryProduct.objects.filter(user=request.user, vendor_branch_id=branch_name).values('id', 'product_name', 'product_id', 'pack_size')
         return Response({
             "status": True,
             "data": list(product_obj)
@@ -6220,7 +6220,7 @@ class InventoryExportCSVView(APIView):
         
         # Write headers
         writer.writerow([
-            'SKU', 'Item Name', 'Category', 'Quantity', 'Unit', 
+            'SKU', 'Item Name', 'Category', 'Quantity', 'Unit', 'pack_size',
             'Cost Price', 'Sell Price', 'Value (Cost)', 'Value (Sell)',
             'Days of Stock', 'Reorder Threshold', 'Supplier', 
             'Last Purchase', 'Expiry Date'
