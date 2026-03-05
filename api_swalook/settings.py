@@ -183,6 +183,10 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 WP_INS_TOKEN = ""
 WP_INS_ID = ""
 WP_API_URL = "https://api.ultramsg.com/instance90232/"
+
+# WhatsApp Cloud API (Facebook) Configuration
+WHATSAPP_PHONE_NUMBER_ID = WHATSAPP_PHONE_NUMBER_ID
+WHATSAPP_ACCESS_TOKEN = WHATSAPP_ACCESS_TOKEN
 WKHTML2PDF_PATH = "/home/swalooki/api_swalook-main/wkhtmltopdf.exe"
 
 # Default primary key field type

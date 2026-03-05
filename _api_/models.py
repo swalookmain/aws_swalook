@@ -523,7 +523,7 @@ class Utilization_Inventory(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, db_index=True)
     vendor_branch = models.ForeignKey(SalonBranch, on_delete=models.SET_NULL, null=True, db_index=True)
     staff = models.CharField(max_length=255)
-    product_quantity = models.IntegerField()
+    product_quantity = models.DecimalField(max_digits=12, decimal_places=4, default=0)
     created_at = models.DateField()
     product = models.ForeignKey(VendorInventoryProduct, on_delete=models.SET_NULL, null=True)
     category = models.ForeignKey(VendorProductCategory, on_delete=models.SET_NULL, blank=True, null=True, db_index=True)
