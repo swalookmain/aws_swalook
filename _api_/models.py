@@ -228,7 +228,7 @@ class VendorInvoice(models.Model):
     total_discount = models.DecimalField(max_digits=40, decimal_places=2, default=0, blank=True)
     time_stamp = models.DateTimeField(null=True, blank=True, auto_now_add=True)
     gst_number = models.CharField(max_length=20, blank=True)
-    total_quantity = models.IntegerField(default=0)
+    total_quantity = models.DecimalField(default=0, max_digits=12, decimal_places=4)
     total_cgst = models.DecimalField(default=0, max_digits=40, decimal_places=2, blank=True)
     total_sgst = models.DecimalField(default=0, max_digits=40, decimal_places=2, blank=True)
     grand_total = models.DecimalField(default=0, max_digits=40, decimal_places=2, blank=True)
