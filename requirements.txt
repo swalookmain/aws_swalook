@@ -7,7 +7,6 @@ django-cors-headers
 django-silk
 pillow
 mysqlclient
-pymysql
 gunicorn
 python-decouple
 djangorestframework-simplejwt

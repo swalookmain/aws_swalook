@@ -207,8 +207,8 @@ class UpdateProfileSerializer(serializers.Serializer):
 
 
 class billing_serializer(serializers.ModelSerializer):
-    json_data = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
-    new_mode = serializers.ListField(child=serializers.DictField(child=serializers.CharField()))
+    json_data = serializers.ListField(child=serializers.DictField(child=serializers.CharField(allow_blank=True, required=False)))
+    new_mode = serializers.ListField(child=serializers.DictField(child=serializers.CharField(allow_blank=True, required=False)))
     combo_details = serializers.ListField(child=serializers.DictField(), required=False, allow_empty=True)
     comboService = serializers.ListField(child=serializers.DictField(), required=False, allow_empty=True)
     hair_length = serializers.ChoiceField(
@@ -602,7 +602,8 @@ class billing_serializer(serializers.ModelSerializer):
          
             try:
                 product = VendorInventoryProduct.objects.get(id=item.get('id'))
-                product.stocks_in_hand -= int(item.get('quantity'))
+                from decimal import Decimal
+                product.stocks_in_hand -= Decimal(str(item.get('quantity')))
                 products_to_update.append(product)
             except VendorInventoryProduct.DoesNotExist:
                 pass
@@ -1901,10 +1902,11 @@ class VendorInventoryUtilization(serializers.ModelSerializer):
         validated_data['vendor_branch_id'] = self.context.get('branch_id')
         validated_data['user']  = request.user
         product = VendorInventoryProduct.objects.get(id=ids)
-        if int(validated_data.get('product_quantity')) <= int(product.stocks_in_hand):
-            product.stocks_in_hand -= int(validated_data.get('product_quantity'))
+        from decimal import Decimal
+        quantity = Decimal(str(validated_data.get('product_quantity', 0)))
+        if quantity <= product.stocks_in_hand:
+            product.stocks_in_hand -= quantity
             product.save()
-
 
         
         return super().create(validated_data)

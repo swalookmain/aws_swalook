@@ -21,6 +21,7 @@ from django.conf.urls.static import static
 from rest_framework_simplejwt.views import TokenObtainPairView,TokenRefreshView
 from _api_.views import *
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns
+from _api_.views_whatsapp import SendWhatsappMessageView
 
 v = Vendor_loyality_customer_profile()
 urlpatterns = [
@@ -139,6 +140,7 @@ urlpatterns = [
     path('api/swalook/analytics/inventory/stock-health/', InventoryStockHealthView.as_view(), name='inventory-stock-health'),
     path('api/swalook/analytics/inventory/value/', InventoryValueAnalyticsView.as_view(), name='inventory-value-analytics'),
     path('api/swalook/analytics/inventory/suppliers/', TopSuppliersView.as_view(), name='inventory-top-suppliers'),
+    path('api/swalook/whatsapp/send/', SendWhatsappMessageView.as_view(), name='send-whatsapp'),
     path('api/swalook/inventory/items/', InventoryItemsListView.as_view(), name='inventory-items-list'),
     path('api/swalook/inventory/items/<uuid:id>/history/', InventoryItemHistoryView.as_view(), name='inventory-item-history'),
     path('api/swalook/inventory/adjustments/', InventoryAdjustmentsView.as_view(), name='inventory-adjustments'),
