@@ -409,8 +409,6 @@ class billing_serializer(serializers.ModelSerializer):
                     vendor_branch_id=branch_id,
                     service_id=service_id,
                     is_active=True
-                ).filter(
-                    models.Q(hair_length=hair_length) | models.Q(hair_length='all')
                 ).select_related('product', 'service')
                 
                 logger.info(f"[CONSUMPTION] Found {len(rules)} rules by service_id={service_id}")
@@ -418,21 +416,23 @@ class billing_serializer(serializers.ModelSerializer):
             if not rules and service_name:
                 # Fallback: Find service by name, then get rules
                 try:
+                    search_name = service_name
+                    if ":" in search_name:
+                        search_name = search_name.split(":", 1)[1].strip()
+                        
                     service_obj = VendorService.objects.filter(
                         vendor_branch_id=branch_id,
-                        service__iexact=service_name
+                        service__iexact=search_name
                     ).first()
                     if service_obj:
                         rules = ServiceProductUsage.objects.filter(
                             vendor_branch_id=branch_id,
                             service=service_obj,
                             is_active=True
-                        ).filter(
-                            models.Q(hair_length=hair_length) | models.Q(hair_length='all')
                         ).select_related('product', 'service')
-                        logger.info(f"[CONSUMPTION] Found {len(rules)} rules by service_name={service_name}")
+                        logger.info(f"[CONSUMPTION] Found {len(rules)} rules by service_name={search_name}")
                     else:
-                        logger.warning(f"[CONSUMPTION] Service not found by name: {service_name}")
+                        logger.warning(f"[CONSUMPTION] Service not found by name: {search_name}")
                 except Exception as e:
                     logger.error(f"[CONSUMPTION] Error finding service by name: {e}")
             
@@ -446,7 +446,7 @@ class billing_serializer(serializers.ModelSerializer):
                 for rule in rules:
                     logger.info(
                         f"[CONSUMPTION] Rule: {rule.service.service} -> {rule.product.product_name} "
-                        f"({rule.usage_amount} {rule.unit_type})"
+                        f"({rule.usage_amount} {rule.product.unit})"
                     )
                     self._process_single_consumption(
                         rule=rule,
@@ -473,7 +473,7 @@ class billing_serializer(serializers.ModelSerializer):
         
         logger.info(
             f"[TRACKER] Processing: {rule.product.product_name} | "
-            f"Usage: {usage_per_service} {rule.unit_type} x {service_quantity} = {total_usage} | "
+            f"Usage: {usage_per_service} {rule.product.unit} x {service_quantity} = {total_usage} | "
             f"Capacity: {product_capacity}"
         )
         
@@ -481,7 +481,7 @@ class billing_serializer(serializers.ModelSerializer):
         tracker, created = ProductConsumptionTracker.objects.get_or_create(
             vendor_branch_id=branch_id,
             product=rule.product,
-            unit_type=rule.unit_type,
+            unit_type=rule.product.unit,
             defaults={'user': user, 'accumulated_usage': Decimal('0')}
         )
         
@@ -530,11 +530,7 @@ class billing_serializer(serializers.ModelSerializer):
                 util.save()
                 
         inventory_deducted = Decimal('0')
-        if qty_to_deduct > Decimal('0'):
-            inventory_deducted = min(qty_to_deduct, product.stocks_in_hand)
-            if inventory_deducted > Decimal('0'):
-                product.stocks_in_hand = product.stocks_in_hand - inventory_deducted
-                product.save()
+        # Service-linked products should be reduced from utilization only
                 
         actual_deduction = utilization_deducted + inventory_deducted
         
@@ -543,7 +539,7 @@ class billing_serializer(serializers.ModelSerializer):
             
             logger.info(
                 f"[INVENTORY] Deducted {actual_deduction} units from {product.product_name} | "
-                f"Utilized: {utilization_deducted}, Stock: {old_stock} -> {product.stocks_in_hand}"
+                f"Utilized: {utilization_deducted}, Stock remains unchanged: {old_stock}"
             )
         
         if actual_deduction < fractional_deduction:
@@ -556,7 +552,6 @@ class billing_serializer(serializers.ModelSerializer):
         tracker.accumulated_usage += total_usage
         tracker.save()
         
-        # Create consumption log for audit trail
         ServiceConsumptionLog.objects.create(
             user=user,
             vendor_branch_id=branch_id,
@@ -566,7 +561,7 @@ class billing_serializer(serializers.ModelSerializer):
             hair_length=hair_length,
             service_quantity=service_quantity,
             usage_amount=total_usage,
-            unit_type=rule.unit_type,
+            unit_type=rule.product.unit,
             units_deducted=actual_deduction
         )
         
@@ -628,34 +623,11 @@ class billing_serializer(serializers.ModelSerializer):
 
     def update_inventory(self, json_data):
         from decimal import Decimal
-        from .models import Utilization_Inventory
         products_to_update = []
         for item in json_data:
             try:
                 product = VendorInventoryProduct.objects.get(id=item.get('id'))
                 qty_to_deduct = Decimal(str(item.get('quantity')))
-                
-                utilizations = Utilization_Inventory.objects.filter(
-                    product=product,
-                    vendor_branch_id=self.context.get('branch_id'),
-                    product_quantity__gt=0
-                ).order_by('created_at')
-                
-                utilization_update = []
-                for util in utilizations:
-                    if qty_to_deduct <= Decimal('0'):
-                        break
-                    if util.product_quantity >= qty_to_deduct:
-                        util.product_quantity -= qty_to_deduct
-                        utilization_update.append(util)
-                        qty_to_deduct = Decimal('0')
-                    else:
-                        qty_to_deduct -= util.product_quantity
-                        util.product_quantity = Decimal('0')
-                        utilization_update.append(util)
-                
-                if utilization_update:
-                    Utilization_Inventory.objects.bulk_update(utilization_update, ['product_quantity'])
                 
                 if qty_to_deduct > Decimal('0'):
                     product.stocks_in_hand -= qty_to_deduct
