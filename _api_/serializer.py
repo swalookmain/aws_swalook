@@ -504,16 +504,46 @@ class billing_serializer(serializers.ModelSerializer):
         product = rule.product
         old_stock = product.stocks_in_hand
         
-        actual_deduction = min(fractional_deduction, product.stocks_in_hand)
+        from .models import Utilization_Inventory
+        from decimal import Decimal
+        qty_to_deduct = fractional_deduction
+        
+        utilizations = Utilization_Inventory.objects.filter(
+            product=product,
+            vendor_branch_id=branch_id,
+            product_quantity__gt=0
+        ).order_by('created_at')
+        
+        utilization_deducted = Decimal('0')
+        for util in utilizations:
+            if qty_to_deduct <= Decimal('0'):
+                break
+            if util.product_quantity >= qty_to_deduct:
+                util.product_quantity -= qty_to_deduct
+                utilization_deducted += qty_to_deduct
+                util.save()
+                qty_to_deduct = Decimal('0')
+            else:
+                utilization_deducted += util.product_quantity
+                qty_to_deduct -= util.product_quantity
+                util.product_quantity = Decimal('0')
+                util.save()
+                
+        inventory_deducted = Decimal('0')
+        if qty_to_deduct > Decimal('0'):
+            inventory_deducted = min(qty_to_deduct, product.stocks_in_hand)
+            if inventory_deducted > Decimal('0'):
+                product.stocks_in_hand = product.stocks_in_hand - inventory_deducted
+                product.save()
+                
+        actual_deduction = utilization_deducted + inventory_deducted
         
         if actual_deduction > 0:
-            product.stocks_in_hand = product.stocks_in_hand - actual_deduction
-            product.save()
             tracker.total_units_deducted += actual_deduction
             
             logger.info(
                 f"[INVENTORY] Deducted {actual_deduction} units from {product.product_name} | "
-                f"Stock: {old_stock} -> {product.stocks_in_hand}"
+                f"Utilized: {utilization_deducted}, Stock: {old_stock} -> {product.stocks_in_hand}"
             )
         
         if actual_deduction < fractional_deduction:
@@ -597,14 +627,39 @@ class billing_serializer(serializers.ModelSerializer):
         ledger_object.save()
 
     def update_inventory(self, json_data):
+        from decimal import Decimal
+        from .models import Utilization_Inventory
         products_to_update = []
         for item in json_data:
-         
             try:
                 product = VendorInventoryProduct.objects.get(id=item.get('id'))
-                from decimal import Decimal
-                product.stocks_in_hand -= Decimal(str(item.get('quantity')))
-                products_to_update.append(product)
+                qty_to_deduct = Decimal(str(item.get('quantity')))
+                
+                utilizations = Utilization_Inventory.objects.filter(
+                    product=product,
+                    vendor_branch_id=self.context.get('branch_id'),
+                    product_quantity__gt=0
+                ).order_by('created_at')
+                
+                utilization_update = []
+                for util in utilizations:
+                    if qty_to_deduct <= Decimal('0'):
+                        break
+                    if util.product_quantity >= qty_to_deduct:
+                        util.product_quantity -= qty_to_deduct
+                        utilization_update.append(util)
+                        qty_to_deduct = Decimal('0')
+                    else:
+                        qty_to_deduct -= util.product_quantity
+                        util.product_quantity = Decimal('0')
+                        utilization_update.append(util)
+                
+                if utilization_update:
+                    Utilization_Inventory.objects.bulk_update(utilization_update, ['product_quantity'])
+                
+                if qty_to_deduct > Decimal('0'):
+                    product.stocks_in_hand -= qty_to_deduct
+                    products_to_update.append(product)
             except VendorInventoryProduct.DoesNotExist:
                 pass
 
@@ -1915,6 +1970,7 @@ class VendorInventoryUtilization(serializers.ModelSerializer):
         representation = super().to_representation(instance)
         representation['category'] = instance.category.product_category if instance.category else None
         representation['product'] = instance.product.product_name if instance.product else None
+        representation['unit'] = instance.product.unit if instance.product else None
         return representation
 
 
